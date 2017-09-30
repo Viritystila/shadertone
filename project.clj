@@ -7,10 +7,13 @@
                  [org.clojure/clojure "1.5.1"]
                  [hello_lwjgl/lwjgl   "2.9.1"]
                  [overtone            "0.9.1"]
-                 [watchtower          "0.1.1"]]
+                 [watchtower          "0.1.1"]
+                  [vision  "1.0.0-SNAPSHOT"]]
+    :jvm-opts ["-Djna.library.path=../vision/resources/lib"]
+
   :main ^{:skip-aot true} shadertone.core
   ;; add per WARNING: JVM argument TieredStopAtLevel=1 is active...
-  :jvm-opts ^:replace []
+
   ;; add leipzig for use in examples
   :profiles {:dev {:dependencies [[leipzig "0.6.0" :exclusions [[overtone]]]]
                    ;; enabling this outputs a lot of spew. disable for normal runs
