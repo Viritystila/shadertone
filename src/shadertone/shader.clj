@@ -826,7 +826,7 @@
   (swap! running-cam0 (fn [_] false)))
 
 
-(defn init-cam0 [] (def  capture-cam0 (future (vision.core/capture-from-cam 1))))
+(defn init-cam0 [] (def  capture-cam0 (future (vision.core/capture-from-cam 0))))
 
 (defn start-cam0 []
     (let [_ (println "start Cam 0")]
@@ -852,7 +852,11 @@
        (vision.core/release capture))))
 
 
+(def buffer-cam0)       
 
+(def target-cam0)
+
+(defonce text-id-cam0 (atom 0))
 
 (defn shader-webcam-fn
 ;; "The shader display will call this routine on every draw.  Update the webcam texture"
@@ -864,68 +868,26 @@
        (let [ _ (init-cam0) 
              tex-id (GL11/glGenTextures)
              target           (GL11/GL_TEXTURE_2D)
-             i                0
-             ;;capture          (capture-from-cam 0)
-             imageP            (query-frame @capture-cam0)
-             imageDef              (get imageP :buffered-image)
-             _ (Thread/sleep 1000)
-             image           @imageDef
-             image-bytes      (tex-image-bytes image)
-             _              (println image-bytes)
-             internal-format  (tex-internal-format image)
-             format           (tex-format image)
-             nbytes           (* image-bytes (.getWidth image) (.getHeight image))
-             buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                             (put-texture-data image (= image-bytes 4))
-                                              (.flip))
-             tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
-                                         (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
-                                         target)
+             _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
               
              ]
-            ;;(view :cam imageP)
-
     
+        (reset! text-id-cam0 tex-id)
 
         (GL11/glBindTexture target tex-id)
-         (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-         (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
-         (if (== target GL11/GL_TEXTURE_2D)
-           (do
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT))
-            (do ;; CUBE_MAP
-            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL12/GL_CLAMP_TO_EDGE)
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL12/GL_CLAMP_TO_EDGE)))
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
 
-      ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER
-      ;;                      GL11/GL_LINEAR)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER
-      ;;                     GL11/GL_LINEAR)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_WRAP_S
-      ;;                      GL12/GL_CLAMP_TO_EDGE)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_WRAP_T
-      ;;                      GL12/GL_CLAMP_TO_EDGE)
-      ;;(GL11/glTexImage2D GL11/GL_TEXTURE_2D
-      ;;                   0 ARBTextureRg/GL_R32F
-      ;;                   ^Integer WAVE-BUF-SIZE
-      ;;                   2 0 GL11/GL_RED GL11/GL_FLOAT
-      ;;                   ^FloatBuffer fftwave-float-buf)
-      ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-      ;-----------
-          (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
-                           ^Integer format
-                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer buffer)
-         (except-gl-errors "@ end of load-texture if-stmt")
-         [tex-id (.getWidth image) (.getHeight image) 1.0]
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
       )
     :pre-draw ;; grab the data and put it in the texture for drawing.
     (do
-      (let [ tex-id (GL11/glGenTextures)
-             target           (GL11/GL_TEXTURE_2D)
+      (let [ ;;tex-id (GL11/glGenTextures)
+             ;;target           (GL11/GL_TEXTURE_2D)
+             target @target-cam0
+             tex-id @text-id-cam0
+
              i                0
              ;;capture          (capture-from-cam 0)
              imageP            (query-frame @capture-cam0)
@@ -938,43 +900,20 @@
              buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
+             ;tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
+             ;                            (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
+             ;                            target)
+                                         
              tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
                                          target)
               
              ]
-            ;;(view :cam imageP)
 
-    
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
 
+      (GL11/glBindTexture target tex-id)
 
-        (GL11/glBindTexture target tex-id)
-         (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-         (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
-         (if (== target GL11/GL_TEXTURE_2D)
-           (do
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT))
-            (do ;; CUBE_MAP
-            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL12/GL_CLAMP_TO_EDGE)
-             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL12/GL_CLAMP_TO_EDGE)))
-
-      ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER
-      ;;                      GL11/GL_LINEAR)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER
-      ;;                     GL11/GL_LINEAR)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_WRAP_S
-      ;;                      GL12/GL_CLAMP_TO_EDGE)
-      ;;(GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_WRAP_T
-      ;;                      GL12/GL_CLAMP_TO_EDGE)
-      ;;(GL11/glTexImage2D GL11/GL_TEXTURE_2D
-      ;;                   0 ARBTextureRg/GL_R32F
-      ;;                   ^Integer WAVE-BUF-SIZE
-      ;;                   2 0 GL11/GL_RED GL11/GL_FLOAT
-      ;;                   ^FloatBuffer fftwave-float-buf)
-      ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-      ;-----------
           (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
                            ^Integer format
@@ -985,21 +924,10 @@
       )
       
     )
-    
-    ;;(do
-    ;;  (if (buffer-live? wave-buf) ;; FIXME? assume fft-buf is live
-    ;;    (-> ^FloatBuffer fftwave-float-buf
-    ;;        (.put ^floats (buffer-data fft-buf))
-    ;;        (.put ^floats (buffer-data wave-buf))
-    ;;        (.flip)))
-    ;;  (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @fftwave-tex-num))
-    ;;  (GL11/glBindTexture GL11/GL_TEXTURE_2D @fftwave-tex-id)
-    ;;  (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRg/GL_R32F
-    ;;                     ^Integer WAVE-BUF-SIZE
-    ;;                     2 0 GL11/GL_RED GL11/GL_FLOAT
-    ;;                     ^FloatBuffer fftwave-float-buf))
+ 
     :post-draw ;; unbind the texture
     (do
+     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     :destroy ;;
     (do
