@@ -817,26 +817,32 @@
   
 
 ;; Camera at index 0 control definitions
-(defonce running-cam0 (atom true))
+(defonce running-cam0 (atom false))
 
 (def  capture-cam0)
 
 (defn stop-cam0 []
   (println @capture-cam0)
-  (swap! running-cam0 (fn [_] false)))
+  (reset! running-cam0 (fn [_] false)))
 
 
-(defn init-cam0 [] (def  capture-cam0 (future (vision.core/capture-from-cam 0))))
+(defn init-cam0 [] (let [_ (println "init cam0" )
+]  (if (= false @running-cam0)(def  capture-cam0 (future (vision.core/capture-from-cam 0)))) ))
+
+(defn reset-cam0 [] (let [_  (println "Camera on state")
+                    _  (println @running-cam0)
+
+_ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-cam0)(reset! running-cam0  false)
+))]))
+
 
 (defn start-cam0 []
     (let [_ (println "start Cam 0")]
-      (swap! running-cam0 (fn [_] true))
+      (reset! running-cam0  true)
      (future
        (while  @running-cam0
          (let [iii (vision.core/query-frame @capture-cam0)])
-
-         ;;(vision.core/view :cam (vision.core/query-frame @capture-cam0))
-         )
+        )
        (vision.core/release @capture-cam0))))
 
 
@@ -844,7 +850,7 @@
 (defn start-cam []
     
     (let [capture (vision.core/capture-from-cam 0)]
-      (swap! running-cam0 (fn [_] true))
+      (reset! running-cam0 (fn [_] true))
       (future
        (while  @running-cam0
             (vision.core/view :cam (vision.core/query-frame capture))
@@ -863,10 +869,9 @@
   [dispatch pgm-id]
   (case dispatch ;; FIXME defmulti?
     :init ;; create & bind the texture
-    ;;(let [tex-id (GL11/glGenTextures)]
-      
-       (let [ _ (init-cam0) 
-             tex-id (GL11/glGenTextures)
+       (let [_                (init-cam0)
+             _                (reset! running-cam0  true)
+             tex-id           (GL11/glGenTextures)
              target           (GL11/GL_TEXTURE_2D)
              _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
               
@@ -883,27 +888,21 @@
       )
     :pre-draw ;; grab the data and put it in the texture for drawing.
     (do
-      (let [ ;;tex-id (GL11/glGenTextures)
-             ;;target           (GL11/GL_TEXTURE_2D)
-             target @target-cam0
-             tex-id @text-id-cam0
+      (let [ target             @target-cam0
+             tex-id             @text-id-cam0
 
-             i                0
-             ;;capture          (capture-from-cam 0)
-             imageP            (query-frame @capture-cam0)
-             imageDef              (get imageP :buffered-image)
-             image           @imageDef
-             image-bytes      (tex-image-bytes image)
-             internal-format  (tex-internal-format image)
-             format           (tex-format image)
-             nbytes           (* image-bytes (.getWidth image) (.getHeight image))
+             i                  0
+             imageP             (query-frame @capture-cam0)
+             imageDef           (get imageP :buffered-image)
+             image              @imageDef
+             image-bytes        (tex-image-bytes image)
+             internal-format    (tex-internal-format image)
+             format             (tex-format image)
+             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
              buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
-             ;tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
-             ;                            (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
-             ;                            target)
-                                         
+
              tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
                                          target)
@@ -933,6 +932,7 @@
     (do
     (println "destroy")
     (stop-cam0)
+    (swap! running-cam0 (fn [_] false))
     (vision.core/release @capture-cam0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
       (GL11/glDeleteTextures 0))
