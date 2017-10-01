@@ -96,6 +96,16 @@
 ;;
 (defonce pixel-value (atom [0.0 0.0 0.0]))
 
+
+;;Webcam definitions
+;; Camera at index 0 control definitions
+(defonce running-cam0 (atom false))
+(def  capture-cam0)
+(def buffer-cam0)       
+(def target-cam0)
+(defonce text-id-cam0 (atom 0))
+
+
 ;; ======================================================================
 ;; code modified from
 ;; https://github.com/ztellman/penumbra/blob/master/src/penumbra/opengl/core.clj
@@ -109,7 +119,7 @@
     (.getName #^Field (some
                        #(if (= enum-value (.get #^Field % nil)) % nil)
                        (mapcat get-fields [GL11 GL12 GL13 GL15 GL20])))))
-(defn- except-gl-errors
+(defn except-gl-errors
   [msg]
   (let [error (GL11/glGetError)
         error-string (str "OpenGL Error(" error "):"
@@ -323,7 +333,7 @@
   [filename i]
   (clojure.string/replace filename "*" (str i)))
 
-(defn- put-texture-data
+(defn put-texture-data
   "put the data from the image into the buffer and return the buffer"
   ^ByteBuffer
   [^ByteBuffer buffer ^BufferedImage image ^Boolean swizzle-0123-1230]
@@ -336,7 +346,7 @@
         buffer (.put buffer data 0 (alength data))] ; (.order (ByteOrder/nativeOrder)) ?
     buffer))
 
-(defn- tex-image-bytes
+(defn tex-image-bytes
   "return the number of bytes per pixel in this image"
   [^BufferedImage image]
   (let [image-type  (.getType image)
@@ -357,7 +367,7 @@
         _           (assert (pos? image-bytes))] ;; die on unhandled image
     image-bytes))
 
-(defn- tex-internal-format
+(defn tex-internal-format
   "return the internal-format for the glTexImage2D call for this image"
   ^Integer
   [^BufferedImage image]
@@ -369,7 +379,7 @@
                          (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA8)]
     internal-format))
 
-(defn- tex-format
+(defn tex-format
   "return the format for the glTexImage2D call for this image"
   ^Integer
   [^BufferedImage image]
@@ -816,11 +826,6 @@
       (println "ERROR: unable to stop-watcher!"))))
   
 
-;; Camera at index 0 control definitions
-(defonce running-cam0 (atom false))
-
-(def  capture-cam0)
-
 (defn stop-cam0 []
   (println @capture-cam0)
   (reset! running-cam0 (fn [_] false)))
@@ -858,11 +863,6 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
        (vision.core/release capture))))
 
 
-(def buffer-cam0)       
-
-(def target-cam0)
-
-(defonce text-id-cam0 (atom 0))
 
 (defn shader-webcam-fn
 ;; "The shader display will call this routine on every draw.  Update the webcam texture"
@@ -892,7 +892,7 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
              tex-id             @text-id-cam0
 
              i                  0
-             imageP             (query-frame @capture-cam0)
+             imageP             (vision.core/query-frame @capture-cam0)
              imageDef           (get imageP :buffered-image)
              image              @imageDef
              image-bytes        (tex-image-bytes image)

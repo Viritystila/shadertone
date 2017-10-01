@@ -5,11 +5,13 @@
         [overtone.libs event deps]
         [overtone.sc defaults synth ugens buffer node foundation-groups bus]
         [overtone.sc.cgens buf-io tap]
-        [overtone.studio core util])
-  (:require [shadertone.shader :as s]
+        [overtone.studio core util]
+        )
+  (:require [vision core]
+            [shadertone.shader :as s]
             [overtone.sc.server :as server]) ;; has a "stop" in it
   (:import (org.lwjgl BufferUtils)
-           (java.nio FloatBuffer)
+           (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
            (org.lwjgl.opengl GL11 GL12 GL13 GL20 ARBTextureRg)))
 
 ;; ----------------------------------------------------------------------
@@ -41,6 +43,16 @@
                                (.put ^floats init-fft-array)
                                (.put ^floats init-wave-array)
                                (.flip)))
+
+                               
+                               
+;;Webcam definitions
+;; Camera at index 0 control definitions
+(defonce running-cam0 (atom false))
+(def  capture-cam0)
+(def buffer-cam0)       
+(def target-cam0)
+(defonce text-id-cam0 (atom 0))
 
 (defonce wave-bus-synth (bus->buf [:after (foundation-monitor-group)] 0 wave-buf))
 
@@ -160,6 +172,119 @@
   (reset! fftwave-tex-num 0) ;; FIXME this default could mess up other tex0 cases
   (map fix-fftwav-texture (map-indexed vector textures)))
 
+(defn stop-cam0 []
+  (println @capture-cam0)
+  (reset! running-cam0 (fn [_] false)))
+
+
+(defn init-cam0 [] (let [_ (println "init cam0" )
+]  (if (= false @running-cam0)(def  capture-cam0 (future (vision.core/capture-from-cam 0)))) ))
+
+(defn reset-cam0 [] (let [_  (println "Camera on state")
+                    _  (println @running-cam0)
+
+_ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-cam0)(reset! running-cam0  false)
+))]))
+
+
+(defn start-cam0 []
+    (let [_ (println "start Cam 0")]
+      (reset! running-cam0  true)
+     (future
+       (while  @running-cam0
+         (let [iii (vision.core/query-frame @capture-cam0)])
+        )
+       (vision.core/release @capture-cam0))))
+
+
+
+(defn start-cam []
+    
+    (let [capture (vision.core/capture-from-cam 0)]
+      (reset! running-cam0 (fn [_] true))
+      (future
+       (while  @running-cam0
+            (vision.core/view :cam (vision.core/query-frame capture))
+         )
+       (vision.core/release capture))))
+
+
+
+(defn shader-webcam-fn
+;; "The shader display will call this routine on every draw.  Update the webcam texture"
+  [dispatch pgm-id]
+  (case dispatch ;; FIXME defmulti?
+    :init ;; create & bind the texture
+       (let [_                (init-cam0)
+             _                (reset! running-cam0  true)
+             tex-id           (GL11/glGenTextures)
+             target           (GL11/GL_TEXTURE_2D)
+             _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
+              
+             ]
+    
+        (reset! text-id-cam0 tex-id)
+
+        (GL11/glBindTexture target tex-id)
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
+      )
+    :pre-draw ;; grab the data and put it in the texture for drawing.
+    (do
+      (let [ target             @target-cam0
+             tex-id             @text-id-cam0
+
+             i                  0
+             imageP             (vision.core/query-frame @capture-cam0)
+             imageDef           (get imageP :buffered-image)
+             image              @imageDef
+             image-bytes        (s/tex-image-bytes image)
+             internal-format    (s/tex-internal-format image)
+             format             (s/tex-format image)
+             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+             buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                                             (s/put-texture-data image (= image-bytes 4))
+                                              (.flip))
+
+             tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
+                                         (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
+                                         target)
+              
+             ]
+
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
+
+      (GL11/glBindTexture target tex-id)
+
+          (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
+                           ^Integer format
+                            GL11/GL_UNSIGNED_BYTE
+                            ^ByteBuffer buffer)
+         (s/except-gl-errors "@ end of load-texture if-stmt")
+         [tex-id (.getWidth image) (.getHeight image) 1.0]
+      )
+      
+    )
+ 
+    :post-draw ;; unbind the texture
+    (do
+     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
+      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+    :destroy ;;
+    (do
+    (println "destroy")
+    (stop-cam0)
+    (swap! running-cam0 (fn [_] false))
+    (vision.core/release @capture-cam0)
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+      (GL11/glDeleteTextures 0))
+    ))
+
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))
@@ -174,7 +299,8 @@
   (case dispatch ;; FIXME defmulti?
     :init ;; find Uniform Location
     (doseq [key (keys @tone-user-data)]
-      (let [loc (GL20/glGetUniformLocation ^Integer pgm-id ^String key)]
+      (let [
+            loc (GL20/glGetUniformLocation ^Integer pgm-id ^String key)]
         (swap! tone-user-locs assoc key loc)))
     :pre-draw
     (doseq [key (keys @tone-user-data)]
@@ -202,10 +328,12 @@
     :destroy
     nil ;; nothing to do
     )
-  (tone-fftwave-fn dispatch pgm-id))
+  (shader-webcam-fn dispatch pgm-id)
+  ;;(tone-fftwave-fn dispatch pgm-id)
+  )
 
 ;; ======================================================================
-;; Public API
+;; Public A1PI
 (defn start
   "Start a new shader display.  Pass in optional user-data and user-fn
   for custom control."
@@ -217,11 +345,13 @@
           textures   []
           user-data  {}
           user-fn    tone-default-fn}}]
-  (let [textures (fix-texture-list textures)
+  (let [_ (println "start")
+        textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
                               user-data {"iOvertoneVolume"
                                          (atom {:synth voltap-synth
-                                                :tap   "system-vol"})})]
+                                                :tap   "system-vol"})})
+                                                ]
     (reset! tone-user-data user-data)
     (s/start shader-filename-or-str-atom
              :width      width
