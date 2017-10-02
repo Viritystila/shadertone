@@ -7,7 +7,7 @@ void main(void) {
   vec2 uv2 = (gl_FragCoord.xy / iResolution.xy);
 
   uv.x = uv.x + 5.5*sin(0.15*iGlobalTime);
-  uv.y = uv.y + 1.5*cos(1.03*iGlobalTime);
+  uv.y = uv.y + 1.5*cos(0.03*iGlobalTime);
   vec4 c1 = texture2D(iChannel0,uv);
   vec4 c2 = texture2D(iChannel0,uv2);
 

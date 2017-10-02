@@ -51,6 +51,7 @@
    :i-channel-time-loc  0
    :i-mouse-loc         0
    :i-channel-loc       [0 0 0 0]
+   :i-cam-loc           [0 0]
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
@@ -67,7 +68,8 @@
    ;; textures
    :tex-filenames       []
    :tex-ids             []
-   :tex-types           [] ; :cubemap, :previous-frame, :webcam
+   :cams                []
+   :tex-types           [] ; :cubemap, :previous-frame
    ;; a user draw function
    :user-fn             nil
    ;; pixel read
@@ -100,10 +102,34 @@
 ;;Webcam definitions
 ;; Camera at index 0 control definitions
 (defonce running-cam0 (atom false))
+(defonce running-cam1 (atom false))
+(defonce running-cam2 (atom false))
+(defonce running-cam3 (atom false))
+(defonce running-cam4 (atom false))
+
 (def  capture-cam0)
-(def buffer-cam0)       
+(def  capture-cam1)
+(def  capture-cam2)
+(def  capture-cam3)
+(def  capture-cam4)
+
+(def buffer-cam0) 
+(def buffer-cam1)       
+(def buffer-cam2)       
+(def buffer-cam3)       
+(def buffer-cam4)       
+
 (def target-cam0)
+(def target-cam1)
+(def target-cam2)
+(def target-cam3)
+(def target-cam4)
+
 (defonce text-id-cam0 (atom 0))
+(defonce text-id-cam1 (atom 0))
+(defonce text-id-cam2 (atom 0))
+(defonce text-id-cam3 (atom 0))
+(defonce text-id-cam4 (atom 0))
 
 
 ;; ======================================================================
@@ -136,6 +162,15 @@
            (if (< i (count tex-filenames))
              (nth tex-filenames i)))))
 
+(defn- fill-cams
+  "return a vector of 2 items, always.  Use nil if no filename"
+  [cams]
+  (apply vector
+         (for [i (range 2)]
+           (if (< i (count cams))
+             (nth cams i)))))
+
+             
 (defn- uniform-sampler-type-str
   [tex-types n]
   (format "uniform sampler%s iChannel%s;\n"
@@ -158,6 +193,8 @@
                       (uniform-sampler-type-str tex-types 1)
                       (uniform-sampler-type-str tex-types 2)
                       (uniform-sampler-type-str tex-types 3)
+                      "uniform sampler2D iCam0; \n"
+                      "uniform sampler2D iCam1; \n"
                       "uniform vec4      iDate;\n"
                       "\n"
                       (slurp filename))]
@@ -183,13 +220,14 @@
    attempted if the display-mode is compatible. See display-modes for a
    list of available modes and fullscreen-display-modes for a list of
    fullscreen compatible modes.."
-  [locals display-mode title shader-filename shader-str-atom tex-filenames true-fullscreen? user-fn display-sync-hz]
+  [locals display-mode title shader-filename shader-str-atom tex-filenames cams true-fullscreen? user-fn display-sync-hz]
   (let [width               (.getWidth ^DisplayMode display-mode)
         height              (.getHeight ^DisplayMode display-mode)
         pixel-format        (PixelFormat.)
         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-tex-filenames tex-filenames)
+        cams                (fill-cams cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -203,6 +241,7 @@
            :shader-filename shader-filename
            :shader-str-atom shader-str-atom
            :tex-filenames   tex-filenames
+           :cams            cams
            :tex-types       tex-types
            :user-fn         user-fn)
     ;; slurp-fs requires :tex-types, so we need a 2 pass setup
@@ -294,6 +333,10 @@
             i-channel1-loc        (GL20/glGetUniformLocation pgm-id "iChannel1")
             i-channel2-loc        (GL20/glGetUniformLocation pgm-id "iChannel2")
             i-channel3-loc        (GL20/glGetUniformLocation pgm-id "iChannel3")
+            
+            i-cam0-loc        (GL20/glGetUniformLocation pgm-id "iCam0")
+            i-cam1-loc        (GL20/glGetUniformLocation pgm-id "iCam1")
+    
             i-channel-res-loc     (GL20/glGetUniformLocation pgm-id "iChannelResolution")
             i-date-loc            (GL20/glGetUniformLocation pgm-id "iDate")
             _ (except-gl-errors "@ end of let init-shaders")
@@ -309,6 +352,7 @@
                :i-channel-time-loc i-channel-time-loc
                :i-mouse-loc i-mouse-loc
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
+               :i-cam-loc [i-cam0-loc i-cam1-loc]
                :i-channel-res-loc i-channel-res-loc
                :i-date-loc i-date-loc))
       ;; we didn't load the shader, don't be drawing
@@ -467,7 +511,13 @@
         ]
     (swap! locals assoc
            :tex-ids tex-ids)))
-
+(defn- init-cams
+[locals]
+(let [_ (println "raw" (:cams @locals))]
+)
+)
+           
+           
 (defn- init-gl
   [locals]
   (let [{:keys [width height user-fn]} @locals]
@@ -476,6 +526,7 @@
     (GL11/glViewport 0 0 width height)
     (init-buffers locals)
     (init-textures locals)
+    (init-cams locals)
     (init-shaders locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals)))))
@@ -524,6 +575,10 @@
                 i-channel1-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel1")
                 i-channel2-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel2")
                 i-channel3-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel3")
+                
+                i-cam0-loc        (GL20/glGetUniformLocation new-pgm-id "iCam0")
+                i-cam1-loc        (GL20/glGetUniformLocation new-pgm-id "iCam1")
+    
                 i-channel-res-loc  (GL20/glGetUniformLocation new-pgm-id "iChannelResolution")
                 i-date-loc         (GL20/glGetUniformLocation new-pgm-id "iDate")]
             (GL20/glUseProgram new-pgm-id)
@@ -546,6 +601,7 @@
                    :i-channel-time-loc i-channel-time-loc
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
+                   :i-cam-loc [i-cam0-loc i-cam1-loc]
                    :i-channel-res-loc i-channel-res-loc
                    :i-date-loc i-date-loc
                    :shader-str fs-shader)))))))
@@ -567,7 +623,7 @@
                 i-mouse-loc
                 mouse-pos-x mouse-pos-y
                 mouse-ori-x mouse-ori-y
-                i-channel-time-loc i-channel-loc
+                i-channel-time-loc i-channel-loc i-cam-loc
                 i-channel-res-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
@@ -623,6 +679,8 @@
     (GL20/glUniform1i (nth i-channel-loc 1) 1)
     (GL20/glUniform1i (nth i-channel-loc 2) 2)
     (GL20/glUniform1i (nth i-channel-loc 3) 3)
+    (GL20/glUniform1i (nth i-cam-loc 0) 4)
+    (GL20/glUniform1i (nth i-cam-loc 1) 5)
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
     ;; get vertex array ready
@@ -732,8 +790,8 @@
     (GL15/glDeleteBuffers ^Integer vbo-id)))
 
 (defn- run-thread
-  [locals mode shader-filename shader-str-atom tex-filenames title true-fullscreen? user-fn display-sync-hz]
-  (init-window locals mode title shader-filename shader-str-atom tex-filenames true-fullscreen? user-fn display-sync-hz)
+  [locals mode shader-filename shader-str-atom tex-filenames cams title true-fullscreen? user-fn display-sync-hz]
+  (init-window locals mode title shader-filename shader-str-atom tex-filenames cams true-fullscreen? user-fn display-sync-hz)
   (init-gl locals)
   (while (and (= :yes (:active @locals))
               (not (Display/isCloseRequested)))
@@ -1032,7 +1090,7 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
 (defn start-shader-display
   "Start a new shader display with the specified mode. Prefer start or
    start-fullscreen for simpler usage."
-  [mode shader-filename-or-str-atom textures title true-fullscreen?
+  [mode shader-filename-or-str-atom textures cams title true-fullscreen?
    user-data user-fn display-sync-hz]
   (let [is-filename     (not (instance? clojure.lang.Atom shader-filename-or-str-atom))
         shader-filename (if is-filename
@@ -1068,6 +1126,7 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
                                  shader-filename
                                  shader-str-atom
                                  textures
+                                 cams
                                  title
                                  true-fullscreen?
                                  user-fn
@@ -1078,17 +1137,18 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
    decorated (i.e. have a title bar)."
   [shader-filename-or-str-atom
    &{:keys [width height title display-sync-hz
-            textures user-data user-fn]
+            textures cams user-data user-fn]
      :or {width           600
           height          600
           title           "shadertone"
           display-sync-hz 60
           textures        []
+          cams            []
           user-data       {}
           user-fn         shader-default-fn}}]
   (let [mode (DisplayMode. width height)]
     (decorate-display!)
-    (start-shader-display mode shader-filename-or-str-atom textures title false user-data user-fn display-sync-hz)))
+    (start-shader-display mode shader-filename-or-str-atom textures cams title false user-data user-fn display-sync-hz)))
 
 (defn start-fullscreen
   "Start a new shader display in pseudo fullscreen mode. This creates
@@ -1096,14 +1156,15 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
    resolution. There are therefore no OS controls for closing the
    shader window. Use (stop) to close things manually."
   [shader-filename-or-str-atom
-   &{:keys [display-sync-hz textures user-data user-fn]
+   &{:keys [display-sync-hz textures cams user-data user-fn]
      :or {display-sync-hz 60
           textures        [nil]
+          cams            [nil]
           user-data       {}
           user-fn         shader-default-fn}}]
      (let [mode (Display/getDisplayMode)]
        (undecorate-display!)
-       (start-shader-display mode shader-filename-or-str-atom textures "" false user-data user-fn display-sync-hz)))
+       (start-shader-display mode shader-filename-or-str-atom textures cams "" false user-data user-fn display-sync-hz)))
 
 (defn throw-exceptions-on-gl-errors!
   "When v is true, throw exceptions when glGetError() returns
