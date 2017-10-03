@@ -477,7 +477,9 @@
                                               (.flip))
              tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
-                                         target)]
+                                         target)
+             _ (println "target" target)
+             _ (println "tex-id" tex-id)]
          (GL11/glBindTexture target tex-id)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -531,32 +533,30 @@
         ]
     (swap! locals assoc
            :tex-ids tex-ids)))
+         
+           
+ (defn- init-cam-tex [cam-id](let [       
+                                    target           (GL11/GL_TEXTURE_2D)
+                                    tex-id          (+ 4 cam-id)
+                                    _               (println "camtexid" tex-id)
+                                    ]
+    
+                                        (GL11/glBindTexture target tex-id)
+                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
 
+                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
+  
+  
+ 
 (defn- check-cam-idx [c_idx] (cond
-          (= c_idx 0) (init-cam0)
-          (= c_idx 1) (init-cam1) ;;(reset! running-cam1  true))
-           ))           
-           
-           
- ;;      (let [_                (init-cam0)
- ;;            ;;_                (reset! running-cam0  true)
- ;;            tex-id           0
- ;;            target           (GL11/GL_TEXTURE_2D)
- ;;            _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
- ;;             
- ;;            ]
- ;;   
- ;;       (reset! text-id-cam0 tex-id)
-;;
-;;        (GL11/glBindTexture target tex-id)
-;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
-;;
-;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
-;;      )          
-           
-           
+          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx))
+          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx)) 
+          
+          ))   
+  
+  
 (defn- init-cams
 [locals]
 (let [  cam_idxs        (:cams @locals)
@@ -564,10 +564,38 @@
     (doseq [c_idx cam_idxs]
     (println "c_idx" c_idx)
     (check-cam-idx c_idx)
-    )
-)
-)
-           
+    )))
+    
+    
+    
+(defn- load-cam-texture [cam-id capture-cam](let [ 
+                target             (GL11/GL_TEXTURE_2D)
+                                                    tex-id          (+ 4 cam-id)
+             imageP             (vision.core/query-frame @capture-cam0)
+             imageDef           (get imageP :buffered-image)
+             image              @imageDef
+             image-bytes        (tex-image-bytes image)
+             internal-format    (tex-internal-format image)
+             format             (tex-format image)
+             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+             buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                                             (put-texture-data image (= image-bytes 4))
+                                              (.flip))
+
+             tex-image-target ^Integer (+ 0 target)
+              
+             ]
+
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
+      (GL11/glBindTexture target tex-id)
+      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
+                           ^Integer format
+                            GL11/GL_UNSIGNED_BYTE
+                            ^ByteBuffer buffer)
+         (except-gl-errors "@ end of load-texture if-stmt")
+         ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
+      ))          
            
 (defn- init-gl
   [locals]
@@ -678,7 +706,7 @@
                 i-channel-res-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
-                tex-ids tex-types
+                tex-ids cams tex-types
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
@@ -717,8 +745,15 @@
 
     (except-gl-errors "@ draw after activate textures")
     
-    ;; Fetch camera texture
-    
+    ;; Fetch cam texture
+    ;;(dotimes [i (count cams)]
+    ;;    (when (nth cams i)
+    (load-cam-texture  capture-cam0)
+        
+    ;;    )
+    ;;)
+
+    ;;load-cam-texture
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
@@ -840,7 +875,14 @@
     (GL20/glDeleteProgram pgm-id)
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
-    (GL15/glDeleteBuffers ^Integer vbo-id)))
+    (GL15/glDeleteBuffers ^Integer vbo-id))
+    ;;;;;;;;;;;;;;;;;;;,
+    ;;;;;;;;;;;;;;;;;;;
+    ;;;;;TEMP DESTROY CAM0
+    ;;;;;;;;;;;;;;;;;
+    (swap! running-cam0 (fn [_] false))
+    (vision.core/release @capture-cam0)
+    )
 
 (defn- run-thread
   [locals mode shader-filename shader-str-atom tex-filenames cams title true-fullscreen? user-fn display-sync-hz]
