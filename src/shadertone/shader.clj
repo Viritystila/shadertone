@@ -136,16 +136,16 @@
 ]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))) ))
 
 (defn init-cam1 [] (let [_ (println "init cam1" )
-]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam0 (future (vision.core/capture-from-cam 1))))) ))
+]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))) ))
 
 (defn init-cam2 [] (let [_ (println "init cam2" )
-]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam0 (future (vision.core/capture-from-cam 2))))) ))
+]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam2 (future (vision.core/capture-from-cam 2))))) ))
 
 (defn init-cam3 [] (let [_ (println "init cam3" )
-]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam0 (future (vision.core/capture-from-cam 3))))) ))
+]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam3 (future (vision.core/capture-from-cam 3))))) ))
 
 (defn init-cam4 [] (let [_ (println "init cam4" )
-]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam0 (future (vision.core/capture-from-cam 4))))) ))
+]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))) ))
 
 
 ;; ======================================================================
@@ -571,7 +571,7 @@
 (defn- load-cam-texture [cam-id capture-cam](let [ 
                 target             (GL11/GL_TEXTURE_2D)
                                                     tex-id          (+ 4 cam-id)
-             imageP             (vision.core/query-frame @capture-cam0)
+             imageP             (vision.core/query-frame @capture-cam)
              imageDef           (get imageP :buffered-image)
              image              @imageDef
              image-bytes        (tex-image-bytes image)
@@ -583,10 +583,10 @@
                                               (.flip))
 
              tex-image-target ^Integer (+ 0 target)
-              
+            
              ]
 
-      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
@@ -748,8 +748,10 @@
     ;; Fetch cam texture
     ;;(dotimes [i (count cams)]
     ;;    (when (nth cams i)
-    (load-cam-texture  capture-cam0)
-        
+    (load-cam-texture 0 capture-cam0)
+    
+    (load-cam-texture 1 capture-cam1)
+
     ;;    )
     ;;)
 
@@ -878,10 +880,13 @@
     (GL15/glDeleteBuffers ^Integer vbo-id))
     ;;;;;;;;;;;;;;;;;;;,
     ;;;;;;;;;;;;;;;;;;;
-    ;;;;;TEMP DESTROY CAM0
+    ;;;;;TEMP DESTROY CAM0, CAM1
     ;;;;;;;;;;;;;;;;;
     (swap! running-cam0 (fn [_] false))
     (vision.core/release @capture-cam0)
+    
+    (swap! running-cam0 (fn [_] false))
+    (vision.core/release @capture-cam1)
     )
 
 (defn- run-thread
