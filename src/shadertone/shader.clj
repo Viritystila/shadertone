@@ -58,7 +58,7 @@
                             (.put (float-array
                                    [0.0 0.0 0.0 0.0]))
                             (.flip))
-   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 4))
+   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 6)) ;; Maybe * 3 n needs to add up to texture channels
                             (.put (float-array
                                    [0.0 0.0 0.0
                                     0.0 0.0 0.0
@@ -69,6 +69,7 @@
    :tex-filenames       []
    :tex-ids             []
    :cams                []
+   ;;:cam-ids             [] ;=cam +4  to shift the testure location 
    :tex-types           [] ; :cubemap, :previous-frame
    ;; a user draw function
    :user-fn             nil
@@ -130,6 +131,21 @@
 (defonce text-id-cam2 (atom 0))
 (defonce text-id-cam3 (atom 0))
 (defonce text-id-cam4 (atom 0))
+
+(defn init-cam0 [] (let [_ (println "init cam0" )
+]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))) ))
+
+(defn init-cam1 [] (let [_ (println "init cam1" )
+]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam0 (future (vision.core/capture-from-cam 1))))) ))
+
+(defn init-cam2 [] (let [_ (println "init cam2" )
+]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam0 (future (vision.core/capture-from-cam 2))))) ))
+
+(defn init-cam3 [] (let [_ (println "init cam3" )
+]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam0 (future (vision.core/capture-from-cam 3))))) ))
+
+(defn init-cam4 [] (let [_ (println "init cam4" )
+]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam0 (future (vision.core/capture-from-cam 4))))) ))
 
 
 ;; ======================================================================
@@ -496,8 +512,10 @@
 (defn- init-textures
   [locals]
   (let [tex-infos (map load-texture (:tex-filenames @locals))
-        ;;_ (println "raw" tex-infos)
+        _ (println "raw" tex-infos)
         tex-ids   (map first tex-infos)
+        _ (println "tex-ids" tex-ids)
+
         tex-whd   (map rest tex-infos)
         tex-whd   (flatten
                    (map #(if (< (first %) 0.0)
@@ -505,15 +523,48 @@
                            %)
                         tex-whd))
         ;; update channel-res-buffer
+        _ (println "tex-whd" tex-whd)
+
         _         (-> ^FloatBuffer (:channel-res-buffer @locals)
                       (.put ^floats (float-array tex-whd))
                       (.flip))
         ]
     (swap! locals assoc
            :tex-ids tex-ids)))
+
+(defn- check-cam-idx [c_idx] (cond
+          (= c_idx 0) (init-cam0)
+          (= c_idx 1) (init-cam1) ;;(reset! running-cam1  true))
+           ))           
+           
+           
+ ;;      (let [_                (init-cam0)
+ ;;            ;;_                (reset! running-cam0  true)
+ ;;            tex-id           0
+ ;;            target           (GL11/GL_TEXTURE_2D)
+ ;;            _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
+ ;;             
+ ;;            ]
+ ;;   
+ ;;       (reset! text-id-cam0 tex-id)
+;;
+;;        (GL11/glBindTexture target tex-id)
+;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+;;
+;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+;;        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
+;;      )          
+           
+           
 (defn- init-cams
 [locals]
-(let [_ (println "raw" (:cams @locals))]
+(let [  cam_idxs        (:cams @locals)
+        _ (println "raw" cam_idxs)]
+    (doseq [c_idx cam_idxs]
+    (println "c_idx" c_idx)
+    (check-cam-idx c_idx)
+    )
 )
 )
            
@@ -665,7 +716,9 @@
          (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i)))))
 
     (except-gl-errors "@ draw after activate textures")
-
+    
+    ;; Fetch camera texture
+    
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
@@ -889,8 +942,6 @@
   (reset! running-cam0 (fn [_] false)))
 
 
-(defn init-cam0 [] (let [_ (println "init cam0" )
-]  (if (= false @running-cam0)(def  capture-cam0 (future (vision.core/capture-from-cam 0)))) ))
 
 (defn reset-cam0 [] (let [_  (println "Camera on state")
                     _  (println @running-cam0)
@@ -928,8 +979,8 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
   (case dispatch ;; FIXME defmulti?
     :init ;; create & bind the texture
        (let [_                (init-cam0)
-             _                (reset! running-cam0  true)
-             tex-id           (GL11/glGenTextures)
+             ;;_                (reset! running-cam0  true)
+             tex-id           0
              target           (GL11/GL_TEXTURE_2D)
              _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
               
@@ -1029,7 +1080,7 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
     :destroy
     nil ;; nothing to do
     )
-      (shader-webcam-fn dispatch pgm-id)
+      ;;(shader-webcam-fn dispatch pgm-id)
       )
 
 
