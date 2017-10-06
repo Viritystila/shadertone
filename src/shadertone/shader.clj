@@ -531,14 +531,25 @@
         ]
     (swap! locals assoc
            :tex-ids tex-ids)))
-         
+
+  
+ (defn- put-cam-buffer [image cam-idx] (cond 
+                                       (= cam-idx 0)(do (def buffer-cam0 image) )
+                                       (= cam-idx 1)(do (def buffer-cam1 image) )
+                                       )
+                                       
+                                       )
            
- (defn- init-cam-tex [cam-id](let [       
+ (defn- init-cam-tex [cam-id capture-cam](let [       
                                     target           (GL11/GL_TEXTURE_2D)
                                     tex-id          (+ 4 cam-id)
+                                    imageP             (vision.core/query-frame @capture-cam)
+                                    imageDef           (get imageP :buffered-image)
+                                    image              @imageDef
                                     _               (println "camtexid" tex-id)
                                     ]
-    
+                                    (put-cam-buffer image cam-id)
+
                                         (GL11/glBindTexture target tex-id)
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -546,24 +557,9 @@
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
  
-;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
-;; not quite there yet
+       
 
 
-(defn- put-cam-buffer [image buffer-cam] (def buffer-cam1 image ))
-
-(defn- buffer-cam-texture [cam-id capture-cam](let [
-             tex-id             (+ 4 cam-id)
-             imageP             (vision.core/query-frame @capture-cam)
-             imageDef           (get imageP :buffered-image)
-             image              @imageDef
-             
-             ]
-            ;;(println image)
-            (put-cam-buffer image buffer-cam1)
-            ;;(println buffer-cam1) 
-      ))         
- 
  (defn- process-cam-image [cam-id image] (let [
              target             (GL11/GL_TEXTURE_2D)
              tex-id             (+ 4 cam-id)
@@ -576,12 +572,7 @@
                                               (.flip))
              tex-image-target ^Integer (+ 0 target)
              ]
-        ;;(def buffer-cam1 @image)
 
-
-        ;;(println "tex-id" tex-id)
-        ;;(println "buffer" buffer)
-        ;;(println "imw" (.getWidth image))
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -592,6 +583,19 @@
     (except-gl-errors "@ end of load-texture if-stmt")
          ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
 ))         
+ 
+
+(defn- buffer-cam-texture [cam-id capture-cam](let [
+             tex-id             (+ 4 cam-id)
+             imageP             (vision.core/query-frame @capture-cam)
+             imageDef           (get imageP :buffered-image)
+             image              @imageDef
+             
+             ]
+            ;;(println image)
+            (put-cam-buffer image cam-id)
+            ;;(println buffer-cam1) 
+      )) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
     (let [_ (println "start cam loop")
@@ -606,12 +610,16 @@
 ))   
  
 (defn- check-cam-idx [c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx)(future (start-cam-loop c_idx capture-cam0 running-cam0)))
-          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx)(future (start-cam-loop c_idx capture-cam1 running-cam1)))
-          
+          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx capture-cam0)(future (start-cam-loop c_idx capture-cam0 running-cam0)))
+          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx capture-cam1)(future (start-cam-loop c_idx capture-cam1 running-cam1)))
           ))   
+
+;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
+;; not quite there yet
+
+
   
-  
+                                       
 (defn- init-cams
 [locals]
 (let [  cam_idxs        (:cams @locals)
@@ -815,6 +823,7 @@
     ;;                        GL11/GL_UNSIGNED_BYTE
     ;;                        ^ByteBuffer @buffer-cam1)
    ;;(println "start image processing" buffer-cam1)
+   (process-cam-image 0 buffer-cam0)
 
     (process-cam-image 1 buffer-cam1)
     ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 5))
