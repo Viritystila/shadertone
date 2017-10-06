@@ -1,10 +1,9 @@
 (ns #^{:author "Roger Allen"
        :doc "Shadertoy-like core library."}
   shadertone.shader
-  (:require [watchtower.core :as watcher]
+  (:require [watchtower.core :as watcher] 
             clojure.string)
    (:use [vision core] :reload-all)
-
   (:import (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
@@ -69,7 +68,6 @@
    :tex-filenames       []
    :tex-ids             []
    :cams                []
-   ;;:cam-ids             [] ;=cam +4  to shift the testure location 
    :tex-types           [] ; :cubemap, :previous-frame
    ;; a user draw function
    :user-fn             nil
@@ -133,10 +131,10 @@
 (defonce text-id-cam4 (atom 0))
 
 (defn init-cam0 [] (let [_ (println "init cam0" )
-]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))) ))
+]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on") ))))
 
 (defn init-cam1 [] (let [_ (println "init cam1" )
-]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))) ))
+]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))(do (println "cam on") ))))
 
 (defn init-cam2 [] (let [_ (println "init cam2" )
 ]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam2 (future (vision.core/capture-from-cam 2))))) ))
@@ -547,12 +545,69 @@
 
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
                                         (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
-  
-  
+ 
+;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
+;; not quite there yet
+
+
+(defn- put-cam-buffer [image buffer-cam] (def buffer-cam1 image ))
+
+(defn- buffer-cam-texture [cam-id capture-cam](let [
+             tex-id             (+ 4 cam-id)
+             imageP             (vision.core/query-frame @capture-cam)
+             imageDef           (get imageP :buffered-image)
+             image              @imageDef
+             
+             ]
+            ;;(println image)
+            (put-cam-buffer image buffer-cam1)
+            ;;(println buffer-cam1) 
+      ))         
+ 
+ (defn- process-cam-image [cam-id image] (let [
+             target             (GL11/GL_TEXTURE_2D)
+             tex-id             (+ 4 cam-id)
+             image-bytes        (tex-image-bytes image)
+             internal-format    (tex-internal-format image)
+             format             (tex-format image)
+             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                                             (put-texture-data image (= image-bytes 4))
+                                              (.flip))
+             tex-image-target ^Integer (+ 0 target)
+             ]
+        ;;(def buffer-cam1 @image)
+
+
+        ;;(println "tex-id" tex-id)
+        ;;(println "buffer" buffer)
+        ;;(println "imw" (.getWidth image))
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
+      (GL11/glBindTexture target tex-id)
+      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
+                           ^Integer format
+                            GL11/GL_UNSIGNED_BYTE
+                            ^ByteBuffer buffer)
+    (except-gl-errors "@ end of load-texture if-stmt")
+         ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
+))         
+ 
+(defn- start-cam-loop [cam-id capture-cam running-cam]
+    (let [_ (println "start cam loop")
+            capture @capture-cam]
+        (if (= true @running-cam) 
+            (do (while  @running-cam
+            (buffer-cam-texture cam-id capture-cam)
+            
+         )
+         ))
+
+))   
  
 (defn- check-cam-idx [c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx))
-          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx)) 
+          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx)(future (start-cam-loop c_idx capture-cam0 running-cam0)))
+          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx)(future (start-cam-loop c_idx capture-cam1 running-cam1)))
           
           ))   
   
@@ -596,7 +651,10 @@
          (except-gl-errors "@ end of load-texture if-stmt")
          ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
       ))          
-           
+
+
+      
+      
 (defn- init-gl
   [locals]
   (let [{:keys [width height user-fn]} @locals]
@@ -748,10 +806,19 @@
     ;; Fetch cam texture
     ;;(dotimes [i (count cams)]
     ;;    (when (nth cams i)
-    (load-cam-texture 0 capture-cam0)
+    ;;(load-cam-texture 0 capture-cam0)
     
-    (load-cam-texture 1 capture-cam1)
+    ;;(load-cam-texture 1 capture-cam1)
+    ;;      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+    ;;                        ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
+    ;;                       ^Integer format
+    ;;                        GL11/GL_UNSIGNED_BYTE
+    ;;                        ^ByteBuffer @buffer-cam1)
+   ;;(println "start image processing" buffer-cam1)
 
+    (process-cam-image 1 buffer-cam1)
+    ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 5))
+    ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D 5)
     ;;    )
     ;;)
 
@@ -883,9 +950,9 @@
     ;;;;;TEMP DESTROY CAM0, CAM1
     ;;;;;;;;;;;;;;;;;
     (swap! running-cam0 (fn [_] false))
-    (vision.core/release @capture-cam0)
+    ;;(vision.core/release @capture-cam0)
     
-    (swap! running-cam0 (fn [_] false))
+    (swap! running-cam1 (fn [_] false))
     (vision.core/release @capture-cam1)
     )
 
@@ -984,6 +1051,11 @@
       (println "ERROR: unable to stop-watcher!"))))
   
 
+  
+  
+  
+  
+  
 (defn stop-cam0 []
   (println @capture-cam0)
   (reset! running-cam0 (fn [_] false)))
@@ -1008,16 +1080,16 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
 
 
 
-(defn start-cam []
-    
-    (let [capture (vision.core/capture-from-cam 0)]
-      (reset! running-cam0 (fn [_] true))
-      (future
-       (while  @running-cam0
-            (vision.core/view :cam (vision.core/query-frame capture))
-         )
-       (vision.core/release capture))))
 
+;;    (let [capture @capture-cam]
+;;      (reset! running-cam0 (fn [_] true))
+;;      (future
+;;       (while  @running-cam
+;;            (vision.core/view :cam (vision.core/query-frame capture))
+;;         )
+;;       (vision.core/release capture))))
+
+;;      (reset! running-cam0 (fn [_] true))
 
 
 (defn shader-webcam-fn
