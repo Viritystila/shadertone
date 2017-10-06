@@ -241,7 +241,7 @@
         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-tex-filenames tex-filenames)
-        cams                (fill-cams cams)
+        ;;cams                (fill-cams cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -758,6 +758,16 @@
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
 
+(defn- get-cam-textures [c_idx]
+(cond
+          (= c_idx 0) (do (process-cam-image 0 buffer-cam0))
+          (= c_idx 1) (do (process-cam-image 1 buffer-cam1))
+          )
+
+)
+
+
+    
 (defn- draw
   [locals]
   (let [{:keys [width height i-resolution-loc
@@ -812,8 +822,10 @@
     (except-gl-errors "@ draw after activate textures")
     
     ;; Fetch cam texture
-    ;;(dotimes [i (count cams)]
-    ;;    (when (nth cams i)
+    (doseq [i cams]
+        (get-cam-textures i)
+        
+        )
     ;;(load-cam-texture 0 capture-cam0)
     
     ;;(load-cam-texture 1 capture-cam1)
@@ -823,9 +835,9 @@
     ;;                        GL11/GL_UNSIGNED_BYTE
     ;;                        ^ByteBuffer @buffer-cam1)
    ;;(println "start image processing" buffer-cam1)
-   (process-cam-image 0 buffer-cam0)
+   ;;(process-cam-image 0 buffer-cam0)
 
-    (process-cam-image 1 buffer-cam1)
+    ;;(process-cam-image 1 buffer-cam1)
     ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 5))
     ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D 5)
     ;;    )
@@ -937,10 +949,20 @@
         (except-gl-errors "@ bad-draw glClear ")
         (if @reload-shader
           (try-reload-shader locals))))))
+(defn- release-cam-textures [c_idx]
+(cond
+          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(vision.core/release @capture-cam0))
+          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(vision.core/release @capture-cam1))
+          )
 
+)
+          
 (defn- destroy-gl
   [locals]
-  (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn]} @locals]
+  (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals
+        tmpcams cams]
+        
+
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id))
@@ -953,16 +975,10 @@
     (GL20/glDeleteProgram pgm-id)
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
-    (GL15/glDeleteBuffers ^Integer vbo-id))
-    ;;;;;;;;;;;;;;;;;;;,
-    ;;;;;;;;;;;;;;;;;;;
-    ;;;;;TEMP DESTROY CAM0, CAM1
-    ;;;;;;;;;;;;;;;;;
-    (swap! running-cam0 (fn [_] false))
-    ;;(vision.core/release @capture-cam0)
-    
-    (swap! running-cam1 (fn [_] false))
-    (vision.core/release @capture-cam1)
+    (GL15/glDeleteBuffers ^Integer vbo-id)
+    (doseq [i cams](println "release cam " i)(release-cam-textures i))
+    )
+
     )
 
 (defn- run-thread
@@ -976,6 +992,7 @@
     (Display/sync (:display-sync-hz @locals)))
   (destroy-gl locals)
   (Display/destroy)
+
   (swap! locals assoc :active :no))
 
 (defn- good-tex-count
