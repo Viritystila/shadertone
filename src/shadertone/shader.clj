@@ -572,7 +572,7 @@
                                               (.flip))
              tex-image-target ^Integer (+ 0 target)
              ]
-
+        ;;(println "processing" image)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -649,8 +649,8 @@
             
              ]
 
-      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-      (GL11/glBindTexture target tex-id)
+      ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
+      ;;(GL11/glBindTexture target tex-id)
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
                            ^Integer format
@@ -823,7 +823,9 @@
     
     ;; Fetch cam texture
     (doseq [i cams]
-        (get-cam-textures i)
+        (do (get-cam-textures i)(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i 4)))
+(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i 4))
+        )
         
         )
     ;;(load-cam-texture 0 capture-cam0)
@@ -838,8 +840,7 @@
    ;;(process-cam-image 0 buffer-cam0)
 
     ;;(process-cam-image 1 buffer-cam1)
-    ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 5))
-    ;;(GL11/glBindTexture GL11/GL_TEXTURE_2D 5)
+    
     ;;    )
     ;;)
 

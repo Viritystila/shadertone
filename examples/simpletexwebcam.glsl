@@ -13,6 +13,6 @@ void main(void) {
   vec4 c3 = texture2D(iCam1,uv);
 
   vec4 c = mix(c3,c2,0.9-sin(c1.r));  // alpha blend between two textures
-  gl_FragColor = c3;
+  gl_FragColor = c;
   ;
 }
