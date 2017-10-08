@@ -539,14 +539,16 @@
                                        )
                                        
                                        )
-           
- (defn- init-cam-tex [cam-id capture-cam](let [       
+ 
+ (defn- try-capture [cc] (try (println "campp" (get cc :pointer))(vision.core/query-frame cc)(catch Exception e (println "ff"))))
+ 
+ (defn- init-cam-tex [cam-id capture-cam](let [
                                     target           (GL11/GL_TEXTURE_2D)
                                     tex-id          (+ 4 cam-id)
-                                    imageP             (vision.core/query-frame @capture-cam)
+                                    ;;imageP             (try (vision.core/query-frame @capture-cam)(catch Exception))
+                                    imageP       (try-capture @capture-cam)
                                     imageDef           (get imageP :buffered-image)
                                     image              @imageDef
-                                    _               (println "camtexid" tex-id)
                                     ]
                                     (put-cam-buffer image cam-id)
 
