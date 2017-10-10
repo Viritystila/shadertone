@@ -130,6 +130,12 @@
 (defonce text-id-cam3 (atom 0))
 (defonce text-id-cam4 (atom 0))
 
+
+
+
+
+
+
 (defn init-cam0 [] (let [_ (println "init cam0" )
 ]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on") ))))
 
@@ -176,14 +182,11 @@
            (if (< i (count tex-filenames))
              (nth tex-filenames i)))))
 
-(defn- fill-cams
+(defn- sort-cams
   "return a vector of 2 items, always.  Use nil if no filename"
   [cams]
-  (apply vector
-         (for [i (range 2)]
-           (if (< i (count cams))
-             (nth cams i)))))
-
+  (into [] (sort cams))
+)
              
 (defn- uniform-sampler-type-str
   [tex-types n]
@@ -241,7 +244,7 @@
         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-tex-filenames tex-filenames)
-        ;;cams                (fill-cams cams)
+        cams                (sort-cams cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -611,9 +614,38 @@
 
 ))   
  
-(defn- check-cam-idx [c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (init-cam-tex c_idx capture-cam0)(future (start-cam-loop c_idx capture-cam0 running-cam0)))
-          (= c_idx 1) (do (init-cam1) (init-cam-tex c_idx capture-cam1)(future (start-cam-loop c_idx capture-cam1 running-cam1)))
+ (defn vec-remove
+  ;;"remove elem in coll"
+  [coll pos]
+  (vec (concat (subvec coll 0 pos) (subvec coll (inc pos)))))
+
+
+ 
+ (defn- remove-if-bad [locals  capture-cam running-cam cam-id] (let [cams_tmp (:cams @locals)](do 
+(reset! running-cam  false)
+(vision.core/release @capture-cam)
+(println "cams_tmp_old" (type cams_tmp))
+(println "cams_id_old" (type cam-id))
+
+(vec-remove cams_tmp cam-id)
+(println "cams_tmp_new" (vec-remove cams_tmp cam-id))
+(swap! locals
+           assoc
+           :cams          (vec-remove cams_tmp cam-id))
+           ) :false))
+ 
+ 
+;;(defn- chk [locals capture-cam running-cam c_idx] (let [xxx (:cams @locals) ](do (println "precams" xxx)(check-if-camera-available locals capture-cam running-cam c_idx)(println "after cams" xxx))))
+;;(chk locals capture-cam0 running-cam0 c_idx)
+
+
+
+
+(defn- check-cam-idx [locals c_idx] (cond
+          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do(init-cam-tex c_idx capture-cam0) ;;(chk locals capture-cam0 running-cam0 c_idx)
+          (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do(init-cam-tex c_idx capture-cam1)
+          (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
           ))   
 
 ;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
@@ -628,7 +660,7 @@
         _ (println "raw" cam_idxs)]
     (doseq [c_idx cam_idxs]
     (println "c_idx" c_idx)
-    (check-cam-idx c_idx)
+    (check-cam-idx locals c_idx)
     )))
     
     
