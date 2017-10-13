@@ -820,7 +820,7 @@
                    :i-channel-time-loc i-channel-time-loc
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
-                   :i-cam-loc [i-cam0-loc i-cam1-loc]
+                   :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-channel-res-loc i-channel-res-loc
                    :i-date-loc i-date-loc
                    :shader-str fs-shader)))))))

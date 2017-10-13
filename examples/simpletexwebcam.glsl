@@ -33,7 +33,7 @@ void main(void) {
   vec4 c4 = texture2D(iCam2,uv2);
 
   vec4 c = mix(c3,c2,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf = mix(c4,c,1.0-sin(c1.w));  // alpha blend between two textures
 
   gl_FragColor = cf;
   
