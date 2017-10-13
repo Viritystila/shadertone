@@ -50,14 +50,14 @@
    :i-channel-time-loc  0
    :i-mouse-loc         0
    :i-channel-loc       [0 0 0 0]
-   :i-cam-loc           [0 0]
+   :i-cam-loc           [0 0 0 0 0]
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
                             (.put (float-array
                                    [0.0 0.0 0.0 0.0]))
                             (.flip))
-   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 6)) ;; Maybe * 3 n needs to add up to texture channels
+   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 9))
                             (.put (float-array
                                    [0.0 0.0 0.0
                                     0.0 0.0 0.0
@@ -185,8 +185,26 @@
 (defn- sort-cams
   "return a vector of 2 items, always.  Use nil if no filename"
   [cams]
-  (into [] (sort cams))
-)
+  (let [fullVec (vec (replicate 5 nil))
+        newVec   (apply assoc fullVec (interleave cams cams))
+  ] 
+  ;;(println "initil cams" cams)
+
+  ;;(println "fullvec" fullVec)
+
+  ;(println "newvec" newVec)
+  (into [] newVec)
+  
+  ;;(assoc [1 2 3] 1 5)
+  )
+  )
+    ;(apply vector
+    ;     (for [i (range 5)]
+    ;       (if (< i (count cams))
+    ;         (nth cams i)))))
+
+  ;;(into [] (sort cams))
+;;)
              
 (defn- uniform-sampler-type-str
   [tex-types n]
@@ -212,6 +230,9 @@
                       (uniform-sampler-type-str tex-types 3)
                       "uniform sampler2D iCam0; \n"
                       "uniform sampler2D iCam1; \n"
+                      "uniform sampler2D iCam2; \n"
+                      "uniform sampler2D iCam3; \n"
+                      "uniform sampler2D iCam4; \n"
                       "uniform vec4      iDate;\n"
                       "\n"
                       (slurp filename))]
@@ -245,6 +266,7 @@
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-tex-filenames tex-filenames)
         cams                (sort-cams cams)
+        _                   (println "sorted cams" cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -353,6 +375,9 @@
             
             i-cam0-loc        (GL20/glGetUniformLocation pgm-id "iCam0")
             i-cam1-loc        (GL20/glGetUniformLocation pgm-id "iCam1")
+            i-cam2-loc        (GL20/glGetUniformLocation pgm-id "iCam2")
+            i-cam3-loc        (GL20/glGetUniformLocation pgm-id "iCam3")
+            i-cam4-loc        (GL20/glGetUniformLocation pgm-id "iCam4")
     
             i-channel-res-loc     (GL20/glGetUniformLocation pgm-id "iChannelResolution")
             i-date-loc            (GL20/glGetUniformLocation pgm-id "iDate")
@@ -369,7 +394,7 @@
                :i-channel-time-loc i-channel-time-loc
                :i-mouse-loc i-mouse-loc
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
-               :i-cam-loc [i-cam0-loc i-cam1-loc]
+               :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-channel-res-loc i-channel-res-loc
                :i-date-loc i-date-loc))
       ;; we didn't load the shader, don't be drawing
@@ -539,6 +564,9 @@
  (defn- put-cam-buffer [image cam-idx] (cond 
                                        (= cam-idx 0)(do (def buffer-cam0 image) )
                                        (= cam-idx 1)(do (def buffer-cam1 image) )
+                                       (= cam-idx 2)(do (def buffer-cam2 image) )
+                                       (= cam-idx 3)(do (def buffer-cam3 image) )
+                                       (= cam-idx 4)(do (def buffer-cam4 image) )
                                        )
                                        
                                        )
@@ -619,7 +647,6 @@
   [coll pos]
   (vec (concat (subvec coll 0 pos) (subvec coll (inc pos)))))
 
-
  
  (defn- remove-if-bad [locals  capture-cam running-cam cam-id] (let [cams_tmp (:cams @locals)](do 
 (reset! running-cam  false)
@@ -644,8 +671,18 @@
 (defn- check-cam-idx [locals c_idx] (cond
           (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do(init-cam-tex c_idx capture-cam0) ;;(chk locals capture-cam0 running-cam0 c_idx)
           (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
+          
           (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do(init-cam-tex c_idx capture-cam1)
-          (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
+          (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
+          
+          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(init-cam-tex c_idx capture-cam2)
+          (future (start-cam-loop c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
+          
+          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(init-cam-tex c_idx capture-cam3)
+          (future (start-cam-loop c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
+          
+          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(init-cam-tex c_idx capture-cam4)
+          (future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))
           ))   
 
 ;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
@@ -757,7 +794,10 @@
                 
                 i-cam0-loc        (GL20/glGetUniformLocation new-pgm-id "iCam0")
                 i-cam1-loc        (GL20/glGetUniformLocation new-pgm-id "iCam1")
-    
+                i-cam2-loc        (GL20/glGetUniformLocation new-pgm-id "iCam2")
+                i-cam3-loc        (GL20/glGetUniformLocation new-pgm-id "iCam3")
+                i-cam4-loc        (GL20/glGetUniformLocation new-pgm-id "iCam4")
+
                 i-channel-res-loc  (GL20/glGetUniformLocation new-pgm-id "iChannelResolution")
                 i-date-loc         (GL20/glGetUniformLocation new-pgm-id "iDate")]
             (GL20/glUseProgram new-pgm-id)
@@ -796,9 +836,9 @@
 (cond
           (= c_idx 0) (do (process-cam-image 0 buffer-cam0))
           (= c_idx 1) (do (process-cam-image 1 buffer-cam1))
-          )
-
-)
+          (= c_idx 2) (do (process-cam-image 2 buffer-cam2))
+          (= c_idx 3) (do (process-cam-image 3 buffer-cam3))
+          (= c_idx 4) (do (process-cam-image 4 buffer-cam4))))
 
 
     
@@ -856,11 +896,14 @@
     (except-gl-errors "@ draw after activate textures")
     
     ;; Fetch cam texture
-    (doseq [i cams]
-        (do (get-cam-textures i)(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i 4)))
-(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i 4))
-        )
-        
+    ;;(println "Fetch cam tex" cams)
+    (doseq [i (remove nil? cams)]
+              ;;(when (nth cams i)
+                ;;(println "cam id sent to get-cam" i)
+                (get-cam-textures i)
+                (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i 4)))
+                (GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i 4))
+        ;)
         )
     ;;(load-cam-texture 0 capture-cam0)
     
@@ -894,6 +937,10 @@
     (GL20/glUniform1i (nth i-channel-loc 3) 3)
     (GL20/glUniform1i (nth i-cam-loc 0) 4)
     (GL20/glUniform1i (nth i-cam-loc 1) 5)
+    (GL20/glUniform1i (nth i-cam-loc 2) 6)
+    (GL20/glUniform1i (nth i-cam-loc 3) 7)
+    (GL20/glUniform1i (nth i-cam-loc 4) 8)
+
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
     ;; get vertex array ready
@@ -988,9 +1035,9 @@
 (cond
           (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(vision.core/release @capture-cam0))
           (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(vision.core/release @capture-cam1))
-          )
-
-)
+          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(vision.core/release @capture-cam2))
+          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(vision.core/release @capture-cam3))
+          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(vision.core/release @capture-cam4))))
           
 (defn- destroy-gl
   [locals]

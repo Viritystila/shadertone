@@ -12,7 +12,7 @@ void main(void) {
   vec2 d = p - m;//vector from center to current fragment
   float r = sqrt(dot(d, d)); // distance of pixel from center
 
-  float power = ( 2.0 * 3.141592 / (2.0 * sqrt(dot(m, m))) ) *
+  float power = ( 1.0 * 3.141592 / (2.0 * sqrt(dot(m, m))) ) *
 				(200*sin(1.15*iGlobalTime) / iResolution.x - 0.5);//amount of effect
   float bind;//radius of 1:1 effect
 	if (power > 0.0) bind = sqrt(dot(m, m));//stick to corners
@@ -30,9 +30,11 @@ void main(void) {
   vec4 c1 = texture2D(iChannel0,uv);
   vec4 c2 = texture2D(iCam0,vec2(uv3.x, -uv3.y * prop));
   vec4 c3 = texture2D(iCam1,uv2);
-  //vec4 c4 = texture2D(iCam2,uv2);
+  vec4 c4 = texture2D(iCam2,uv2);
 
   vec4 c = mix(c3,c2,1.5-sin(c1.w));  // alpha blend between two textures
-  gl_FragColor = c;
+  vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
+
+  gl_FragColor = cf;
   
 }
