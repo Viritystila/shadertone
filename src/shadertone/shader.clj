@@ -183,28 +183,12 @@
              (nth tex-filenames i)))))
 
 (defn- sort-cams
-  "return a vector of 2 items, always.  Use nil if no filename"
+  "return a vector of 5 items, always.  Use nil if no filename"
   [cams]
   (let [fullVec (vec (replicate 5 nil))
-        newVec   (apply assoc fullVec (interleave cams cams))
-  ] 
-  ;;(println "initil cams" cams)
+        newVec   (apply assoc fullVec (interleave cams cams))] 
+  (into [] newVec)))
 
-  ;;(println "fullvec" fullVec)
-
-  ;(println "newvec" newVec)
-  (into [] newVec)
-  
-  ;;(assoc [1 2 3] 1 5)
-  )
-  )
-    ;(apply vector
-    ;     (for [i (range 5)]
-    ;       (if (< i (count cams))
-    ;         (nth cams i)))))
-
-  ;;(into [] (sort cams))
-;;)
              
 (defn- uniform-sampler-type-str
   [tex-types n]
@@ -571,7 +555,7 @@
                                        
                                        )
  
- (defn- try-capture [cc] (try (println "campp" (get cc :pointer))(vision.core/query-frame cc)(catch Exception e (println "ff"))))
+ (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  
  (defn- init-cam-tex [cam-id capture-cam](let [
                                     target           (GL11/GL_TEXTURE_2D)
@@ -620,7 +604,9 @@
 
 (defn- buffer-cam-texture [cam-id capture-cam](let [
              tex-id             (+ 4 cam-id)
-             imageP             (vision.core/query-frame @capture-cam)
+             ;;imageP             (vision.core/query-frame @capture-cam)
+             imageP       (try-capture @capture-cam)
+
              imageDef           (get imageP :buffered-image)
              image              @imageDef
              
@@ -631,7 +617,7 @@
       )) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
-    (let [_ (println "start cam loop")
+    (let [_ (println "start cam loop " cam-id)
             capture @capture-cam]
         (if (= true @running-cam) 
             (do (while  @running-cam
@@ -647,6 +633,7 @@
   [coll pos]
   (vec (concat (subvec coll 0 pos) (subvec coll (inc pos)))))
 
+ (defn- set-nil [coll pos] (assoc coll pos nil)) 
  
  (defn- remove-if-bad [locals  capture-cam running-cam cam-id] (let [cams_tmp (:cams @locals)](do 
 (reset! running-cam  false)
@@ -654,22 +641,18 @@
 (println "cams_tmp_old" (type cams_tmp))
 (println "cams_id_old" (type cam-id))
 
-(vec-remove cams_tmp cam-id)
-(println "cams_tmp_new" (vec-remove cams_tmp cam-id))
+;;(vec-remove cams_tmp cam-id)
+(println "cams_tmp_new" (set-nil cams_tmp cam-id))
 (swap! locals
            assoc
-           :cams          (vec-remove cams_tmp cam-id))
+           :cams          (set-nil cams_tmp cam-id))
            ) :false))
  
  
-;;(defn- chk [locals capture-cam running-cam c_idx] (let [xxx (:cams @locals) ](do (println "precams" xxx)(check-if-camera-available locals capture-cam running-cam c_idx)(println "after cams" xxx))))
-;;(chk locals capture-cam0 running-cam0 c_idx)
-
-
 
 
 (defn- check-cam-idx [locals c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do(init-cam-tex c_idx capture-cam0) ;;(chk locals capture-cam0 running-cam0 c_idx)
+          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do(init-cam-tex c_idx capture-cam0)
           (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
           
           (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do(init-cam-tex c_idx capture-cam1)
@@ -719,17 +702,12 @@
              tex-image-target ^Integer (+ 0 target)
             
              ]
-
-      ;;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-      ;;(GL11/glBindTexture target tex-id)
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
                            ^Integer format
                             GL11/GL_UNSIGNED_BYTE
                             ^ByteBuffer buffer)
-         (except-gl-errors "@ end of load-texture if-stmt")
-         ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
-      ))          
+         (except-gl-errors "@ end of load-texture if-stmt")))          
 
 
       
@@ -834,11 +812,11 @@
 
 (defn- get-cam-textures [c_idx]
 (cond
-          (= c_idx 0) (do (process-cam-image 0 buffer-cam0))
-          (= c_idx 1) (do (process-cam-image 1 buffer-cam1))
-          (= c_idx 2) (do (process-cam-image 2 buffer-cam2))
-          (= c_idx 3) (do (process-cam-image 3 buffer-cam3))
-          (= c_idx 4) (do (process-cam-image 4 buffer-cam4))))
+          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0)) :false)
+          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1)):false)
+          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2)):false)
+          (= c_idx 3) (if (= true @running-cam2)(do (process-cam-image 3 buffer-cam3)):false)
+          (= c_idx 4) (if (= true @running-cam2)(do (process-cam-image 4 buffer-cam4)):false)))
 
 
     
@@ -896,32 +874,11 @@
     (except-gl-errors "@ draw after activate textures")
     
     ;; Fetch cam texture
-    ;;(println "Fetch cam tex" cams)
     (doseq [i (remove nil? cams)]
-              ;;(when (nth cams i)
-                ;;(println "cam id sent to get-cam" i)
                 (get-cam-textures i)
                 (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i 4)))
                 (GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i 4))
-        ;)
         )
-    ;;(load-cam-texture 0 capture-cam0)
-    
-    ;;(load-cam-texture 1 capture-cam1)
-    ;;      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-    ;;                        ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
-    ;;                       ^Integer format
-    ;;                        GL11/GL_UNSIGNED_BYTE
-    ;;                        ^ByteBuffer @buffer-cam1)
-   ;;(println "start image processing" buffer-cam1)
-   ;;(process-cam-image 0 buffer-cam0)
-
-    ;;(process-cam-image 1 buffer-cam1)
-    
-    ;;    )
-    ;;)
-
-    ;;load-cam-texture
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
@@ -1031,13 +988,15 @@
         (except-gl-errors "@ bad-draw glClear ")
         (if @reload-shader
           (try-reload-shader locals))))))
-(defn- release-cam-textures [c_idx]
+(defn release-cam-textures [c_idx]
 (cond
           (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(vision.core/release @capture-cam0))
           (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(vision.core/release @capture-cam1))
           (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(vision.core/release @capture-cam2))
           (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(vision.core/release @capture-cam3))
-          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(vision.core/release @capture-cam4))))
+          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(vision.core/release @capture-cam4))
+          
+          ))
           
 (defn- destroy-gl
   [locals]
@@ -1058,10 +1017,8 @@
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
     (GL15/glDeleteBuffers ^Integer vbo-id)
-    (doseq [i cams](println "release cam " i)(release-cam-textures i))
-    )
-
-    )
+    (doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
+    ))
 
 (defn- run-thread
   [locals mode shader-filename shader-str-atom tex-filenames cams title true-fullscreen? user-fn display-sync-hz]
@@ -1160,122 +1117,7 @@
   
 
   
-  
-  
-  
-  
-(defn stop-cam0 []
-  (println @capture-cam0)
-  (reset! running-cam0 (fn [_] false)))
-
-
-
-(defn reset-cam0 [] (let [_  (println "Camera on state")
-                    _  (println @running-cam0)
-
-_ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-cam0)(reset! running-cam0  false)
-))]))
-
-
-(defn start-cam0 []
-    (let [_ (println "start Cam 0")]
-      (reset! running-cam0  true)
-     (future
-       (while  @running-cam0
-         (let [iii (vision.core/query-frame @capture-cam0)])
-        )
-       (vision.core/release @capture-cam0))))
-
-
-
-
-;;    (let [capture @capture-cam]
-;;      (reset! running-cam0 (fn [_] true))
-;;      (future
-;;       (while  @running-cam
-;;            (vision.core/view :cam (vision.core/query-frame capture))
-;;         )
-;;       (vision.core/release capture))))
-
-;;      (reset! running-cam0 (fn [_] true))
-
-
-(defn shader-webcam-fn
-;; "The shader display will call this routine on every draw.  Update the webcam texture"
-  [dispatch pgm-id]
-  (case dispatch ;; FIXME defmulti?
-    :init ;; create & bind the texture
-       (let [_                (init-cam0)
-             ;;_                (reset! running-cam0  true)
-             tex-id           0
-             target           (GL11/GL_TEXTURE_2D)
-             _                (def target-cam0 (future(GL11/GL_TEXTURE_2D)))
-              
-             ]
-    
-        (reset! text-id-cam0 tex-id)
-
-        (GL11/glBindTexture target tex-id)
-        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
-
-        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
-      )
-    :pre-draw ;; grab the data and put it in the texture for drawing.
-    (do
-      (let [ target             @target-cam0
-             tex-id             @text-id-cam0
-
-             i                  0
-             imageP             (vision.core/query-frame @capture-cam0)
-             imageDef           (get imageP :buffered-image)
-             image              @imageDef
-             image-bytes        (tex-image-bytes image)
-             internal-format    (tex-internal-format image)
-             format             (tex-format image)
-             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-             buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                             (put-texture-data image (= image-bytes 4))
-                                              (.flip))
-
-             tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
-                                         (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
-                                         target)
-              
-             ]
-
-      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
-
-      (GL11/glBindTexture target tex-id)
-
-          (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
-                           ^Integer format
-                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer buffer)
-         (except-gl-errors "@ end of load-texture if-stmt")
-         [tex-id (.getWidth image) (.getHeight image) 1.0]
-      )
-      
-    )
  
-    :post-draw ;; unbind the texture
-    (do
-     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 0))
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-    :destroy ;;
-    (do
-    (println "destroy")
-    (stop-cam0)
-    (swap! running-cam0 (fn [_] false))
-    (vision.core/release @capture-cam0)
-    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-      (GL11/glDeleteTextures 0))
-    ))
-
-
-
 
 ;; ======================================================================
 ;; allow shader to have user-data, just like tone.
@@ -1307,7 +1149,6 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
     :destroy
     nil ;; nothing to do
     )
-      ;;(shader-webcam-fn dispatch pgm-id)
       )
 
 
@@ -1363,7 +1204,10 @@ _ (if (= true @running-cam0)((println "cam0 on")(vision.core/release @capture-ca
     (while (not (inactive?))
       (Thread/sleep 100)))
   (remove-watch (:shader-str-atom @the-window-state) :shader-str-watch)
-  (stop-watcher @watcher-future))
+  (stop-watcher @watcher-future)
+  )
+  
+
 
 (defn start-shader-display
   "Start a new shader display with the specified mode. Prefer start or
