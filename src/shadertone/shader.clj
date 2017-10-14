@@ -133,9 +133,6 @@
 
 
 
-
-
-
 (defn init-cam0 [] (let [_ (println "init cam0" )
 ]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on") ))))
 
@@ -551,28 +548,24 @@
                                        (= cam-idx 2)(do (def buffer-cam2 image) )
                                        (= cam-idx 3)(do (def buffer-cam3 image) )
                                        (= cam-idx 4)(do (def buffer-cam4 image) )
-                                       )
-                                       
-                                       )
+                                       ))
  
- (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
+ (def not-nil? (complement nil?))
+ (defn- try-capture [cc] (if (not-nil? (get cc :pointer)) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
  
  (defn- init-cam-tex [cam-id capture-cam](let [
                                     target           (GL11/GL_TEXTURE_2D)
                                     tex-id          (+ 4 cam-id)
-                                    ;;imageP             (try (vision.core/query-frame @capture-cam)(catch Exception))
                                     imageP       (try-capture @capture-cam)
                                     imageDef           (get imageP :buffered-image)
                                     image              @imageDef
                                     ]
                                     (put-cam-buffer image cam-id)
-
-                                        (GL11/glBindTexture target tex-id)
-                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
-
-                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-                                        (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
+                                    (GL11/glBindTexture target tex-id)
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
  
        
 
@@ -598,35 +591,22 @@
                             GL11/GL_UNSIGNED_BYTE
                             ^ByteBuffer buffer)
     (except-gl-errors "@ end of load-texture if-stmt")
-         ;;[tex-id (.getWidth image) (.getHeight image) 1.0]
 ))         
  
 
 (defn- buffer-cam-texture [cam-id capture-cam](let [
              tex-id             (+ 4 cam-id)
-             ;;imageP             (vision.core/query-frame @capture-cam)
-             imageP       (try-capture @capture-cam)
-
+             imageP             (try-capture @capture-cam)
              imageDef           (get imageP :buffered-image)
              image              @imageDef
-             
              ]
-            ;;(println image)
-            (put-cam-buffer image cam-id)
-            ;;(println buffer-cam1) 
-      )) 
+            (put-cam-buffer image cam-id))) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
-    (let [_ (println "start cam loop " cam-id)
-            capture @capture-cam]
+    (let [_ (println "start cam loop " cam-id)]
         (if (= true @running-cam) 
             (do (while  @running-cam
-            (buffer-cam-texture cam-id capture-cam)
-            
-         )
-         ))
-
-))   
+            (buffer-cam-texture cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
  
  (defn vec-remove
   ;;"remove elem in coll"
@@ -683,33 +663,6 @@
     (check-cam-idx locals c_idx)
     )))
     
-    
-    
-(defn- load-cam-texture [cam-id capture-cam](let [ 
-                target             (GL11/GL_TEXTURE_2D)
-                                                    tex-id          (+ 4 cam-id)
-             imageP             (vision.core/query-frame @capture-cam)
-             imageDef           (get imageP :buffered-image)
-             image              @imageDef
-             image-bytes        (tex-image-bytes image)
-             internal-format    (tex-internal-format image)
-             format             (tex-format image)
-             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-             buffer           ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                             (put-texture-data image (= image-bytes 4))
-                                              (.flip))
-
-             tex-image-target ^Integer (+ 0 target)
-            
-             ]
-      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
-                           ^Integer format
-                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer buffer)
-         (except-gl-errors "@ end of load-texture if-stmt")))          
-
-
       
       
 (defn- init-gl
@@ -990,18 +943,18 @@
           (try-reload-shader locals))))))
 (defn release-cam-textures [c_idx]
 (cond
-          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(vision.core/release @capture-cam0))
-          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(vision.core/release @capture-cam1))
-          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(vision.core/release @capture-cam2))
-          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(vision.core/release @capture-cam3))
-          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(vision.core/release @capture-cam4))
+          (= c_idx 0) (do (swap! running-cam0 (fn [_] false)))
+          (= c_idx 1) (do (swap! running-cam1 (fn [_] false)))
+          (= c_idx 2) (do (swap! running-cam2 (fn [_] false)))
+          (= c_idx 3) (do (swap! running-cam3 (fn [_] false)))
+          (= c_idx 4) (do (swap! running-cam4 (fn [_] false)))
           
           ))
           
 (defn- destroy-gl
   [locals]
   (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals
-        tmpcams cams]
+        tmpcams (vec (replicate 5 nil))]
         
 
     ;; Delete any user state
@@ -1017,7 +970,10 @@
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
     (GL15/glDeleteBuffers ^Integer vbo-id)
-    (doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
+    ;;(doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
+    ;;(println "cams before destroy" cams)
+    ;;(swap! locals assoc :cams tmpcams)
+    ;;(println "cams after destroy" tmpcams)
     ))
 
 (defn- run-thread
@@ -1032,7 +988,10 @@
   (destroy-gl locals)
   (Display/destroy)
 
-  (swap! locals assoc :active :no))
+  (swap! locals assoc :active :no)
+  (doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
+  (swap! locals assoc :cams (vec (replicate 5 nil)))
+  )
 
 (defn- good-tex-count
   [textures]
