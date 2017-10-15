@@ -557,21 +557,25 @@
                                        ))
  
  (def not-nil? (complement nil?))
- (defn- try-capture [cc] (if(get cc :pointer) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
- 
+ (defn- try-capture [cc] (if(not-nil? (get cc :pointer)) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
+ ;init.png
  (defn- init-cam-tex [cam-id capture-cam](let [
                                     target           (GL11/GL_TEXTURE_2D)
+                                    _                (println "cam target" target)
                                     tex-id          (+ no-textures cam-id)
-                                    imageP       (try-capture @capture-cam)
-                                    imageDef           (get imageP :buffered-image)
-                                    image              @imageDef
+                                    ;imageP       (try-capture @capture-cam)
+                                    ;imageDef           (get imageP :buffered-image)
+                                    ;image              @imageDef
+                                    image            (ImageIO/read (FileInputStream. "src/init.png"))
                                     ]
                                     (put-cam-buffer image cam-id)
                                     (GL11/glBindTexture target tex-id)
+                                    ;(println "init-cam-tex" cam-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT))           
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
+                                    )           
                                     )
        
 
@@ -604,15 +608,14 @@
              tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (get imageP :buffered-image)
-             image              @imageDef
-             ]
+             image              @imageDef]
             (put-cam-buffer image cam-id))) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
     (let [_ (println "start cam loop " cam-id)]
         (if (= true @running-cam) 
             (do (while  @running-cam
-            (buffer-cam-texture cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
+                (buffer-cam-texture cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
  
  (defn vec-remove
   ;;"remove elem in coll"
@@ -659,13 +662,15 @@
 ;(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
 ;(init-cam1)
 ;(init-cam-tex cam-id capture-cam1)
-;(println "post cam" @capture-cam1)
-;(println "buffer-cam1" @buffer-cam1 )
-(
+(println "running cam" running-cam1)
+(println "post cam" capture-cam1)
+(println "buffer-cam1" buffer-cam1 )
+(init-cam1)
+(init-cam-tex cam-id capture-cam1)
 ;(check-cam-idx the-window-state cam-id)
-future (start-cam-loop cam-id capture-cam1 running-cam1)
-(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
-)))
+;(future (start-cam-loop cam-id capture-cam1 running-cam1))
+;(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
+))
       
       
 (defn- init-gl
@@ -876,7 +881,7 @@ future (start-cam-loop cam-id capture-cam1 running-cam1)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
-    
+    ;cams
     (dotimes [i (count cams)] 
         (when (nth cams i) 
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i no-textures)))
