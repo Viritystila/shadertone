@@ -559,7 +559,7 @@
  (def not-nil? (complement nil?))
  (defn- try-capture [cc] (if(not-nil? (get cc :pointer)) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
  ;init.png
- (defn- init-cam-tex [cam-id capture-cam](let [
+ (defn- init-cam-tex [cam-id](let [
                                     target           (GL11/GL_TEXTURE_2D)
                                     _                (println "cam target" target)
                                     tex-id          (+ no-textures cam-id)
@@ -633,25 +633,23 @@
 
 
 (defn- check-cam-idx [locals c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do(init-cam-tex c_idx capture-cam0)
-          (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do(init-cam-tex c_idx capture-cam1)
-          (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(init-cam-tex c_idx capture-cam2)
-          (future (start-cam-loop c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(future (start-cam-loop c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(init-cam-tex c_idx capture-cam3)
-          (future (start-cam-loop c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(future (start-cam-loop c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(init-cam-tex c_idx capture-cam4)
-          (future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
+          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
 
                                        
 (defn- init-cams
 [locals]
 (let [cam_idxs        (:cams @locals)]
+    (doseq [c_idx (range no-cams)]
+        (init-cam-tex c_idx) 
+    )
     (doseq [c_idx cam_idxs]
     (println "c_idx" c_idx)
     (check-cam-idx locals c_idx))))
@@ -659,17 +657,10 @@
 
 ;; Try to implement a possibility start cam loops while the program is already running. No luck so far
 (defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
-;(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
-;(init-cam1)
-;(init-cam-tex cam-id capture-cam1)
-(println "running cam" running-cam1)
-(println "post cam" capture-cam1)
-(println "buffer-cam1" buffer-cam1 )
-(init-cam1)
-(init-cam-tex cam-id capture-cam1)
-;(check-cam-idx the-window-state cam-id)
-;(future (start-cam-loop cam-id capture-cam1 running-cam1))
-;(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
+;(init-cam2)
+(check-cam-idx the-window-state cam-id)
+;(future (start-cam-loop cam-id capture-cam2 running-cam2))
+(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
 ))
       
       
@@ -985,10 +976,6 @@
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
     (GL15/glDeleteBuffers ^Integer vbo-id)
-    ;;(doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
-    ;;(println "cams before destroy" cams)
-    ;;(swap! locals assoc :cams tmpcams)
-    ;;(println "cams after destroy" tmpcams)
     ))
 
 (defn- run-thread
