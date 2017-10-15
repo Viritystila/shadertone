@@ -189,8 +189,9 @@
   "return a vector of 5 items, always.  Use nil if no filename"
   [cams]
   (let [fullVec (vec (replicate no-cams nil))
-        newVec   (apply assoc fullVec (interleave cams cams))] 
-  (into [] newVec)))
+        newVec   (if (not-empty cams) (apply assoc fullVec (interleave cams cams))(vec (replicate no-cams nil)))] 
+  (into [] newVec))
+  )
 
              
 (defn- uniform-sampler-type-str
@@ -992,7 +993,8 @@
     
   (swap! locals assoc :active :no)
   ;;Stop and release cams
-  (doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
+  (println " Cams tbd" (:cams @the-window-state))
+  (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
   (swap! locals assoc :cams (vec (replicate no-cams nil)))
   )
 
