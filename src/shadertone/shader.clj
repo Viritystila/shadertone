@@ -97,6 +97,10 @@
 ;;
 (defonce pixel-value (atom [0.0 0.0 0.0]))
 
+; Number of textures
+(def no-textures 4)
+;Number of cam -feeds
+(def no-cams 5)
 
 ;;Webcam definitions
 ;; Camera at index 0 control definitions
@@ -149,6 +153,8 @@
 ]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))) ))
 
 
+
+;(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil))
 ;; ======================================================================
 ;; code modified from
 ;; https://github.com/ztellman/penumbra/blob/master/src/penumbra/opengl/core.clj
@@ -175,14 +181,14 @@
   "return a vector of 4 items, always.  Use nil if no filename"
   [tex-filenames]
   (apply vector
-         (for [i (range 4)]
+         (for [i (range no-textures)]
            (if (< i (count tex-filenames))
              (nth tex-filenames i)))))
 
 (defn- sort-cams
   "return a vector of 5 items, always.  Use nil if no filename"
   [cams]
-  (let [fullVec (vec (replicate 5 nil))
+  (let [fullVec (vec (replicate no-cams nil))
         newVec   (apply assoc fullVec (interleave cams cams))] 
   (into [] newVec)))
 
@@ -247,7 +253,7 @@
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-tex-filenames tex-filenames)
         cams                (sort-cams cams)
-        _                   (println "sorted cams" cams)
+        ;_                   (println "sorted cams" cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -484,9 +490,9 @@
                                               (.flip))
              tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
-                                         target)
-             _ (println "target" target)
-             _ (println "tex-id" tex-id)]
+                                         target)]
+             ;_ (println "target" target)
+             ;_ (println "tex-id" tex-id)
          (GL11/glBindTexture target tex-id)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -521,9 +527,9 @@
 (defn- init-textures
   [locals]
   (let [tex-infos (map load-texture (:tex-filenames @locals))
-        _ (println "raw" tex-infos)
+        ;_ (println "raw" tex-infos)
         tex-ids   (map first tex-infos)
-        _ (println "tex-ids" tex-ids)
+        ;_ (println "tex-ids" tex-ids)
 
         tex-whd   (map rest tex-infos)
         tex-whd   (flatten
@@ -532,7 +538,7 @@
                            %)
                         tex-whd))
         ;; update channel-res-buffer
-        _ (println "tex-whd" tex-whd)
+        ;_ (println "tex-whd" tex-whd)
 
         _         (-> ^FloatBuffer (:channel-res-buffer @locals)
                       (.put ^floats (float-array tex-whd))
@@ -551,11 +557,11 @@
                                        ))
  
  (def not-nil? (complement nil?))
- (defn- try-capture [cc] (if (not-nil? (get cc :pointer)) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
+ (defn- try-capture [cc] (if(get cc :pointer) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
  
  (defn- init-cam-tex [cam-id capture-cam](let [
                                     target           (GL11/GL_TEXTURE_2D)
-                                    tex-id          (+ 4 cam-id)
+                                    tex-id          (+ no-textures cam-id)
                                     imageP       (try-capture @capture-cam)
                                     imageDef           (get imageP :buffered-image)
                                     image              @imageDef
@@ -565,14 +571,14 @@
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))           
- 
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT))           
+                                    )
        
 
 
  (defn- process-cam-image [cam-id image] (let [
              target             (GL11/GL_TEXTURE_2D)
-             tex-id             (+ 4 cam-id)
+             tex-id             (+ no-textures cam-id)
              image-bytes        (tex-image-bytes image)
              internal-format    (tex-internal-format image)
              format             (tex-format image)
@@ -595,7 +601,7 @@
  
 
 (defn- buffer-cam-texture [cam-id capture-cam](let [
-             tex-id             (+ 4 cam-id)
+             tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (get imageP :buffered-image)
              image              @imageDef
@@ -618,15 +624,7 @@
  (defn- remove-if-bad [locals  capture-cam running-cam cam-id] (let [cams_tmp (:cams @locals)](do 
 (reset! running-cam  false)
 (vision.core/release @capture-cam)
-(println "cams_tmp_old" (type cams_tmp))
-(println "cams_id_old" (type cam-id))
-
-;;(vec-remove cams_tmp cam-id)
-(println "cams_tmp_new" (set-nil cams_tmp cam-id))
-(swap! locals
-           assoc
-           :cams          (set-nil cams_tmp cam-id))
-           ) :false))
+(swap! locals assoc :cams          (set-nil cams_tmp cam-id)))))
  
  
 
@@ -645,24 +643,29 @@
           (future (start-cam-loop c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
           
           (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(init-cam-tex c_idx capture-cam4)
-          (future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))
-          ))   
+          (future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
 
-;;The hope is that this eventually runs in the backgrund putting stuff into buffer from where it is read into texture
-;; not quite there yet
-
-
-  
                                        
 (defn- init-cams
 [locals]
-(let [  cam_idxs        (:cams @locals)
-        _ (println "raw" cam_idxs)]
+(let [cam_idxs        (:cams @locals)]
     (doseq [c_idx cam_idxs]
     (println "c_idx" c_idx)
-    (check-cam-idx locals c_idx)
-    )))
+    (check-cam-idx locals c_idx))))
     
+
+;; Try to implement a possibility start cam loops while the program is already running. No luck so far
+(defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
+;(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
+;(init-cam1)
+;(init-cam-tex cam-id capture-cam1)
+;(println "post cam" @capture-cam1)
+;(println "buffer-cam1" @buffer-cam1 )
+(
+;(check-cam-idx the-window-state cam-id)
+future (start-cam-loop cam-id capture-cam1 running-cam1)
+(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
+)))
       
       
 (defn- init-gl
@@ -764,7 +767,7 @@
     [rf gf bf]))
 
 (defn- get-cam-textures [c_idx]
-(cond
+          (cond
           (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0)) :false)
           (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1)):false)
           (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2)):false)
@@ -829,9 +832,8 @@
     ;; Fetch cam texture
     (doseq [i (remove nil? cams)]
                 (get-cam-textures i)
-                (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i 4)))
-                (GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i 4))
-        )
+                (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i no-textures)))
+                (GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i no-textures)))
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
@@ -872,6 +874,12 @@
     (dotimes [i (count tex-ids)]
       (when (nth tex-ids i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+        (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
+    
+    (dotimes [i (count cams)] 
+        (when (nth cams i) 
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i no-textures)))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
 
@@ -941,20 +949,22 @@
         (except-gl-errors "@ bad-draw glClear ")
         (if @reload-shader
           (try-reload-shader locals))))))
+
+;;(swap! @the-window-state assoc :cams (assoc tmpcams c_idx nil))
 (defn release-cam-textures [c_idx]
+(let [tmpcams (:cams @the-window-state)]
 (cond
-          (= c_idx 0) (do (swap! running-cam0 (fn [_] false)))
-          (= c_idx 1) (do (swap! running-cam1 (fn [_] false)))
-          (= c_idx 2) (do (swap! running-cam2 (fn [_] false)))
-          (= c_idx 3) (do (swap! running-cam3 (fn [_] false)))
-          (= c_idx 4) (do (swap! running-cam4 (fn [_] false)))
-          
+          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          )
           ))
           
 (defn- destroy-gl
   [locals]
-  (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals
-        tmpcams (vec (replicate 5 nil))]
+  (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals]
         
 
     ;; Delete any user state
@@ -987,18 +997,19 @@
     (Display/sync (:display-sync-hz @locals)))
   (destroy-gl locals)
   (Display/destroy)
-
+    
   (swap! locals assoc :active :no)
+  ;;Stop and release cams
   (doseq [i (remove nil? cams)](println "release cam " i)(release-cam-textures i))
-  (swap! locals assoc :cams (vec (replicate 5 nil)))
+  (swap! locals assoc :cams (vec (replicate no-cams nil)))
   )
 
 (defn- good-tex-count
   [textures]
-  (if (<= (count textures) 4)
+  (if (<= (count textures) no-textures)
     true
     (do
-      (println "ERROR: number of textures must be <= 4")
+      (println "ERROR: number of textures must be <= " no-textures)
       false)))
 
 (defn- expand-filename
