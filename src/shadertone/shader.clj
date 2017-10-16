@@ -152,9 +152,17 @@
 (defn init-cam4 [] (let [_ (println "init cam4" )
 ]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))) ))
 
+(defn release-cam-textures [c_idx]
+(let [tmpcams (:cams @the-window-state)]
+(cond
+          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
+          )
+          ))
 
-
-;(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil))
 ;; ======================================================================
 ;; code modified from
 ;; https://github.com/ztellman/penumbra/blob/master/src/penumbra/opengl/core.clj
@@ -658,9 +666,8 @@
 
 ;; Try to implement a possibility start cam loops while the program is already running. No luck so far
 (defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
-;(init-cam2)
+(release-cam-textures cam-id)
 (check-cam-idx the-window-state cam-id)
-;(future (start-cam-loop cam-id capture-cam2 running-cam2))
 (swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
 ))
       
@@ -947,17 +954,7 @@
         (if @reload-shader
           (try-reload-shader locals))))))
 
-;;(swap! @the-window-state assoc :cams (assoc tmpcams c_idx nil))
-(defn release-cam-textures [c_idx]
-(let [tmpcams (:cams @the-window-state)]
-(cond
-          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          )
-          ))
+
           
 (defn- destroy-gl
   [locals]
