@@ -31,10 +31,15 @@ void main(void) {
   vec4 c2 = texture2D(iCam0,vec2(uv3.x, -uv3.y * prop));
   vec4 c3 = texture2D(iCam1,uv2);
   vec4 c4 = texture2D(iCam2,uv2);
+  vec4 c5 = texture2D(iCam3,uv2);
+  vec4 c6 = texture2D(iCam4,uv2);
 
-  vec4 c = mix(c3,c2,2.0-sin(c1.w));  // alpha blend between two textures
+  
+  vec4 c = mix(c3,c2,1.0-sin(c1.w));  // alpha blend between two textures
   vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf2 = mix(c6,cf1,1.5-sin(c1.w));  // alpha blend between two textures
 
-  gl_FragColor = cf;
+  gl_FragColor = cf2;
   
 }

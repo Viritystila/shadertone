@@ -51,6 +51,7 @@
    :i-mouse-loc         0
    :i-channel-loc       [0 0 0 0]
    :i-cam-loc           [0 0 0 0 0]
+   :i-video-loc         [0 0 0 0 0]
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
@@ -68,6 +69,7 @@
    :tex-filenames       []
    :tex-ids             []
    :cams                []
+   :videos              []
    :tex-types           [] ; :cubemap, :previous-frame
    ;; a user draw function
    :user-fn             nil
@@ -134,8 +136,33 @@
 (defonce text-id-cam3 (atom 0))
 (defonce text-id-cam4 (atom 0))
 
+(def nbytes-cam0) 
+(def nbytes-cam1)       
+(def nbytes-cam2)       
+(def nbytes-cam3)       
+(def nbytes-cam4)
 
+(def internal-format-cam0)
+(def internal-format-cam1)
+(def internal-format-cam2)
+(def internal-format-cam3)
+(def internal-format-cam4)
 
+(def format-cam0)
+(def format-cam1)
+(def format-cam2)
+(def format-cam3)
+(def format-cam4)
+
+;             target             (GL11/GL_TEXTURE_2D)
+;             tex-id             (+ no-textures cam-id)
+;             image-bytes        (tex-image-bytes image)
+;             internal-format    (tex-internal-format image)
+;             format             (tex-format image)
+;             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+;             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+ ;                                            (put-texture-data image (= image-bytes 4))
+;                                              (.flip))
 
 (defn init-cam0 [] (let [_ (println "init cam0" )
 ]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on") ))))
@@ -558,11 +585,11 @@
 
   
  (defn- put-cam-buffer [image cam-idx] (cond 
-                                       (= cam-idx 0)(do (def buffer-cam0 image) )
-                                       (= cam-idx 1)(do (def buffer-cam1 image) )
-                                       (= cam-idx 2)(do (def buffer-cam2 image) )
-                                       (= cam-idx 3)(do (def buffer-cam3 image) )
-                                       (= cam-idx 4)(do (def buffer-cam4 image) )
+                                       (= cam-idx 0)(do (alter-var-root  #'buffer-cam0 (constantly (future image))) )
+                                       (= cam-idx 1)(do (alter-var-root  #'buffer-cam1 (constantly (future image))) )
+                                       (= cam-idx 2)(do (alter-var-root  #'buffer-cam2 (constantly (future image))) )
+                                       (= cam-idx 3)(do (alter-var-root  #'buffer-cam3 (constantly (future image))) )
+                                       (= cam-idx 4)(do (alter-var-root  #'buffer-cam4 (constantly (future image))) )
                                        ))
  
  (def not-nil? (complement nil?))
@@ -572,9 +599,6 @@
                                     target           (GL11/GL_TEXTURE_2D)
                                     _                (println "cam target" target)
                                     tex-id          (+ no-textures cam-id)
-                                    ;imageP       (try-capture @capture-cam)
-                                    ;imageDef           (get imageP :buffered-image)
-                                    ;image              @imageDef
                                     image            (ImageIO/read (FileInputStream. "src/init.png"))
                                     ]
                                     (put-cam-buffer image cam-id)
@@ -589,7 +613,9 @@
        
 
 
- (defn- process-cam-image [cam-id image] (let [
+ (defn- process-cam-image [cam-id image_in] (let [
+             image              @image_in 
+             ;_                  (println "imge in" image)
              target             (GL11/GL_TEXTURE_2D)
              tex-id             (+ no-textures cam-id)
              image-bytes        (tex-image-bytes image)
@@ -601,9 +627,9 @@
                                               (.flip))
              tex-image-target ^Integer (+ 0 target)
              ]
-        ;;(println "processing" image)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
+      
       (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
                            ^Integer format
@@ -617,8 +643,10 @@
              tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (get imageP :buffered-image)
-             image              @imageDef]
-            (put-cam-buffer image cam-id))) 
+             image              @imageDef
+             ]
+            (put-cam-buffer image cam-id)
+            )) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
     (let [_ (println "start cam loop " cam-id)]
@@ -834,10 +862,9 @@
     (except-gl-errors "@ draw after activate textures")
     
     ;; Fetch cam texture
-    (doseq [i (remove nil? cams)]
+    (doseq [i cams]
                 (get-cam-textures i)
-                (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i no-textures)))
-                (GL11/glBindTexture GL11/GL_TEXTURE_2D (+ i no-textures)))
+                )
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
@@ -991,7 +1018,7 @@
   (swap! locals assoc :active :no)
   ;;Stop and release cams
   (println " Cams tbd" (:cams @the-window-state))
-  (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
+  (doseq [i (:cams @the-window-state)](println "release cam " i)(release-cam-textures i))
   (swap! locals assoc :cams (vec (replicate no-cams nil)))
   )
 
