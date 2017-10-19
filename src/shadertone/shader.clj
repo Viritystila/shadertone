@@ -58,7 +58,7 @@
                             (.put (float-array
                                    [0.0 0.0 0.0 0.0]))
                             (.flip))
-   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 9))
+   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 12))
                             (.put (float-array
                                    [0.0 0.0 0.0
                                     0.0 0.0 0.0
@@ -593,7 +593,7 @@
                                        ))
  
  (def not-nil? (complement nil?))
- (defn- try-capture [cc] (if(not-nil? (get cc :pointer)) (try (vision.core/query-frame cc)(catch Exception e (println "ff")))))
+ (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  ;init.png
  (defn- init-cam-tex [cam-id](let [
                                     target           (GL11/GL_TEXTURE_2D)
@@ -616,6 +616,8 @@
  (defn- process-cam-image [cam-id image_in] (let [
              image              @image_in 
              ;_                  (println "imge in" image)
+             ;_                  (println "cam-ID" cam-id)
+
              target             (GL11/GL_TEXTURE_2D)
              tex-id             (+ no-textures cam-id)
              image-bytes        (tex-image-bytes image)
@@ -642,7 +644,7 @@
 (defn- buffer-cam-texture [cam-id capture-cam](let [
              tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
-             imageDef           (get imageP :buffered-image)
+             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
              image              @imageDef
              ]
             (put-cam-buffer image cam-id)
@@ -803,8 +805,8 @@
           (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0)) :false)
           (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1)):false)
           (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2)):false)
-          (= c_idx 3) (if (= true @running-cam2)(do (process-cam-image 3 buffer-cam3)):false)
-          (= c_idx 4) (if (= true @running-cam2)(do (process-cam-image 4 buffer-cam4)):false)))
+          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image 3 buffer-cam3)):false)
+          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image 4 buffer-cam4)):false)))
 
 
     
@@ -863,8 +865,11 @@
     
     ;; Fetch cam texture
     (doseq [i cams]
+                ;(Thread/sleep 5) 
                 (get-cam-textures i)
                 )
+
+
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
