@@ -136,6 +136,12 @@
 (defonce text-id-cam3 (atom 0))
 (defonce text-id-cam4 (atom 0))
 
+(def image-bytes-cam0) 
+(def image-bytes-cam1)       
+(def image-bytes-cam2)       
+(def image-bytes-cam3)       
+(def image-bytes-cam4)
+
 (def nbytes-cam0) 
 (def nbytes-cam1)       
 (def nbytes-cam2)       
@@ -153,6 +159,19 @@
 (def format-cam2)
 (def format-cam3)
 (def format-cam4)
+
+(def width-cam0)
+(def width-cam1)
+(def width-cam2)
+(def width-cam3)
+(def width-cam4)
+
+(def height-cam0)
+(def height-cam1)
+(def height-cam2)
+(def height-cam3)
+(def height-cam4)
+
 
 ;             target             (GL11/GL_TEXTURE_2D)
 ;             tex-id             (+ no-textures cam-id)
@@ -584,24 +603,78 @@
            :tex-ids tex-ids)))
 
   
- (defn- put-cam-buffer [image cam-idx] (cond 
-                                       (= cam-idx 0)(do (alter-var-root  #'buffer-cam0 (constantly (future image))) )
-                                       (= cam-idx 1)(do (alter-var-root  #'buffer-cam1 (constantly (future image))) )
-                                       (= cam-idx 2)(do (alter-var-root  #'buffer-cam2 (constantly (future image))) )
-                                       (= cam-idx 3)(do (alter-var-root  #'buffer-cam3 (constantly (future image))) )
-                                       (= cam-idx 4)(do (alter-var-root  #'buffer-cam4 (constantly (future image))) )
+ (defn- put-cam-buffer [image target image-bytes nbytes  internal-format format-c height width cam-idx] (cond 
+                                       (= cam-idx 0)(do 
+                                       (alter-var-root  #'buffer-cam0 (constantly (future image)))
+                                       (alter-var-root  #'target-cam0 (constantly (future target)))
+                                       (alter-var-root  #'image-bytes-cam0 (constantly (future image-bytes)))
+                                       (alter-var-root  #'nbytes-cam0 (constantly (future nbytes)))
+                                       (alter-var-root  #'internal-format-cam0 (constantly (future internal-format)))
+                                       (alter-var-root  #'format-cam0 (constantly (future format-c)))
+                                       (alter-var-root  #'height-cam0 (constantly (future height)))
+                                       (alter-var-root  #'width-cam0 (constantly (future width)))
+                                       )
+                                       
+                                       (= cam-idx 1)(do 
+                                       (alter-var-root  #'buffer-cam1 (constantly (future image)))
+                                       (alter-var-root  #'target-cam1 (constantly (future target)))
+                                       (alter-var-root  #'image-bytes-cam1 (constantly (future image-bytes)))                                     
+                                       (alter-var-root  #'nbytes-cam1 (constantly (future nbytes)))
+                                       (alter-var-root  #'internal-format-cam1 (constantly (future internal-format)))
+                                       (alter-var-root  #'format-cam1 (constantly (future format-c)))
+                                       (alter-var-root  #'height-cam1 (constantly (future height)))
+                                       (alter-var-root  #'width-cam1 (constantly (future width)))
+                                       )
+                                       (= cam-idx 2)(do 
+                                       (alter-var-root  #'buffer-cam2 (constantly (future image)))
+                                       (alter-var-root  #'target-cam2 (constantly (future target)))
+                                       (alter-var-root  #'image-bytes-cam2 (constantly (future image-bytes)))
+                                       (alter-var-root  #'nbytes-cam2 (constantly (future nbytes)))
+                                       (alter-var-root  #'internal-format-cam2 (constantly (future internal-format)))
+                                       (alter-var-root  #'format-cam2 (constantly (future format-c)))
+                                       (alter-var-root  #'height-cam2 (constantly (future height)))
+                                       (alter-var-root  #'width-cam2 (constantly (future width)))
+                                       )
+                                       (= cam-idx 3)(do 
+                                       (alter-var-root  #'buffer-cam3 (constantly (future image)))
+                                       (alter-var-root  #'target-cam3 (constantly (future target)))
+                                       (alter-var-root  #'image-bytes-cam3 (constantly (future image-bytes)))
+                                       (alter-var-root  #'nbytes-cam3 (constantly (future nbytes)))
+                                       (alter-var-root  #'internal-format-cam3 (constantly (future internal-format)))
+                                       (alter-var-root  #'format-cam3 (constantly (future format-c)))
+                                       (alter-var-root  #'height-cam3 (constantly (future height)))
+                                       (alter-var-root  #'width-cam3 (constantly (future width)))
+                                       )
+                                       (= cam-idx 4)(do 
+                                       (alter-var-root  #'buffer-cam4 (constantly (future image)))
+                                       (alter-var-root  #'target-cam4 (constantly (future target)))
+                                       (alter-var-root  #'image-bytes-cam4 (constantly (future image-bytes)))
+                                       (alter-var-root  #'nbytes-cam4 (constantly (future nbytes)))
+                                       (alter-var-root  #'internal-format-cam4 (constantly (future internal-format)))
+                                       (alter-var-root  #'format-cam4 (constantly (future format-c)))
+                                       (alter-var-root  #'height-cam4 (constantly (future height)))
+                                       (alter-var-root  #'width-cam4 (constantly (future width)))
+                                       )
                                        ))
- 
- (def not-nil? (complement nil?))
+ (def not-nil? (complement nil?)) 
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  ;init.png
  (defn- init-cam-tex [cam-id](let [
-                                    target           (GL11/GL_TEXTURE_2D)
-                                    _                (println "cam target" target)
-                                    tex-id          (+ no-textures cam-id)
-                                    image            (ImageIO/read (FileInputStream. "src/init.png"))
+                                    target              (GL11/GL_TEXTURE_2D)
+                                    _                  (println "cam target" target)
+                                    tex-id             (+ no-textures cam-id)
+                                    image              (ImageIO/read (FileInputStream. "src/init.png"))
+                                    height             (.getHeight image)
+                                    width              (.getWidth image) 
+                                    image-bytes        (tex-image-bytes image)
+                                    internal-format    (tex-internal-format image)
+                                    format             (tex-format image)
+                                    nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+                                    buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                                             (put-texture-data image (= image-bytes 4))
+                                              (.flip))
                                     ]
-                                    (put-cam-buffer image cam-id)
+                                    (put-cam-buffer buffer target image-bytes nbytes internal-format format height width  cam-id)
                                     (GL11/glBindTexture target tex-id)
                                     ;(println "init-cam-tex" cam-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
@@ -612,43 +685,53 @@
                                     )
        
 
-
- (defn- process-cam-image [cam-id image_in] (let [
+ (defn- process-cam-image [cam-id image_in target_in image-bytes_in nbytes_in internal-format_in height_in width_in format-cin] (let [
              image              @image_in 
              ;_                  (println "imge in" image)
              ;_                  (println "cam-ID" cam-id)
 
-             target             (GL11/GL_TEXTURE_2D)
+             ;target             (@target_in)
              tex-id             (+ no-textures cam-id)
-             image-bytes        (tex-image-bytes image)
-             internal-format    (tex-internal-format image)
-             format             (tex-format image)
-             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                             (put-texture-data image (= image-bytes 4))
-                                              (.flip))
-             tex-image-target ^Integer (+ 0 target)
+             ;image-bytes        (@image-bytes_in)
+             ;internal-format    (@internal-format_in)
+             ;format             (@format-cin)
+             ;nbytes             (@nbytes_in)
+             ;buffer             (@image_in)
+             tex-image-target ^Integer (+ 0 @target_in)
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-      (GL11/glBindTexture target tex-id)
-      
-      (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-                            ^Integer (.getWidth image)  ^Integer (.getHeight image) 0
-                           ^Integer format
-                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer buffer)
+      (GL11/glBindTexture @target_in tex-id)
+      ;(println "buffer" buffer)
+      (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer @internal-format_in
+                            ^Integer @width_in  ^Integer @height_in 0
+                           ^Integer @format-cin
+                           GL11/GL_UNSIGNED_BYTE
+                            ^ByteBuffer @image_in))
+      ;(println "( tex-id)" tex-id)
+      ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
     (except-gl-errors "@ end of load-texture if-stmt")
 ))         
  
 
 (defn- buffer-cam-texture [cam-id capture-cam](let [
+             target           (GL11/GL_TEXTURE_2D)
              tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
              image              @imageDef
+             height             (.getHeight image)
+             width              (.getWidth image)              
+             image-bytes        (tex-image-bytes image)
+             internal-format    (tex-internal-format image)
+             format             (tex-format image)
+             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                                (put-texture-data image (= image-bytes 4))
+                                (.flip))
+
              ]
-            (put-cam-buffer image cam-id)
-            )) 
+            (put-cam-buffer buffer target image-bytes nbytes internal-format format height width  cam-id)
+             )) 
  
 (defn- start-cam-loop [cam-id capture-cam running-cam]
     (let [_ (println "start cam loop " cam-id)]
@@ -800,13 +883,14 @@
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
 
+;target image-bytes nbytes  internal-format height width format-c  cam-idx    
 (defn- get-cam-textures [c_idx]
           (cond
-          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0)) :false)
-          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1)):false)
-          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2)):false)
-          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image 3 buffer-cam3)):false)
-          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image 4 buffer-cam4)):false)))
+          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0 target-cam0 image-bytes-cam0 nbytes-cam0 internal-format-cam0  height-cam0 width-cam0 format-cam0)) :false)
+          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1 target-cam1 image-bytes-cam1 nbytes-cam1 internal-format-cam1  height-cam1 width-cam1 format-cam1)):false)
+          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2 target-cam2 image-bytes-cam2 nbytes-cam2 internal-format-cam2  height-cam2 width-cam2 format-cam2)):false)
+          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image 3 buffer-cam3 target-cam3 image-bytes-cam3 nbytes-cam3 internal-format-cam3  height-cam3 width-cam3 format-cam3)):false)
+          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image 4 buffer-cam4 target-cam4 image-bytes-cam4 nbytes-cam4 internal-format-cam4  height-cam4 width-cam4 format-cam4)):false)))
 
 
     
@@ -867,6 +951,8 @@
     (doseq [i cams]
                 ;(Thread/sleep 5) 
                 (get-cam-textures i)
+                ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ no-textures i)))
+                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ no-textures i))
                 )
 
 

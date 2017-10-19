@@ -4,8 +4,10 @@
 
 void main(void) {
   vec2 uv = (gl_FragCoord.xy / iResolution.xy);
+  uv.y=1.0-uv.y;
   vec2 uv2 = (gl_FragCoord.xy / iResolution.xy);
   	vec2 p = gl_FragCoord.xy / iResolution.x;//normalized coords with some cheat
+  uv2.y=1.0-uv2.y;
 
   float prop = iResolution.x / iResolution.y;//screen proroption
   vec2 m = vec2(0.5, 0.5 / prop);//center coords
@@ -40,6 +42,6 @@ void main(void) {
   vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c6,cf1,1.5-sin(c1.w));  // alpha blend between two textures
 
-  gl_FragColor = c5;
+  gl_FragColor = cf2;
   
 }
