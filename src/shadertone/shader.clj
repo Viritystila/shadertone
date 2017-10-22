@@ -50,8 +50,22 @@
    :i-channel-time-loc  0
    :i-mouse-loc         0
    :i-channel-loc       [0 0 0 0]
+   ;V4l2 feeds
    :i-cam-loc           [0 0 0 0 0]
+   :running-cam         [0 0 0 0 0]
+   :capture-cam         [0 0 0 0 0]
+   :buffer-cam          [0 0 0 0 0]
+   :target-cam          [0 0 0 0 0]
+   :text-id-cam         [0 0 0 0 0]
+   :image-bytes-cam     [0 0 0 0 0]
+   :nbytes-cam          [0 0 0 0 0]
+   :internal-format-cam [0 0 0 0 0]
+   :format-cam          [0 0 0 0 0]
+   :width-cam           [0 0 0 0 0]
+   :height-cam          [0 0 0 0 0]
+   ;Video feeds
    :i-video-loc         [0 0 0 0 0]
+   ;Other
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
@@ -101,11 +115,12 @@
 
 ; Number of textures
 (def no-textures 4)
-;Number of cam -feeds
+;Number of V4l2 -feeds
+(def no-cams 5)
+;Number of video -feeds
 (def no-cams 5)
 
-;;Webcam definitions
-;; Camera at index 0 control definitions
+;;V4L2 feed definitions
 (defonce running-cam0 (atom false))
 (defonce running-cam1 (atom false))
 (defonce running-cam2 (atom false))
@@ -129,12 +144,6 @@
 (def target-cam2)
 (def target-cam3)
 (def target-cam4)
-
-(defonce text-id-cam0 (atom 0))
-(defonce text-id-cam1 (atom 0))
-(defonce text-id-cam2 (atom 0))
-(defonce text-id-cam3 (atom 0))
-(defonce text-id-cam4 (atom 0))
 
 (def image-bytes-cam0) 
 (def image-bytes-cam1)       
@@ -173,30 +182,21 @@
 (def height-cam4)
 
 
-;             target             (GL11/GL_TEXTURE_2D)
-;             tex-id             (+ no-textures cam-id)
-;             image-bytes        (tex-image-bytes image)
-;             internal-format    (tex-internal-format image)
-;             format             (tex-format image)
-;             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-;             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
- ;                                            (put-texture-data image (= image-bytes 4))
-;                                              (.flip))
 
 (defn init-cam0 [] (let [_ (println "init cam0" )
-]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on") ))))
+]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on" 0) ))))
 
 (defn init-cam1 [] (let [_ (println "init cam1" )
-]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))(do (println "cam on") ))))
+]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))(do (println "cam on" 1) ))))
 
 (defn init-cam2 [] (let [_ (println "init cam2" )
-]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam2 (future (vision.core/capture-from-cam 2))))) ))
+]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam2 (future (vision.core/capture-from-cam 2))))(do (println "cam on" 2) )) ))
 
 (defn init-cam3 [] (let [_ (println "init cam3" )
-]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam3 (future (vision.core/capture-from-cam 3))))) ))
+]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam3 (future (vision.core/capture-from-cam 3))))(do (println "cam on" 3) )) ))
 
 (defn init-cam4 [] (let [_ (println "init cam4" )
-]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))) ))
+]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))(do (println "cam on" 4) )) ))
 
 (defn release-cam-textures [c_idx]
 (let [tmpcams (:cams @the-window-state)]
@@ -603,63 +603,37 @@
            :tex-ids tex-ids)))
 
   
- (defn- put-cam-buffer [image target image-bytes nbytes  internal-format format-c height width cam-idx] (cond 
-                                       (= cam-idx 0)(do 
-                                       (alter-var-root  #'buffer-cam0 (constantly (future image)))
-                                       (alter-var-root  #'target-cam0 (constantly (future target)))
-                                       (alter-var-root  #'image-bytes-cam0 (constantly (future image-bytes)))
-                                       (alter-var-root  #'nbytes-cam0 (constantly (future nbytes)))
-                                       (alter-var-root  #'internal-format-cam0 (constantly (future internal-format)))
-                                       (alter-var-root  #'format-cam0 (constantly (future format-c)))
-                                       (alter-var-root  #'height-cam0 (constantly (future height)))
-                                       (alter-var-root  #'width-cam0 (constantly (future width)))
-                                       )
-                                       
-                                       (= cam-idx 1)(do 
-                                       (alter-var-root  #'buffer-cam1 (constantly (future image)))
-                                       (alter-var-root  #'target-cam1 (constantly (future target)))
-                                       (alter-var-root  #'image-bytes-cam1 (constantly (future image-bytes)))                                     
-                                       (alter-var-root  #'nbytes-cam1 (constantly (future nbytes)))
-                                       (alter-var-root  #'internal-format-cam1 (constantly (future internal-format)))
-                                       (alter-var-root  #'format-cam1 (constantly (future format-c)))
-                                       (alter-var-root  #'height-cam1 (constantly (future height)))
-                                       (alter-var-root  #'width-cam1 (constantly (future width)))
-                                       )
-                                       (= cam-idx 2)(do 
-                                       (alter-var-root  #'buffer-cam2 (constantly (future image)))
-                                       (alter-var-root  #'target-cam2 (constantly (future target)))
-                                       (alter-var-root  #'image-bytes-cam2 (constantly (future image-bytes)))
-                                       (alter-var-root  #'nbytes-cam2 (constantly (future nbytes)))
-                                       (alter-var-root  #'internal-format-cam2 (constantly (future internal-format)))
-                                       (alter-var-root  #'format-cam2 (constantly (future format-c)))
-                                       (alter-var-root  #'height-cam2 (constantly (future height)))
-                                       (alter-var-root  #'width-cam2 (constantly (future width)))
-                                       )
-                                       (= cam-idx 3)(do 
-                                       (alter-var-root  #'buffer-cam3 (constantly (future image)))
-                                       (alter-var-root  #'target-cam3 (constantly (future target)))
-                                       (alter-var-root  #'image-bytes-cam3 (constantly (future image-bytes)))
-                                       (alter-var-root  #'nbytes-cam3 (constantly (future nbytes)))
-                                       (alter-var-root  #'internal-format-cam3 (constantly (future internal-format)))
-                                       (alter-var-root  #'format-cam3 (constantly (future format-c)))
-                                       (alter-var-root  #'height-cam3 (constantly (future height)))
-                                       (alter-var-root  #'width-cam3 (constantly (future width)))
-                                       )
-                                       (= cam-idx 4)(do 
-                                       (alter-var-root  #'buffer-cam4 (constantly (future image)))
-                                       (alter-var-root  #'target-cam4 (constantly (future target)))
-                                       (alter-var-root  #'image-bytes-cam4 (constantly (future image-bytes)))
-                                       (alter-var-root  #'nbytes-cam4 (constantly (future nbytes)))
-                                       (alter-var-root  #'internal-format-cam4 (constantly (future internal-format)))
-                                       (alter-var-root  #'format-cam4 (constantly (future format-c)))
-                                       (alter-var-root  #'height-cam4 (constantly (future height)))
-                                       (alter-var-root  #'width-cam4 (constantly (future width)))
-                                       )
-                                       ))
+
+ (defn- put-cam-buffer [locals image target image-bytes nbytes  internal-format format-c height width cam-idx](let [
+ image_i (assoc (:image-cam @locals) cam-idx image)
+ target_i (assoc (:target-cam @locals) cam-idx target)
+ image-bytes_i (assoc (:image-bytes-cam @locals) cam-idx image-bytes)
+ nbytes_i (assoc (:nbytes-cam @locals) cam-idx nbytes)
+ internal-format_i (assoc (:internal-format-cam @locals) cam-idx internal-format)
+ format_i (assoc (:format-cam @locals) cam-idx format-c)
+ width_i (assoc (:width-cam @locals) cam-idx width)
+ height_i (assoc (:height-cam @locals) cam-idx height)
+                                                                                                                       ]                                             
+    (swap! locals
+           assoc
+           :image-cam           image_i
+           :target-cam          target_i
+           :image-bytes-cam     image-bytes_i
+           :nbytes-cam          nbytes_i
+           :internal-format-cam internal-format_i
+           :format-cam          format_i
+           :width-cam           width_i
+           :height-cam          height_i)
+ 
+   ;(println ":image-cam" (:image-cam @locals))
+ ))
+ 
+ 
  (def not-nil? (complement nil?)) 
+ 
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  ;init.png
- (defn- init-cam-tex [cam-id](let [
+ (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
                                     _                  (println "cam target" target)
                                     tex-id             (+ no-textures cam-id)
@@ -674,7 +648,8 @@
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
                                     ]
-                                    (put-cam-buffer buffer target image-bytes nbytes internal-format format height width  cam-id)
+                                    (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id)
+                                    ;(println "(:height-cam @locals)" (:height-cam @locals))
                                     (GL11/glBindTexture target tex-id)
                                     ;(println "init-cam-tex" cam-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
@@ -685,35 +660,32 @@
                                     )
        
 
- (defn- process-cam-image [cam-id image_in target_in image-bytes_in nbytes_in internal-format_in height_in width_in format-cin] (let [
-             image              @image_in 
-             ;_                  (println "imge in" image)
-             ;_                  (println "cam-ID" cam-id)
+ (defn- process-cam-image [locals cam-id] (let [
+             ;image              @image_in
+             image                (get (:image-cam @locals) cam-id)
+             target               (get (:target-cam @locals) cam-id)
+             internal-format (get (:internal-format-cam @locals) cam-id)
+             format (get (:format-cam @locals) cam-id)
+             height (get (:height-cam @locals) cam-id)
+             width (get (:width-cam @locals) cam-id)
 
-             ;target             (@target_in)
+
              tex-id             (+ no-textures cam-id)
-             ;image-bytes        (@image-bytes_in)
-             ;internal-format    (@internal-format_in)
-             ;format             (@format-cin)
-             ;nbytes             (@nbytes_in)
-             ;buffer             (@image_in)
-             tex-image-target ^Integer (+ 0 @target_in)
+             tex-image-target ^Integer (+ 0 target)
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-      (GL11/glBindTexture @target_in tex-id)
+      (GL11/glBindTexture target tex-id)
       ;(println "buffer" buffer)
-      (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer @internal-format_in
-                            ^Integer @width_in  ^Integer @height_in 0
-                           ^Integer @format-cin
+      (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+                            ^Integer width  ^Integer height 0
+                           ^Integer format
                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer @image_in))
-      ;(println "( tex-id)" tex-id)
-      ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
+                            ^ByteBuffer image))
     (except-gl-errors "@ end of load-texture if-stmt")
 ))         
  
 
-(defn- buffer-cam-texture [cam-id capture-cam](let [
+(defn- buffer-cam-texture [locals cam-id capture-cam](let [
              target           (GL11/GL_TEXTURE_2D)
              tex-id             (+ no-textures cam-id)
              imageP             (try-capture @capture-cam)
@@ -730,14 +702,15 @@
                                 (.flip))
 
              ]
-            (put-cam-buffer buffer target image-bytes nbytes internal-format format height width  cam-id)
+            (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id)
+
              )) 
  
-(defn- start-cam-loop [cam-id capture-cam running-cam]
+(defn- start-cam-loop [locals cam-id capture-cam running-cam]
     (let [_ (println "start cam loop " cam-id)]
         (if (= true @running-cam) 
             (do (while  @running-cam
-                (buffer-cam-texture cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
+                (buffer-cam-texture locals cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
  
  (defn vec-remove
   ;;"remove elem in coll"
@@ -755,22 +728,22 @@
 
 
 (defn- check-cam-idx [locals c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do (future (start-cam-loop c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do (future (start-cam-loop locals c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do (future (start-cam-loop c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do (future (start-cam-loop locals c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(future (start-cam-loop c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(future (start-cam-loop locals c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(future (start-cam-loop c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
+          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(future (start-cam-loop locals c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
           
-          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(future (start-cam-loop c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
+          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(future (start-cam-loop locals c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
 
                                        
 (defn- init-cams
 [locals]
 (let [cam_idxs        (:cams @locals)]
     (doseq [c_idx (range no-cams)]
-        (init-cam-tex c_idx) 
+        (init-cam-tex locals c_idx ) 
     )
     (doseq [c_idx cam_idxs]
     (println "c_idx" c_idx)
@@ -883,15 +856,13 @@
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
 
-;target image-bytes nbytes  internal-format height width format-c  cam-idx    
-(defn- get-cam-textures [c_idx]
+(defn- get-cam-textures [locals c_idx]
           (cond
-          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image 0 buffer-cam0 target-cam0 image-bytes-cam0 nbytes-cam0 internal-format-cam0  height-cam0 width-cam0 format-cam0)) :false)
-          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image 1 buffer-cam1 target-cam1 image-bytes-cam1 nbytes-cam1 internal-format-cam1  height-cam1 width-cam1 format-cam1)):false)
-          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image 2 buffer-cam2 target-cam2 image-bytes-cam2 nbytes-cam2 internal-format-cam2  height-cam2 width-cam2 format-cam2)):false)
-          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image 3 buffer-cam3 target-cam3 image-bytes-cam3 nbytes-cam3 internal-format-cam3  height-cam3 width-cam3 format-cam3)):false)
-          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image 4 buffer-cam4 target-cam4 image-bytes-cam4 nbytes-cam4 internal-format-cam4  height-cam4 width-cam4 format-cam4)):false)))
-
+          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image locals c_idx)) :false)
+          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image locals c_idx)):false)
+          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image locals c_idx)):false)
+          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image locals c_idx)):false)
+          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image locals c_idx)):false)))
 
     
 (defn- draw
@@ -950,7 +921,7 @@
     ;; Fetch cam texture
     (doseq [i cams]
                 ;(Thread/sleep 5) 
-                (get-cam-textures i)
+                (get-cam-textures locals i)
                 ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ no-textures i)))
                 ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ no-textures i))
                 )
