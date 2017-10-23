@@ -120,6 +120,7 @@
 ;Number of video -feeds
 (def no-videos 5)
 
+(def not-nil? (complement nil?)) 
 
 
 (defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
@@ -175,8 +176,9 @@
 
 (defn- sort-cams
   "return a vector of 5 items, always.  Use nil if no filename"
-  [cams]
-  (let [fullVec (vec (replicate no-cams nil))
+  [cams_in]
+  (let [cams    (remove nil? cams_in)
+        fullVec (vec (replicate no-cams nil))
         newVec   (if (not-empty cams) (apply assoc fullVec (interleave cams cams))(vec (replicate no-cams nil)))] 
   (into [] newVec))
   )
@@ -563,7 +565,6 @@
  ))
  
  
- (def not-nil? (complement nil?)) 
  
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  ;init.png
@@ -607,7 +608,7 @@
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
-      ;(println "buffer" buffer)
+      ;(println "image" image)
       (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer width  ^Integer height 0
                            ^Integer format
@@ -678,13 +679,13 @@
                                         capture-cam     (:capture-cam @locals)
                                         capture-cam_i   (get capture-cam cam-id)] (cond
         (= cam-id nil) (println "no cam")
-        :else (do (init-cam locals cam-id) (println ":capture-cam @locals)" (get @(get (:capture-cam @locals) cam-id) :pointer)) (println "(:running-cam @locals)" (:running-cam @locals) ) (if (get @(get (:capture-cam @locals) cam-id) :pointer)(do (future (start-cam-loop-2 locals cam-id)))(do (remove-if-bad-2 locals cam-id)(println " bad cam " cam-id)))
+        :else (do (init-cam locals cam-id) (if (get @(get (:capture-cam @locals) cam-id) :pointer)(do (future (start-cam-loop-2 locals cam-id)))(do (remove-if-bad-2 locals cam-id)(println " bad cam " cam-id)))
 ))))
     
 (defn- init-cams-2
 [locals]
 (let [cam_idxs        (:cams @locals)]
-    (doseq [cam-id (remove nil? cam_idxs)]
+    (doseq [cam-id (range no-cams)]
         (init-cam-tex locals cam-id ) 
     )
     (doseq [cam-id cam_idxs]
@@ -799,10 +800,9 @@
 
 (defn- get-cam-textures_2 [locals cam-id](let[running-cam     (:running-cam @locals)
                                             running-cam_i   (get running-cam cam-id)]
-                                            (if (= true running-cam_i)(do (process-cam-image locals cam-id)) :false)
+                                            (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)
                                             ) 
                                             )
-    
 (defn- draw
   [locals]
   (let [{:keys [width height i-resolution-loc
@@ -857,8 +857,11 @@
     (except-gl-errors "@ draw after activate textures")
     
     ;; Fetch cam texture
-    (doseq [i cams]
+    (doseq [i (remove nil? cams)]
+                ;(println "cams" cams)
                 (get-cam-textures_2 locals i)
+                ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ no-textures i )))
+                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ no-textures i ))
                 )
 
 
@@ -1266,7 +1269,7 @@
    &{:keys [display-sync-hz textures cams user-data user-fn]
      :or {display-sync-hz 60
           textures        [nil]
-          cams            [nil]
+          cams            []
           user-data       {}
           user-fn         shader-default-fn}}]
      (let [mode (Display/getDisplayMode)]
