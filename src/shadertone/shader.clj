@@ -52,7 +52,7 @@
    :i-channel-loc       [0 0 0 0]
    ;V4l2 feeds
    :i-cam-loc           [0 0 0 0 0]
-   :running-cam         [0 0 0 0 0]
+   :running-cam         [false false false false false]
    :capture-cam         [0 0 0 0 0]
    :buffer-cam          [0 0 0 0 0]
    :target-cam          [0 0 0 0 0]
@@ -118,96 +118,30 @@
 ;Number of V4l2 -feeds
 (def no-cams 5)
 ;Number of video -feeds
-(def no-cams 5)
-
-;;V4L2 feed definitions
-(defonce running-cam0 (atom false))
-(defonce running-cam1 (atom false))
-(defonce running-cam2 (atom false))
-(defonce running-cam3 (atom false))
-(defonce running-cam4 (atom false))
-
-(def  capture-cam0)
-(def  capture-cam1)
-(def  capture-cam2)
-(def  capture-cam3)
-(def  capture-cam4)
-
-(def buffer-cam0) 
-(def buffer-cam1)       
-(def buffer-cam2)       
-(def buffer-cam3)       
-(def buffer-cam4)       
-
-(def target-cam0)
-(def target-cam1)
-(def target-cam2)
-(def target-cam3)
-(def target-cam4)
-
-(def image-bytes-cam0) 
-(def image-bytes-cam1)       
-(def image-bytes-cam2)       
-(def image-bytes-cam3)       
-(def image-bytes-cam4)
-
-(def nbytes-cam0) 
-(def nbytes-cam1)       
-(def nbytes-cam2)       
-(def nbytes-cam3)       
-(def nbytes-cam4)
-
-(def internal-format-cam0)
-(def internal-format-cam1)
-(def internal-format-cam2)
-(def internal-format-cam3)
-(def internal-format-cam4)
-
-(def format-cam0)
-(def format-cam1)
-(def format-cam2)
-(def format-cam3)
-(def format-cam4)
-
-(def width-cam0)
-(def width-cam1)
-(def width-cam2)
-(def width-cam3)
-(def width-cam4)
-
-(def height-cam0)
-(def height-cam1)
-(def height-cam2)
-(def height-cam3)
-(def height-cam4)
+(def no-videos 5)
 
 
 
-(defn init-cam0 [] (let [_ (println "init cam0" )
-]  (if (= false @running-cam0)(do (reset! running-cam0  true) (def  capture-cam0 (future (vision.core/capture-from-cam 0))))(do (println "cam on" 0) ))))
+(defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
+                                    running-cam     (:running-cam @locals)
+                                    running-cam_i   (get running-cam cam-id)
+                                    capture-cam     (:capture-cam @locals)
+                                    capture-cam_i   (get capture-cam cam-id)
+]  (if (= false running-cam_i)(do 
+(swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
+(swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (vision.core/capture-from-cam cam-id)) )))(do (println "cam on" 0) ))))
 
-(defn init-cam1 [] (let [_ (println "init cam1" )
-]  (if (= false @running-cam1)(do (reset! running-cam1  true) (def  capture-cam1 (future (vision.core/capture-from-cam 1))))(do (println "cam on" 1) ))))
 
-(defn init-cam2 [] (let [_ (println "init cam2" )
-]  (if (= false @running-cam2)(do (reset! running-cam2  true) (def  capture-cam2 (future (vision.core/capture-from-cam 2))))(do (println "cam on" 2) )) ))
-
-(defn init-cam3 [] (let [_ (println "init cam3" )
-]  (if (= false @running-cam3)(do (reset! running-cam3  true) (def  capture-cam3 (future (vision.core/capture-from-cam 3))))(do (println "cam on" 3) )) ))
-
-(defn init-cam4 [] (let [_ (println "init cam4" )
-]  (if (= false @running-cam4)(do (reset! running-cam4  true) (def  capture-cam4 (future (vision.core/capture-from-cam 4))))(do (println "cam on" 4) )) ))
-
-(defn release-cam-textures [c_idx]
-(let [tmpcams (:cams @the-window-state)]
-(cond
-          (= c_idx 0) (do (swap! running-cam0 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 1) (do (swap! running-cam1 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 2) (do (swap! running-cam2 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 3) (do (swap! running-cam3 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          (= c_idx 4) (do (swap! running-cam4 (fn [_] false))(swap! the-window-state assoc :cams (assoc tmpcams c_idx nil)))
-          )
-          ))
+(defn release-cam-textures-2 [cam-id]
+(let [tmpcams (:cams @the-window-state)
+      running-cam     (:running-cam @the-window-state)
+      _         (println "running-cam at release function before release" running-cam)
+        running-cam_i   (get running-cam cam-id)]
+        (swap! the-window-state assoc :running-cam (assoc running-cam cam-id false))
+        (swap! the-window-state assoc :cams (assoc tmpcams cam-id nil))
+        (println "running-cam at release function aftr release" (:running-cam @the-window-state))
+    
+    ))
 
 ;; ======================================================================
 ;; code modified from
@@ -605,25 +539,25 @@
   
 
  (defn- put-cam-buffer [locals image target image-bytes nbytes  internal-format format-c height width cam-idx](let [
- image_i (assoc (:image-cam @locals) cam-idx image)
- target_i (assoc (:target-cam @locals) cam-idx target)
- image-bytes_i (assoc (:image-bytes-cam @locals) cam-idx image-bytes)
- nbytes_i (assoc (:nbytes-cam @locals) cam-idx nbytes)
- internal-format_i (assoc (:internal-format-cam @locals) cam-idx internal-format)
- format_i (assoc (:format-cam @locals) cam-idx format-c)
- width_i (assoc (:width-cam @locals) cam-idx width)
- height_i (assoc (:height-cam @locals) cam-idx height)
+                        image_i (assoc (:image-cam @locals) cam-idx image)
+                        target_i (assoc (:target-cam @locals) cam-idx target)
+                        image-bytes_i (assoc (:image-bytes-cam @locals) cam-idx image-bytes)
+                        nbytes_i (assoc (:nbytes-cam @locals) cam-idx nbytes)
+                        internal-format_i (assoc (:internal-format-cam @locals) cam-idx internal-format)
+                        format_i (assoc (:format-cam @locals) cam-idx format-c)
+                        width_i (assoc (:width-cam @locals) cam-idx width)
+                        height_i (assoc (:height-cam @locals) cam-idx height)
                                                                                                                        ]                                             
-    (swap! locals
-           assoc
-           :image-cam           image_i
-           :target-cam          target_i
-           :image-bytes-cam     image-bytes_i
-           :nbytes-cam          nbytes_i
-           :internal-format-cam internal-format_i
-           :format-cam          format_i
-           :width-cam           width_i
-           :height-cam          height_i)
+                    (swap! locals
+                            assoc
+                                :image-cam           image_i
+                                :target-cam          target_i
+                                :image-bytes-cam     image-bytes_i
+                                :nbytes-cam          nbytes_i
+                                :internal-format-cam internal-format_i
+                                :format-cam          format_i
+                                :width-cam           width_i
+                                :height-cam          height_i)
  
    ;(println ":image-cam" (:image-cam @locals))
  ))
@@ -635,7 +569,6 @@
  ;init.png
  (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
-                                    _                  (println "cam target" target)
                                     tex-id             (+ no-textures cam-id)
                                     image              (ImageIO/read (FileInputStream. "src/init.png"))
                                     height             (.getHeight image)
@@ -649,7 +582,6 @@
                                               (.flip))
                                     ]
                                     (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id)
-                                    ;(println "(:height-cam @locals)" (:height-cam @locals))
                                     (GL11/glBindTexture target tex-id)
                                     ;(println "init-cam-tex" cam-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
@@ -706,12 +638,24 @@
 
              )) 
  
-(defn- start-cam-loop [locals cam-id capture-cam running-cam]
-    (let [_ (println "start cam loop " cam-id)]
-        (if (= true @running-cam) 
-            (do (while  @running-cam
-                (buffer-cam-texture locals cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
+;(defn- start-cam-loop [locals cam-id capture-cam running-cam]
+;    (let [_ (println "start cam loop " cam-id)]
+;        (if (= true @running-cam) 
+;            (do (while  @running-cam
+;                (buffer-cam-texture locals cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
+                
+(defn- start-cam-loop-2 [locals cam-id]
+    (let [_ (println "start cam loop " cam-id)
+            running-cam     (:running-cam @locals)
+            running-cam_i   (get running-cam cam-id)
+            capture-cam     (:capture-cam @locals)
+            capture-cam_i   (get capture-cam cam-id)]
+        (if (= true running-cam_i) 
+            (do (while  (get (:running-cam @locals) cam-id)
+
+                (buffer-cam-texture locals cam-id capture-cam_i))(vision.core/release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
+                
  (defn vec-remove
   ;;"remove elem in coll"
   [coll pos]
@@ -719,41 +663,38 @@
 
  (defn- set-nil [coll pos] (assoc coll pos nil)) 
  
- (defn- remove-if-bad [locals  capture-cam running-cam cam-id] (let [cams_tmp (:cams @locals)](do 
-(reset! running-cam  false)
-(vision.core/release @capture-cam)
-(swap! locals assoc :cams          (set-nil cams_tmp cam-id)))))
- 
- 
+(defn- remove-if-bad-2 [locals cam-id] (let [cams_tmp (:cams @locals)            
+                                            running-cam     (:running-cam @locals)
+                                            running-cam_i   (get running-cam cam-id)
+                                            capture-cam     (:capture-cam @locals)
+                                            capture-cam_i   (get capture-cam cam-id)](do 
+(swap! locals assoc :running-cam (assoc running-cam cam-id false)) 
+(vision.core/release @capture-cam_i)
+(swap! locals assoc :cams (set-nil cams_tmp cam-id))))) 
 
 
-(defn- check-cam-idx [locals c_idx] (cond
-          (= c_idx 0) (do (init-cam0) (if (get @capture-cam0 :pointer)(do (future (start-cam-loop locals c_idx capture-cam0 running-cam0)))(do (remove-if-bad locals capture-cam0 running-cam0 c_idx)(println " bad cam " c_idx))))
-          
-          (= c_idx 1) (do (init-cam1) (if (get @capture-cam1 :pointer)(do (future (start-cam-loop locals c_idx capture-cam1 running-cam1)))(do (remove-if-bad locals capture-cam1 running-cam1 c_idx)(println " bad cam " c_idx))))
-          
-          (= c_idx 2) (do (init-cam2) (if (get @capture-cam2 :pointer)(do(future (start-cam-loop locals c_idx capture-cam2 running-cam2)))(do (remove-if-bad locals capture-cam2 running-cam2 c_idx)(println " bad cam " c_idx))))
-          
-          (= c_idx 3) (do (init-cam3) (if (get @capture-cam3 :pointer)(do(future (start-cam-loop locals c_idx capture-cam3 running-cam3)))(do (remove-if-bad locals capture-cam3 running-cam3 c_idx)(println " bad cam " c_idx))))
-          
-          (= c_idx 4) (do (init-cam4) (if (get @capture-cam4 :pointer)(do(future (start-cam-loop locals c_idx capture-cam4 running-cam4)))(do (remove-if-bad locals capture-cam4 running-cam4 c_idx)(println " bad cam " c_idx))))))   
-
-                                       
-(defn- init-cams
+(defn- check-cam-idx-2 [locals cam-id](let  [running-cam     (:running-cam @locals)
+                                        running-cam_i   (get running-cam cam-id)
+                                        capture-cam     (:capture-cam @locals)
+                                        capture-cam_i   (get capture-cam cam-id)] (cond
+        (= cam-id nil) (println "no cam")
+        :else (do (init-cam locals cam-id) (println ":capture-cam @locals)" (get @(get (:capture-cam @locals) cam-id) :pointer)) (println "(:running-cam @locals)" (:running-cam @locals) ) (if (get @(get (:capture-cam @locals) cam-id) :pointer)(do (future (start-cam-loop-2 locals cam-id)))(do (remove-if-bad-2 locals cam-id)(println " bad cam " cam-id)))
+))))
+    
+(defn- init-cams-2
 [locals]
 (let [cam_idxs        (:cams @locals)]
-    (doseq [c_idx (range no-cams)]
-        (init-cam-tex locals c_idx ) 
+    (doseq [cam-id (remove nil? cam_idxs)]
+        (init-cam-tex locals cam-id ) 
     )
-    (doseq [c_idx cam_idxs]
-    (println "c_idx" c_idx)
-    (check-cam-idx locals c_idx))))
-    
+    (doseq [cam-id cam_idxs]
+    (println "cam_id" cam-id)
+    (check-cam-idx-2 locals cam-id))))    
 
 ;; Try to implement a possibility start cam loops while the program is already running. No luck so far
 (defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
-(release-cam-textures cam-id)
-(check-cam-idx the-window-state cam-id)
+(release-cam-textures-2 cam-id)
+(check-cam-idx-2 the-window-state cam-id)
 (swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
 ))
       
@@ -766,7 +707,7 @@
     (GL11/glViewport 0 0 width height)
     (init-buffers locals)
     (init-textures locals)
-    (init-cams locals)
+    (init-cams-2 locals)
     (init-shaders locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals)))))
@@ -856,14 +797,11 @@
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
 
-(defn- get-cam-textures [locals c_idx]
-          (cond
-          (= c_idx 0) (if (= true @running-cam0)(do (process-cam-image locals c_idx)) :false)
-          (= c_idx 1) (if (= true @running-cam1)(do (process-cam-image locals c_idx)):false)
-          (= c_idx 2) (if (= true @running-cam2)(do (process-cam-image locals c_idx)):false)
-          (= c_idx 3) (if (= true @running-cam3)(do (process-cam-image locals c_idx)):false)
-          (= c_idx 4) (if (= true @running-cam4)(do (process-cam-image locals c_idx)):false)))
-
+(defn- get-cam-textures_2 [locals cam-id](let[running-cam     (:running-cam @locals)
+                                            running-cam_i   (get running-cam cam-id)]
+                                            (if (= true running-cam_i)(do (process-cam-image locals cam-id)) :false)
+                                            ) 
+                                            )
     
 (defn- draw
   [locals]
@@ -920,10 +858,7 @@
     
     ;; Fetch cam texture
     (doseq [i cams]
-                ;(Thread/sleep 5) 
-                (get-cam-textures locals i)
-                ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ no-textures i)))
-                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ no-textures i))
+                (get-cam-textures_2 locals i)
                 )
 
 
@@ -1080,7 +1015,7 @@
   (swap! locals assoc :active :no)
   ;;Stop and release cams
   (println " Cams tbd" (:cams @the-window-state))
-  (doseq [i (:cams @the-window-state)](println "release cam " i)(release-cam-textures i))
+  (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures-2 i))
   (swap! locals assoc :cams (vec (replicate no-cams nil)))
   )
 
