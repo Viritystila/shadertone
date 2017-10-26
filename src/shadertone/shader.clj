@@ -861,19 +861,9 @@
    
 
                 (doseq [i (remove nil? cams)]
-                ;(sharedD/makeCurrent)
 
-                
-                ;(println "(. sharedD isCurrent)" (. sharedD isCurrent))
                 (get-cam-textures locals i)
-                
-                ;(println "(. sharedD isCurrent)" (. sharedD isCurrent))
-                ;(sharedD/releaseContext)
-                ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ no-textures i )))
-                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (+ no-textures i ))
-                )
-
-               ;; (. sharedD releaseContext)
+         )
                )
                )
                                             
@@ -1068,7 +1058,12 @@
   [locals]
   (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals]
         
-
+        
+    
+    ;;Stop and release cams
+    (println " Cams tbd" (:cams @the-window-state))
+    (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
+    (swap! locals assoc :cams (vec (replicate no-cams nil)))
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id))
@@ -1099,10 +1094,7 @@
   (Display/destroy)
     
   (swap! locals assoc :active :no)
-  ;;Stop and release cams
-  (println " Cams tbd" (:cams @the-window-state))
-  (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
-  (swap! locals assoc :cams (vec (replicate no-cams nil)))
+
   )
 
 (defn- good-tex-count
