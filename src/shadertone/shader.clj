@@ -568,7 +568,7 @@
 
   
 
- (defn- put-cam-buffer [locals image target image-bytes nbytes  internal-format format-c height width cam-idx](let [
+ (defn- put-cam-buffer [locals image target image-bytes nbytes  internal-format format-c height width cam-idx text-id-cam](let [
                         image_i (assoc (:image-cam @locals) cam-idx image)
                         target_i (assoc (:target-cam @locals) cam-idx target)
                         image-bytes_i (assoc (:image-bytes-cam @locals) cam-idx image-bytes)
@@ -577,7 +577,8 @@
                         format_i (assoc (:format-cam @locals) cam-idx format-c)
                         width_i (assoc (:width-cam @locals) cam-idx width)
                         height_i (assoc (:height-cam @locals) cam-idx height)
-                                                                                                                       ]                                             
+                        text-id-cam_i (assoc (:text-id-cam @locals) cam-idx text-id-cam)
+                                        ]                                             
                     (swap! locals
                             assoc
                                 :image-cam           image_i
@@ -587,10 +588,11 @@
                                 :internal-format-cam internal-format_i
                                 :format-cam          format_i
                                 :width-cam           width_i
-                                :height-cam          height_i)
+                                :height-cam          height_i
+                                :text-id-cam         text-id-cam_i))
  
    ;(println ":image-cam" (:image-cam @locals))
- ))
+ )
  
  
  
@@ -598,7 +600,8 @@
  ;init.png
  (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
-                                    tex-id             (+ no-textures cam-id)
+                                    ;tex-id             (+ no-textures cam-id)
+                                    tex-id             (GL11/glGenTextures)
                                     image              (ImageIO/read (FileInputStream. "src/init.png"))
                                     height             (.getHeight image)
                                     width              (.getWidth image) 
@@ -610,7 +613,7 @@
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
                                     ]
-                                    (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id)
+                                    (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
                                     (GL11/glBindTexture target tex-id)
                                     ;(println "init-cam-tex" cam-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
@@ -630,7 +633,8 @@
              width (get (:width-cam @locals) cam-id)
 
 
-             tex-id             (+ no-textures cam-id)
+             ;tex-id             (+ no-textures cam-id)
+             tex-id             (get (:text-id-cam @locals) cam-id)
              tex-image-target ^Integer (+ 0 target)
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
@@ -647,7 +651,8 @@
 
 (defn- buffer-cam-texture [locals cam-id capture-cam](let [
              target           (GL11/GL_TEXTURE_2D)
-             tex-id             (+ no-textures cam-id)
+             ;tex-id             (+ no-textures cam-id)
+             tex-id             (get (:text-id-cam @locals) cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
              image              @imageDef
@@ -662,7 +667,7 @@
                                 (.flip))
 
              ]
-            (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id)
+            (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
 
              )) 
  
@@ -881,7 +886,7 @@
                 i-channel-res-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
-                tex-ids cams videos tex-types
+                tex-ids cams text-id-cam videos tex-types
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
@@ -944,16 +949,16 @@
     (GL20/glUniform1i (nth i-channel-loc 1) 1)
     (GL20/glUniform1i (nth i-channel-loc 2) 2)
     (GL20/glUniform1i (nth i-channel-loc 3) 3)
-    (GL20/glUniform1i (nth i-cam-loc 0) 4)
-    (GL20/glUniform1i (nth i-cam-loc 1) 5)
-    (GL20/glUniform1i (nth i-cam-loc 2) 6)
-    (GL20/glUniform1i (nth i-cam-loc 3) 7)
-    (GL20/glUniform1i (nth i-cam-loc 4) 8)
-    (GL20/glUniform1i (nth i-video-loc 0) 9)
-    (GL20/glUniform1i (nth i-video-loc 1) 10)
-    (GL20/glUniform1i (nth i-video-loc 2) 11)
-    (GL20/glUniform1i (nth i-video-loc 3) 12)
-    (GL20/glUniform1i (nth i-video-loc 4) 13)
+    (GL20/glUniform1i (nth i-cam-loc 0) 5)  ; Why the discontinuation?
+    (GL20/glUniform1i (nth i-cam-loc 1) 6)
+    (GL20/glUniform1i (nth i-cam-loc 2) 7)
+    (GL20/glUniform1i (nth i-cam-loc 3) 8)
+    (GL20/glUniform1i (nth i-cam-loc 4) 9)
+    (GL20/glUniform1i (nth i-video-loc 0) 10)
+    (GL20/glUniform1i (nth i-video-loc 1) 11)
+    (GL20/glUniform1i (nth i-video-loc 2) 12)
+    (GL20/glUniform1i (nth i-video-loc 3) 13)
+    (GL20/glUniform1i (nth i-video-loc 4) 14)
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
@@ -979,9 +984,9 @@
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
     ;cams
-    (dotimes [i (count cams)] 
+    (dotimes [i (count text-id-cam)] 
         (when (nth cams i) 
-        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (+ i no-textures)))
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
 
