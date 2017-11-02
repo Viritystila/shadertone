@@ -60,7 +60,7 @@
    :nbytes-cam          [0 0 0 0 0]
    :internal-format-cam [0 0 0 0 0]
    :format-cam          [0 0 0 0 0]
-   :frame-count-cam     [0 0 0 0 0]
+   :fps-cam             [0 0 0 0 0]
    :width-cam           [0 0 0 0 0]
    :height-cam          [0 0 0 0 0]
    ;Video feeds
@@ -75,6 +75,7 @@
    :nbytes-video        [0 0 0 0 0]
    :internal-format-video[0 0 0 0 0]
    :format-video        [0 0 0 0 0]
+   :fps-video             [0 0 0 0 0]
    :width-video         [0 0 0 0 0]
    :height-video        [0 0 0 0 0]
    :frames-video        [0 0 0 0 0]
@@ -145,7 +146,7 @@
                                     capture-cam_i   (get capture-cam cam-id)
 ]  (if (= false running-cam_i)(do 
 (swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
-(swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (vision.core/capture-from-cam cam-id)) )))(do (println "cam on" 0) ))))
+(swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (vision.core/capture-from-cam cam-id)) )))(do (println "Unable to init cam: " cam-id) ))))
 
 (defn init-video [locals video-id] (let [_              (println "init video" video-id )
                                     running-video     (:running-video @locals)
@@ -158,7 +159,7 @@
 ]  (if (and (not-nil? video-filename_i) (= false running-video_i))(do 
 (println "video tb init"video-filename_i)
 (swap! locals assoc :running-video (assoc running-video video-id true)) 
-(swap!  locals assoc :capture-video (assoc capture-video video-id (future (vision.core/capture-from-file video-filename_i)) )))(do (println "video on" video-id) ))))
+(swap!  locals assoc :capture-video (assoc capture-video video-id (future (vision.core/capture-from-file video-filename_i)) )))(do (println "Unable to init video: " video-id) ))))
 
 
 
@@ -631,7 +632,7 @@
                                 :text-id-cam         text-id-cam_i)))
  
 
- (defn- put-video-buffer [locals image target image-bytes nbytes  internal-format format-c height width video-idx text-id-video frames-video](let [
+ (defn- put-video-buffer [locals image target image-bytes nbytes  internal-format format-c height width video-idx text-id-video frames-video fps-video](let [
                         image_i (assoc (:image-video @locals) video-idx image)
                         target_i (assoc (:target-video @locals) video-idx target)
                         image-bytes_i (assoc (:image-bytes-video @locals) video-idx image-bytes)
@@ -642,6 +643,7 @@
                         height_i (assoc (:height-video @locals) video-idx height)
                         text-id-video_i (assoc (:text-id-video @locals) video-idx text-id-video)
                         frames-video_i (assoc (:frames-video @locals) video-idx frames-video)
+                        fps-video_i (assoc (:fps-video @locals) video-idx fps-video)
                         ]                                             
                     (swap! locals
                             assoc
@@ -653,7 +655,9 @@
                                 :format-video          format_i
                                 :width-video           width_i
                                 :height-video          height_i
-                                :text-id-video         text-id-video_i))) 
+                                :text-id-video         text-id-video_i
+                                :frames-video         frames-video_i
+                                :fps-video         fps-video_i))) 
  
  
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
@@ -686,34 +690,15 @@
                                     tex-id             (GL11/glGenTextures)
                                     ;image              (ImageIO/read (FileInputStream. "src/init.png"))
                                     capture-video     (:capture-video @locals)
-                                    _                   (println "capture-video_i-id" video-id)
-
                                     capture-video_i   (get capture-video video-id)
-                                    _                   (println "capture-video_i" capture-video_i)
                                     imageP             (if(not-nil? capture-video_i) (try-capture @capture-video_i))
-                                     _                   (println "imageP" imageP)
-
                                     imageDef           (if(not-nil? capture-video_i) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
-                                     _                   (println "imageDef" imageDef)
-
                                     image              (if (not-nil? capture-video_i)  @imageDef imageDef)
-                                     _                   (println "image" image)
-
-                                    width               (if (not-nil? capture-video_i) (vision.core/get-capture-property capture-video_i :frame-width)(.getWidth image))
-                                     _                   (println "width" width)
-
-                                    height              (if (not-nil? capture-video_i) (vision.core/get-capture-property capture-video_i :frame-height)(.getHeight image))
-                                                                         _                   (println "height" height)
-                                    frame-count         (if (not-nil? capture-video_i) (vision.core/get-capture-property capture-video_i :frame-count) 1)
-                                                                         _                   (println "frame-count" frame-count)
-
-
-
-                                    ;height             (.getHeight image)
-                                    ;width              (.getWidth image) 
+                                    width               (if (not-nil? capture-video_i) (vision.core/get-capture-property @capture-video_i :frame-width)(.getWidth image))
+                                    height              (if (not-nil? capture-video_i) (vision.core/get-capture-property @capture-video_i :frame-height)(.getHeight image))
+                                    frame-count         (if (not-nil? capture-video_i) (vision.core/get-capture-property @capture-video_i :frame-count) 1)
+                                    fps                (if (not-nil? capture-video_i) (vision.core/get-capture-property @capture-video_i :fps) 0)
                                     image-bytes        (tex-image-bytes image)
-                                        _                   (println "image-bytes" image-bytes)
-                                 
                                     internal-format    (tex-internal-format image)
                                     format             (tex-format image)
                                     nbytes             (* image-bytes (.getWidth image) (.getHeight image))
@@ -721,7 +706,7 @@
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
                                     ]
-                                    (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
+                                    (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
                                     (GL11/glBindTexture target tex-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
