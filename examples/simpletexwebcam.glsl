@@ -35,14 +35,16 @@ void main(void) {
   vec4 c4 = texture2D(iCam2,uv2);
   vec4 c5 = texture2D(iCam3,uv2);
   vec4 c6 = texture2D(iCam4,uv2);
+  
+  vec4 v1= texture2D(iVideo0, uv2);
 
   
   vec4 c = mix(c1,c2,0.3-sin(c1.w));  // alpha blend between two textures
   vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c6,cf1,1.5-sin(c1.w));  // alpha blend between two textures
-  //vec4 cf3 = mix(c5,c4,1.0-sin(c1.w));  // alpha blend between two textures
+  vec4 cf3 = mix(c2,v1,1.0-sin(c1.w));  // alpha blend between two textures
 
-  gl_FragColor = c;
+  gl_FragColor = cf3;
   
 }

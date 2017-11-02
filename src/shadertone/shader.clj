@@ -789,22 +789,32 @@
             imageP             (try-capture @capture-video)
             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
             image              @imageDef
-            frame-count         (vision.core/get-capture-property @capture-video :frame-count)
-            width               (vision.core/get-capture-property @capture-video :frame-width)
-            height              (vision.core/get-capture-property @capture-video :frame-height)            
-            ;height             (.getHeight image)
-            ;width              (.getWidth image)              
-            image-bytes        (tex-image-bytes image)
-            internal-format    (tex-internal-format image)
-            format             (tex-format image)
-            nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+
+            frame-count         (get (::frames-video @locals) video-id)
+
+             height (get (:height-video @locals) video-id)
+             width (get (:width-video @locals) video-id)         
+
+            image-bytes       (get (:image-bytes-video @locals) video-id) 
+
+            internal-format    (get (:internal-format-video @locals) video-id) 
+            format             (get (:format-video @locals) video-id) 
+            nbytes             (get (:nbytes-video @locals) video-id)
             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
+            
+            image_i (assoc (:image-video @locals) video-id buffer)
 
+                
              ]
-            (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
-
+            
+                     (swap! locals
+                            assoc
+                                :image-video           image_i)           
+            
+            
+            ;(put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
              ))
 ;(defn- start-cam-loop [locals cam-id capture-cam running-cam]
 ;    (let [_ (println "start cam loop " cam-id)]
@@ -823,7 +833,22 @@
 
                 (buffer-cam-texture locals cam-id capture-cam_i))(vision.core/release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
+(defn- start-video-loop [locals video-id]
+    (let [_ (println "start video loop " video-id)
+            running-video     (:running-video @locals)
+            running-video_i   (get running-video video-id)
+            capture-video     (:capture-video @locals)
+            capture-video_i   (get capture-video video-id)
+            frame-count       (get (:frames-video @locals) video-id)
+
+            ]
+        (if (= true running-video_i) 
+            (do (while  (get (:running-video @locals) video-id)
                 
+                (buffer-video-texture locals video-id capture-video_i))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+  
+ 
+ 
  (defn vec-remove
   ;;"remove elem in coll"
   [coll pos]
@@ -840,6 +865,14 @@
 (vision.core/release @capture-cam_i)
 (swap! locals assoc :cams (set-nil cams_tmp cam-id))))) 
 
+(defn- remove-if-bad-video [locals video-id] (let [videos_tmp (:videos @locals)            
+                                            running-video     (:running-video @locals)
+                                            running-video_i   (get running-video video-id)
+                                            capture-video     (:capture-video @locals)
+                                            capture-video_i   (get capture-video video-id)](do 
+(swap! locals assoc :running-video (assoc running-video video-id false)) 
+(vision.core/release @capture-video_i)
+(swap! locals assoc :videos (set-nil videos_tmp video-id)))))
 
 (defn- check-cam-idx [locals cam-id](let  [running-cam     (:running-cam @locals)
                                         running-cam_i   (get running-cam cam-id)
@@ -848,7 +881,18 @@
         (= cam-id nil) (println "no cam")
         :else (do (init-cam locals cam-id) (if (get @(get (:capture-cam @locals) cam-id) :pointer)(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
 ))))
-    
+
+(defn- check-video-idx [locals video-id](let  [running-video     (:running-video @locals)
+                                        running-video_i   (get running-video video-id)
+                                        capture-video     (:capture-video @locals)
+                                        capture-video_i   (get capture-video video-id)
+                                        video_idxs        (:videos @locals)
+                                        vid             (get video_idxs video-id)] (cond
+        (= vid nil) (println "no video")
+        :else (do (if (get @(get (:capture-video @locals) video-id) :pointer)(do (future (start-video-loop locals video-id)))(do (remove-if-bad-video locals video-id)(println " bad video " video-id)))
+))))
+
+
 (defn- init-cams
 [locals]
 (let [cam_idxs        (:cams @locals)]
@@ -867,9 +911,10 @@
         (init-video locals video-id ) 
         (init-video-tex locals video-id ) 
     )
-    ;(doseq [video-id video_idxs]
-    ;(println "video_id" video-id)
-    ;(check-video-idx locals video-id))
+    (doseq [video-id (range no-videos)]
+    (println "video_id" video-id)
+    (check-video-idx locals video-id)
+    )
     ))    
     
 ;; Try to implement a possibility start cam loops while the program is already running. No luck so far
@@ -992,7 +1037,11 @@
                                             (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)
                                             ) 
                                             )
- 
+ (defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
+                                            running-video_i   (get running-video video-id)]
+                                            (if (and (= true running-video_i)( not-nil?(get (:image-video @locals) video-id)))(do (process-video-image locals video-id)) :false)
+                                            ) 
+                                            )
 (defn- loop-get-cam-textures [locals cams](let [{:keys [width height i-resolution-loc
                 start-time last-time i-global-time-loc
                 i-date-loc
@@ -1018,6 +1067,34 @@
                 (doseq [i (remove nil? cams)]
 
                 (get-cam-textures locals i)
+         )
+               )
+               )
+(defn- loop-get-video-textures [locals videos](let [{:keys [width height i-resolution-loc
+                start-time last-time i-global-time-loc
+                i-date-loc
+                pgm-id vbo-id
+                vertices-count
+                i-mouse-loc
+                mouse-pos-x mouse-pos-y
+                mouse-ori-x mouse-ori-y
+                i-channel-time-loc i-channel-loc i-video-loc
+                i-channel-res-loc
+                channel-time-buffer channel-res-buffer
+                old-pgm-id old-fs-id
+                tex-ids videos tex-types
+                user-fn
+                pixel-read-enable
+                pixel-read-pos-x pixel-read-pos-y
+                pixel-read-data]} @locals
+]
+        ;;(. sharedD makeCurrent)
+
+   
+
+                (doseq [i (remove nil? videos)]
+
+                (get-video-textures locals (.indexOf (:videos @the-window-state) i))
          )
                )
                )
@@ -1076,7 +1153,7 @@
     (except-gl-errors "@ draw after activate textures")
     
     (loop-get-cam-textures locals cams)
-
+    (loop-get-video-textures locals videos)
 
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
@@ -1216,6 +1293,11 @@
     (println " Cams tbd" (:cams @the-window-state))
     (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
     (swap! locals assoc :cams (vec (replicate no-cams nil)))
+    
+    (println " Videos tbd" (:videos @the-window-state))
+    (doseq [i (remove nil? (:videos @the-window-state))](println "release videos " i)(release-video-textures (.indexOf (:videos @the-window-state) i)))
+    (swap! locals assoc :videos (vec (replicate no-videos nil)))
+    ;Stop and release video release-cam-textures
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id))
