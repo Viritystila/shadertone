@@ -793,12 +793,17 @@
 (defn- buffer-video-texture [locals video-id capture-video](let [
             target           (GL11/GL_TEXTURE_2D)
             ;tex-id             (+ no-textures cam-id)
+            frame-count         (get (:frames-video @locals) video-id)
+            cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
+            ;_                   (println "@capture-video" @capture-video)
+            ;            _                   (println "(< cur-frame frame-count)" (< cur-frame frame-count))
+
             tex-id             (get (:text-id-video @locals) video-id)
             imageP             (try-capture @capture-video)
+            ;_                   (print imageP)
             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
-            image              @imageDef
+            image              (if(= nil imageP) imageDef @imageDef)
 
-            frame-count         (get (::frames-video @locals) video-id)
 
              height (get (:height-video @locals) video-id)
              width (get (:width-video @locals) video-id)         
@@ -848,12 +853,14 @@
             capture-video     (:capture-video @locals)
             capture-video_i   (get capture-video video-id)
             frame-count       (get (:frames-video @locals) video-id)
-
+            cur-frame          (vision.core/get-capture-property @capture-video_i :pos-frames)
+            cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
+            ;_                (vision.core/set-capture-property  @capture-video_i :pos-frames (- frame-count 2))
             ]
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
-                
-                (buffer-video-texture locals video-id capture-video_i))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+                ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
+                (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps)) (buffer-video-texture locals video-id capture-video_i) (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) ))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
  
  
