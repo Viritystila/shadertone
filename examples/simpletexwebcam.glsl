@@ -37,13 +37,15 @@ void main(void) {
   vec4 c6 = texture2D(iCam4,uv2);
   
   vec4 v1= texture2D(iVideo0, uv2);
+  vec4 v2= texture2D(iVideo1, uv2);
 
   
-  vec4 c = mix(c1,c2,0.3-sin(c1.w));  // alpha blend between two textures
+  vec4 c = mix(v1,v2,0.3-sin(c1.w));  // alpha blend between two textures
   vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c6,cf1,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf3 = mix(c2,v1,1.0-sin(c1.w));  // alpha blend between two textures
+  vec4 cf3 = mix(c,c2,1.25-sin(c1.w));  // alpha blend between two textures
+  vec4 cf4 = mix(cf3,c3,1.25-sin(c1.w));  // alpha blend between two textures
 
   gl_FragColor = cf3;
   
