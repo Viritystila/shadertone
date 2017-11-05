@@ -173,13 +173,17 @@
 
     
 (defn release-video-textures [video-id](let [tmpvideos (:videos @the-window-state)
+                                             tmp-video-ids (:video-no-id @the-window-state)
                                             running-video     (:running-video @the-window-state)
-                                            _         (println "running-video at release function before release" running-video)
+                                            ;_         (println "running-video at release function before release" running-video)
                                             running-video_i   (get running-video video-id)]
                                             (swap! the-window-state assoc :running-video (assoc running-video video-id false))
                                             (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
-                                            (println "running-video at release function after release" (:running-video @the-window-state))))    
-    
+                                            (swap! the-window-state assoc :video-no-id (assoc tmp-video-ids video-id nil))
+                                            (println ":running-video at release function after release" (:running-video @the-window-state))
+                                            (println ":video-no-id at release function after release" (:video-no-id @the-window-state))
+                                            (println ":videos at release function after release" (:videos @the-window-state))))    
+
     
 ;; ======================================================================
 ;; code modified from
@@ -903,8 +907,8 @@
                                         capture-video_i   (get capture-video video-id)
                                         video_idxs        (:videos @locals)
                                         vid             (get video_idxs video-id)] (cond
-        (= vid nil) (println "no video")
-        :else (do (if (get @(get (:capture-video @locals) video-id) :pointer)(do (future (start-video-loop locals video-id)))(do (remove-if-bad-video locals video-id)(println " bad video " video-id)))
+        (= vid nil) (println "no video" video-id)
+        :else (do (init-video locals video-id ) (if (get @(get (:capture-video @locals) video-id) :pointer)(do (future (start-video-loop locals video-id)))(do (remove-if-bad-video locals video-id)(println " bad video " video-id)))
 ))))
 
 
@@ -923,8 +927,8 @@
 [locals]
 (let [video_idxs        (:videos @locals)]
     (doseq [video-id (range no-videos)]
-        (init-video locals video-id ) 
-        (init-video-tex locals video-id ) 
+    (init-video locals video-id ) 
+         (init-video-tex locals video-id ) 
     )
     (doseq [video-id (range no-videos)]
     (println "video_id" video-id)
@@ -938,7 +942,21 @@
 (check-cam-idx the-window-state cam-id)
 (swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
 ))
-      
+
+(defn post-start-video [video-filename video-id] (let [tmpvideo (:videos @the-window-state)
+                                              tmpvideo_ids (:video-no-id @the-window-state)] 
+
+(println "Before (:videos @the-window-state)" (:videos @the-window-state))
+;
+(println "Before (:video-no-id @the-window-state)" (:video-no-id @the-window-state))
+                                              (release-video-textures video-id)
+(swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
+(swap! the-window-state assoc :video-no-id (assoc tmpvideo_ids video-id video-id))
+(check-video-idx the-window-state video-id)
+(println "After (:videos @the-window-state)" (:videos @the-window-state))
+;
+(println "After (:video-no-id @the-window-state)" (:video-no-id @the-window-state))
+))
       
 (defn- init-gl
   [locals]
