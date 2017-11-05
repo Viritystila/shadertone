@@ -807,12 +807,8 @@
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
             target           (GL11/GL_TEXTURE_2D)
-            ;tex-id             (+ no-textures cam-id)
             frame-count         (get (:frames-video @locals) video-id)
             cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
-            ;_                   (println "@capture-video" @capture-video)
-            ;            _                   (println "(< cur-frame frame-count)" (< cur-frame frame-count))
-
             tex-id             (get (:text-id-video @locals) video-id)
             imageP             (try-capture @capture-video)
             ;_                   (print imageP)
@@ -822,23 +818,12 @@
             width              (.getWidth image) 
             image-bytes        (tex-image-bytes image)
            internal-format    (tex-internal-format image)
-            nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-
-
-             height (vision.core/get-capture-property @capture-video :frame-height)
+            height (vision.core/get-capture-property @capture-video :frame-height)
              width (vision.core/get-capture-property @capture-video :frame-width)
                           fps (vision.core/get-capture-property @capture-video :fps)
 
             nbytes             (* image-bytes width height)
-            ;_                   (println "height" height)
-             ;width (get (:width-video @locals) video-id)         
-
-            ;image-bytes       (get (:image-bytes-video @locals) video-id) 
-
-            ;internal-format    (get (:internal-format-video @locals) video-id) 
             format             (get (:format-video @locals) video-id) 
-            ;nbytes             (get (:nbytes-video @locals) video-id)
-
             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
@@ -846,11 +831,8 @@
 
                 
              ]
-            
-                     ;(swap! locals
-                     ;       assoc
-                     ;           :image-video           image_i)           
-                                                (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
+      
+            (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
 
             
             ;(put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
