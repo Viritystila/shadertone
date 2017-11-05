@@ -701,7 +701,14 @@
                                     target              (GL11/GL_TEXTURE_2D)
                                     tex-id             (GL11/glGenTextures)
                                     ;image              (ImageIO/read (FileInputStream. "src/init.png"))
+                                    ;height             (.getHeight image)
+                                    ;width              (.getWidth image) 
+                                    ;image-bytes        (tex-image-bytes image)
+                                    ;internal-format    (tex-internal-format image)
+
+                                    ;format             (tex-format image)
                                     capture-video     (:capture-video @locals)
+                                    _                  (println "capture-video" capture-video)
                                     capture-video_i   (get capture-video video-id)
                                     imageP             (if(not-nil? capture-video_i) (try-capture @capture-video_i))
                                     imageDef           (if(not-nil? capture-video_i) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
@@ -714,9 +721,13 @@
                                     internal-format    (tex-internal-format image)
                                     format             (tex-format image)
                                     nbytes             (* image-bytes (.getWidth image) (.getHeight image))
+                                    ;                        _                   (println "capture-video_i" capture-video_i)
+
                                     buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
+                                                                        ;_                   (println "hahahahahha init ok")
+
                                     ]
                                     (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
                                     (GL11/glBindTexture target tex-id)
@@ -807,29 +818,40 @@
             ;_                   (print imageP)
             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
             image              (if(= nil imageP) imageDef @imageDef)
+            height             (.getHeight image)
+            width              (.getWidth image) 
+            image-bytes        (tex-image-bytes image)
+           internal-format    (tex-internal-format image)
+            nbytes             (* image-bytes (.getWidth image) (.getHeight image))
 
 
-             height (get (:height-video @locals) video-id)
-             width (get (:width-video @locals) video-id)         
+             height (vision.core/get-capture-property @capture-video :frame-height)
+             width (vision.core/get-capture-property @capture-video :frame-width)
+                          fps (vision.core/get-capture-property @capture-video :fps)
 
-            image-bytes       (get (:image-bytes-video @locals) video-id) 
+            nbytes             (* image-bytes width height)
+            ;_                   (println "height" height)
+             ;width (get (:width-video @locals) video-id)         
 
-            internal-format    (get (:internal-format-video @locals) video-id) 
+            ;image-bytes       (get (:image-bytes-video @locals) video-id) 
+
+            ;internal-format    (get (:internal-format-video @locals) video-id) 
             format             (get (:format-video @locals) video-id) 
-            nbytes             (get (:nbytes-video @locals) video-id)
+            ;nbytes             (get (:nbytes-video @locals) video-id)
+
             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
-            
             image_i (assoc (:image-video @locals) video-id buffer)
 
                 
              ]
             
-                     (swap! locals
-                            assoc
-                                :image-video           image_i)           
-            
+                     ;(swap! locals
+                     ;       assoc
+                     ;           :image-video           image_i)           
+                                                (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
+
             
             ;(put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
              ))
@@ -856,7 +878,7 @@
             running-video_i   (get running-video video-id)
             capture-video     (:capture-video @locals)
             capture-video_i   (get capture-video video-id)
-            frame-count       (get (:frames-video @locals) video-id)
+            frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
             cur-frame          (vision.core/get-capture-property @capture-video_i :pos-frames)
             cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
             ;_                (vision.core/set-capture-property  @capture-video_i :pos-frames (- frame-count 2))
@@ -927,7 +949,7 @@
 [locals]
 (let [video_idxs        (:videos @locals)]
     (doseq [video-id (range no-videos)]
-    (init-video locals video-id ) 
+         ;(init-video locals video-id ) 
          (init-video-tex locals video-id ) 
     )
     (doseq [video-id (range no-videos)]
