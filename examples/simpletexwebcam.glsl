@@ -49,6 +49,6 @@ void main(void) {
   vec4 cf3 = mix(c,c2,1.25-sin(c1.w));  // alpha blend between two textures
   vec4 cf4 = mix(cf3,c3,1.25-sin(c1.w));  // alpha blend between two textures
 
-  gl_FragColor = c;
+  gl_FragColor = cf3;
   
 }

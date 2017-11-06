@@ -726,7 +726,6 @@
                                     buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
-                                                                        ;_                   (println "hahahahahha init ok")
 
                                     ]
                                     (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
@@ -931,7 +930,6 @@
 [locals]
 (let [video_idxs        (:videos @locals)]
     (doseq [video-id (range no-videos)]
-         ;(init-video locals video-id ) 
          (init-video-tex locals video-id ) 
     )
     (doseq [video-id (range no-videos)]
@@ -940,27 +938,25 @@
     )
     ))    
     
-;; Try to implement a possibility start cam loops while the program is already running. No luck so far
 (defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
-(release-cam-textures cam-id)
-(check-cam-idx the-window-state cam-id)
-(swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))
-))
+    (release-cam-textures cam-id)
+    (Thread/sleep 10)
+    (check-cam-idx the-window-state cam-id)
+    (swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))))
 
 (defn post-start-video [video-filename video-id] (let [tmpvideo (:videos @the-window-state)
-                                              tmpvideo_ids (:video-no-id @the-window-state)] 
+                                                        tmpvideo_ids (:video-no-id @the-window-state)
+                                                        capture-video     (:capture-video @the-window-state)
+                                                        capture-video_i   (get capture-video video-id)] 
+    ;(println capture-video_i)
 
-(println "Before (:videos @the-window-state)" (:videos @the-window-state))
-;
-(println "Before (:video-no-id @the-window-state)" (:video-no-id @the-window-state))
-                                              (release-video-textures video-id)
-(swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
-(swap! the-window-state assoc :video-no-id (assoc tmpvideo_ids video-id video-id))
-(check-video-idx the-window-state video-id)
-(println "After (:videos @the-window-state)" (:videos @the-window-state))
-;
-(println "After (:video-no-id @the-window-state)" (:video-no-id @the-window-state))
-))
+    (release-video-textures video-id)
+    (Thread/sleep 100)
+    ;(println capture-video_i)
+
+    (swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
+    (swap! the-window-state assoc :video-no-id (assoc tmpvideo_ids video-id video-id))
+    (check-video-idx the-window-state video-id)))
       
 (defn- init-gl
   [locals]
@@ -1074,7 +1070,7 @@
                                             (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)
                                             ) 
                                             )
- (defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
+(defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
                                             running-video_i   (get running-video video-id)]
                                             (if (and (= true running-video_i)( not-nil?(get (:image-video @locals) video-id)))(do (process-video-image locals video-id)) :false)
                                             ) 
@@ -1095,18 +1091,10 @@
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
-                pixel-read-data]} @locals
-]
-        ;;(. sharedD makeCurrent)
-
-   
-
+                pixel-read-data]} @locals]
                 (doseq [i (remove nil? cams)]
-
-                (get-cam-textures locals i)
-         )
-               )
-               )
+                (get-cam-textures locals i))))
+                
 (defn- loop-get-video-textures [locals videos](let [{:keys [width height i-resolution-loc
                 start-time last-time i-global-time-loc
                 i-date-loc
@@ -1124,18 +1112,9 @@
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
                 pixel-read-data
-                video-no-id]} @locals
-]
-        ;;(. sharedD makeCurrent)
-
-   
-
+                video-no-id]} @locals]
                 (doseq [i (remove nil? video-no-id)]
-
-                (get-video-textures locals i)
-         )
-               )
-               )
+                (get-video-textures locals i))))
                                             
 (defn- draw
   [locals]
@@ -1241,17 +1220,19 @@
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
     ;cams
-    (dotimes [i (count text-id-cam)] 
-        (when (nth text-id-cam i) 
+    ;(dotimes [i (count text-id-cam)] 
+    ;    (when (nth text-id-cam i) 
+    (doseq [i text-id-cam] 
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     ;videos
-    (dotimes [i (count text-id-video)] 
-        (when (nth text-id-video i) 
+    ;(dotimes [i (count text-id-video)] 
+    ;    (when (nth text-id-video i) 
+    (doseq [i text-id-video] 
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     (except-gl-errors "@ draw prior to post-draw")
 
     (when user-fn
