@@ -948,12 +948,8 @@
                                                         tmpvideo_ids (:video-no-id @the-window-state)
                                                         capture-video     (:capture-video @the-window-state)
                                                         capture-video_i   (get capture-video video-id)] 
-    ;(println capture-video_i)
-
     (release-video-textures video-id)
     (Thread/sleep 100)
-    ;(println capture-video_i)
-
     (swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
     (swap! the-window-state assoc :video-no-id (assoc tmpvideo_ids video-id video-id))
     (check-video-idx the-window-state video-id)))
@@ -1067,52 +1063,15 @@
 
 (defn- get-cam-textures[locals cam-id](let[running-cam     (:running-cam @locals)
                                             running-cam_i   (get running-cam cam-id)]
-                                            (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)
-                                            ) 
-                                            )
+                                            (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)))
 (defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
                                             running-video_i   (get running-video video-id)]
-                                            (if (and (= true running-video_i)( not-nil?(get (:image-video @locals) video-id)))(do (process-video-image locals video-id)) :false)
-                                            ) 
-                                            )
-(defn- loop-get-cam-textures [locals cams](let [{:keys [width height i-resolution-loc
-                start-time last-time i-global-time-loc
-                i-date-loc
-                pgm-id vbo-id
-                vertices-count
-                i-mouse-loc
-                mouse-pos-x mouse-pos-y
-                mouse-ori-x mouse-ori-y
-                i-channel-time-loc i-channel-loc i-cam-loc
-                i-channel-res-loc
-                channel-time-buffer channel-res-buffer
-                old-pgm-id old-fs-id
-                tex-ids cams tex-types
-                user-fn
-                pixel-read-enable
-                pixel-read-pos-x pixel-read-pos-y
-                pixel-read-data]} @locals]
+                                            (if (and (= true running-video_i)( not-nil?(get (:image-video @locals) video-id)))(do (process-video-image locals video-id)) :false)))
+(defn- loop-get-cam-textures [locals cams]
                 (doseq [i (remove nil? cams)]
-                (get-cam-textures locals i))))
+                (get-cam-textures locals i)))
                 
-(defn- loop-get-video-textures [locals videos](let [{:keys [width height i-resolution-loc
-                start-time last-time i-global-time-loc
-                i-date-loc
-                pgm-id vbo-id
-                vertices-count
-                i-mouse-loc
-                mouse-pos-x mouse-pos-y
-                mouse-ori-x mouse-ori-y
-                i-channel-time-loc i-channel-loc i-video-loc
-                i-channel-res-loc
-                channel-time-buffer channel-res-buffer
-                old-pgm-id old-fs-id
-                tex-ids videos tex-types
-                user-fn
-                pixel-read-enable
-                pixel-read-pos-x pixel-read-pos-y
-                pixel-read-data
-                video-no-id]} @locals]
+(defn- loop-get-video-textures [locals videos](let [{:keys [video-no-id]} @locals]
                 (doseq [i (remove nil? video-no-id)]
                 (get-video-textures locals i))))
                                             
@@ -1220,15 +1179,11 @@
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
     ;cams
-    ;(dotimes [i (count text-id-cam)] 
-    ;    (when (nth text-id-cam i) 
     (doseq [i text-id-cam] 
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     ;videos
-    ;(dotimes [i (count text-id-video)] 
-    ;    (when (nth text-id-video i) 
     (doseq [i text-id-video] 
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
@@ -1237,11 +1192,8 @@
 
     (when user-fn
       (user-fn :post-draw pgm-id))
-
     (except-gl-errors "@ draw after post-draw")
-
     (GL20/glUseProgram 0)
-
     ;; copy the rendered image
     (dotimes [i (count tex-ids)]
       (when (= :previous-frame (nth tex-types i))
@@ -1264,17 +1216,17 @@
   (let [{:keys [width height last-time pgm-id
                 mouse-pos-x mouse-pos-y
                 mouse-clicked mouse-ori-x mouse-ori-y]} @locals
-        cur-time (System/currentTimeMillis)
-        cur-mouse-clicked (Mouse/isButtonDown 0)
-        mouse-down-event (and cur-mouse-clicked (not mouse-clicked))
-        cur-mouse-pos-x (if cur-mouse-clicked (Mouse/getX) mouse-pos-x)
-        cur-mouse-pos-y (if cur-mouse-clicked (Mouse/getY) mouse-pos-y)
-        cur-mouse-ori-x (if mouse-down-event
+                cur-time (System/currentTimeMillis)
+                cur-mouse-clicked (Mouse/isButtonDown 0)
+                mouse-down-event (and cur-mouse-clicked (not mouse-clicked))
+                cur-mouse-pos-x (if cur-mouse-clicked (Mouse/getX) mouse-pos-x)
+                cur-mouse-pos-y (if cur-mouse-clicked (Mouse/getY) mouse-pos-y)
+                cur-mouse-ori-x (if mouse-down-event
                           (Mouse/getX)
                           (if cur-mouse-clicked
                             mouse-ori-x
                             (- (Math/abs ^float mouse-ori-x))))
-        cur-mouse-ori-y (if mouse-down-event
+                cur-mouse-ori-y (if mouse-down-event
                           (Mouse/getY)
                           (if cur-mouse-clicked
                             mouse-ori-y
@@ -1300,15 +1252,11 @@
         (if @reload-shader
           (try-reload-shader locals))))))
 
-
           
 (defn- destroy-gl
   [locals]
   (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals]
-        
-        
-    
-    ;;Stop and release cams
+     ;;Stop and release cams
     (println " Cams tbd" (:cams @the-window-state))
     (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
     (swap! locals assoc :cams (vec (replicate no-cams nil)))
@@ -1329,8 +1277,7 @@
     (GL20/glDeleteProgram pgm-id)
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
-    (GL15/glDeleteBuffers ^Integer vbo-id)
-    ))
+    (GL15/glDeleteBuffers ^Integer vbo-id)))
 
 (defn- run-thread
   [locals mode shader-filename shader-str-atom tex-filenames cams videos title true-fullscreen? user-fn display-sync-hz]
