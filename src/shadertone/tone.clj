@@ -218,12 +218,13 @@
   "Start a new shader display.  Pass in optional user-data and user-fn
   for custom control."
   [shader-filename-or-str-atom
-   &{:keys [width height title textures cams user-data user-fn]
+   &{:keys [width height title textures cams videos user-data user-fn]
      :or {width      600
           height     600
           title      "shadertone"
           textures   []
           cams       []
+          videos     []
           user-data  {}
           user-fn    tone-default-fn}}]
   (let [_ (println "start")
@@ -240,15 +241,17 @@
              :title      title
              :textures   textures
              :cams       cams
+             :videos     videos
              :user-fn    user-fn)))
 
 (defn start-fullscreen
   "Start a new fullscreen shader display.  Pass in optional user-data
   and user-fn for custom control."
   [shader-filename-or-str-atom
-   &{:keys [textures cams user-data user-fn]
+   &{:keys [textures cams videos user-data user-fn]
      :or {textures   []
           cams       []
+          videos     []
           user-data  {}
           user-fn    tone-default-fn}}]
   (let [textures (fix-texture-list textures)
@@ -260,6 +263,7 @@
     (s/start-fullscreen shader-filename-or-str-atom
                         :textures   textures
                         :cams       cams
+                        :videos     videos
                         :user-fn    user-fn)))
 
 (defn stop
