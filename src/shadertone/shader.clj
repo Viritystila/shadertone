@@ -1362,7 +1362,8 @@
   "create a watch for glsl shaders in the directory and return the global
   future atom for that watcher"
   [shader-filename]
-  (let [dir (.getParent (File. ^String shader-filename))]
+  (let [dir (.getParent (File. ^String shader-filename))
+        _   (println "dir" dir)]
     (reset! watcher-just-started true)
     (watcher/watcher
      [dir]
