@@ -13,6 +13,7 @@
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
            (org.lwjgl.opengl GL11 GL12 GL13 GL20 ARBTextureRg)))
 
+           
 ;; ----------------------------------------------------------------------
 ;; Tap into the Overtone output volume and send it to iOvertoneVolume
 ;; volume tap synth inspired by
@@ -101,10 +102,10 @@
   "The shader display will call this routine on every draw.  Update
   the waveform texture with FFT data in the first row and waveform
   data in the 2nd row."
-  [dispatch pgm-id]
+  [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?
     :init ;; create & bind the texture
-    (let [tex-id (GL11/glGenTextures)]
+    (let [tex-id tex-id-i]
       (ensure-internal-server!)
       (reset! fftwave-tex-id tex-id)
       (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id)
@@ -129,20 +130,21 @@
             (.put ^floats (buffer-data fft-buf))
             (.put ^floats (buffer-data wave-buf))
             (.flip)))
-      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @fftwave-tex-num))
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D @fftwave-tex-id)
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
+      (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-i)
       (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRg/GL_R32F
                          ^Integer WAVE-BUF-SIZE
                          2 0 GL11/GL_RED GL11/GL_FLOAT
                          ^FloatBuffer fftwave-float-buf))
     :post-draw ;; unbind the texture
     (do
-      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @fftwave-tex-num))
+      ;(print "@fftwave-tex-num" @fftwave-tex-num)
+      (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     :destroy ;;
     (do
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-      (GL11/glDeleteTextures ^Integer @fftwave-tex-id))))
+      (GL11/glDeleteTextures ^Integer tex-id-i))))
 
 (defn- fix-fftwav-texture
   "look for the :overtone-audio keyword, set the fftwave-tex-num atom"
@@ -176,11 +178,11 @@
 ;; Also calls tone-fftwave-fn to put waveform and fft data into:
 ;;   iChannel[0]
 (defn- tone-default-fn
-  [dispatch pgm-id]
+  [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?
     :init ;; find Uniform Location
     (doseq [key (keys @tone-user-data)]
-      (let [
+      (let [_ (println " key " key)
             loc (GL20/glGetUniformLocation ^Integer pgm-id ^String key)]
         (swap! tone-user-locs assoc key loc)))
     :pre-draw
@@ -209,7 +211,7 @@
     :destroy
     nil ;; nothing to do
     )
-  (tone-fftwave-fn dispatch pgm-id)
+  (tone-fftwave-fn dispatch pgm-id tex-id-i)
   )
 
 ;; ======================================================================
@@ -226,7 +228,8 @@
           cams       []
           videos     []
           user-data  {}
-          user-fn    tone-default-fn}}]
+          user-fn    tone-default-fn
+          }}]
   (let [_ (println "start")
         textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
@@ -242,7 +245,8 @@
              :textures   textures
              :cams       cams
              :videos     videos
-             :user-fn    user-fn)))
+             :user-fn    user-fn
+             )))
 
 (defn start-fullscreen
   "Start a new fullscreen shader display.  Pass in optional user-data

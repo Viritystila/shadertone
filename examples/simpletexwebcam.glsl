@@ -30,6 +30,10 @@ void main(void) {
   uv.x = uv.x + 5.5*sin(0.15*iGlobalTime);
   uv.y = uv.y + 2.5*cos(1.03*iGlobalTime);
   vec4 c1 = texture2D(iChannel0,uv);
+  vec4 c1b =texture2D(iChannel1, uv);
+  
+  vec4 fftw=texture2D(iFftWave, uv);
+  
   vec4 c2 = texture2D(iCam0,vec2(uv3.x, -uv3.y * prop));
   vec4 c3 = texture2D(iCam1,uv2);
   vec4 c4 = texture2D(iCam2,uv2);
@@ -49,6 +53,6 @@ void main(void) {
   vec4 cf3 = mix(c,c2,1.25-sin(c1.w));  // alpha blend between two textures
   vec4 cf4 = mix(cf3,c3,1.25-sin(c1.w));  // alpha blend between two textures
 
-  gl_FragColor = cf3;
+  gl_FragColor = fftw;
   
 }
