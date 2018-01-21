@@ -82,6 +82,7 @@
    :frame-ctr-video     [0 0 0 0 0]
    ;Other
    :tex-id-fftwave      0
+   :i-fftwave-loc      [0]
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
@@ -270,6 +271,7 @@
                       (uniform-sampler-type-str tex-types 1)
                       (uniform-sampler-type-str tex-types 2)
                       (uniform-sampler-type-str tex-types 3)
+                      "uniform sampler2D iFftWave; \n";
                       "uniform sampler2D iCam0; \n"
                       "uniform sampler2D iCam1; \n"
                       "uniform sampler2D iCam2; \n"
@@ -426,6 +428,8 @@
             i-channel2-loc        (GL20/glGetUniformLocation pgm-id "iChannel2")
             i-channel3-loc        (GL20/glGetUniformLocation pgm-id "iChannel3")
             
+            i-fftwave-loc         (GL20/glGetUniformLocation pgm-id "iFftWave")
+
             i-cam0-loc        (GL20/glGetUniformLocation pgm-id "iCam0")
             i-cam1-loc        (GL20/glGetUniformLocation pgm-id "iCam1")
             i-cam2-loc        (GL20/glGetUniformLocation pgm-id "iCam2")
@@ -453,6 +457,7 @@
                :i-channel-time-loc i-channel-time-loc
                :i-mouse-loc i-mouse-loc
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
+               :i-fftwave-loc [i-fftwave-loc]
                :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                :i-channel-res-loc i-channel-res-loc
@@ -1019,6 +1024,8 @@
                 i-channel2-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel2")
                 i-channel3-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel3")
                 
+                i-fftwave-loc         (GL20/glGetUniformLocation new-pgm-id "iFftWave")
+                
                 i-cam0-loc        (GL20/glGetUniformLocation new-pgm-id "iCam0")
                 i-cam1-loc        (GL20/glGetUniformLocation new-pgm-id "iCam1")
                 i-cam2-loc        (GL20/glGetUniformLocation new-pgm-id "iCam2")
@@ -1053,6 +1060,7 @@
                    :i-channel-time-loc i-channel-time-loc
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
+                   :i-fftwave-loc [i-fftwave-loc]
                    :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                    :i-channel-res-loc i-channel-res-loc
@@ -1090,7 +1098,7 @@
                 i-mouse-loc
                 mouse-pos-x mouse-pos-y
                 mouse-ori-x mouse-ori-y
-                i-channel-time-loc i-channel-loc i-cam-loc i-video-loc
+                i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
                 i-channel-res-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
@@ -1160,6 +1168,8 @@
     (GL20/glUniform1i (nth i-video-loc 2) 12)
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
+    (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
+
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
