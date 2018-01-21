@@ -101,10 +101,10 @@
   "The shader display will call this routine on every draw.  Update
   the waveform texture with FFT data in the first row and waveform
   data in the 2nd row."
-  [dispatch pgm-id]
+  [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?
     :init ;; create & bind the texture
-    (let [tex-id (GL11/glGenTextures)]
+    (let [tex-id tex-id-i]
       (ensure-internal-server!)
       (reset! fftwave-tex-id tex-id)
       (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id)
@@ -137,6 +137,7 @@
                          ^FloatBuffer fftwave-float-buf))
     :post-draw ;; unbind the texture
     (do
+      ;(print "@fftwave-tex-num" @fftwave-tex-num)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @fftwave-tex-num))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     :destroy ;;
@@ -176,7 +177,7 @@
 ;; Also calls tone-fftwave-fn to put waveform and fft data into:
 ;;   iChannel[0]
 (defn- tone-default-fn
-  [dispatch pgm-id]
+  [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?
     :init ;; find Uniform Location
     (doseq [key (keys @tone-user-data)]
@@ -209,7 +210,7 @@
     :destroy
     nil ;; nothing to do
     )
-  (tone-fftwave-fn dispatch pgm-id)
+  (tone-fftwave-fn dispatch pgm-id tex-id-i)
   )
 
 ;; ======================================================================
@@ -226,7 +227,8 @@
           cams       []
           videos     []
           user-data  {}
-          user-fn    tone-default-fn}}]
+          user-fn    tone-default-fn
+          }}]
   (let [_ (println "start")
         textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
@@ -242,7 +244,8 @@
              :textures   textures
              :cams       cams
              :videos     videos
-             :user-fn    user-fn)))
+             :user-fn    user-fn
+             )))
 
 (defn start-fullscreen
   "Start a new fullscreen shader display.  Pass in optional user-data

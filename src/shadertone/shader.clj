@@ -81,6 +81,7 @@
    :frames-video        [0 0 0 0 0]
    :frame-ctr-video     [0 0 0 0 0]
    ;Other
+   :tex-id-fftwave      0
    :i-channel-res-loc   0
    :i-date-loc          0
    :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
@@ -966,8 +967,12 @@
     (init-cams locals)
     (init-videos locals)
     (init-shaders locals)
+
+    (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
+    (println "fftwve tex id"  (:tex-id-fftwave @locals))
+
     (when (and (not (nil? user-fn)) (:shader-good @locals))
-      (user-fn :init (:pgm-id @locals)))))
+      (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
 (defn- try-reload-shader
   [locals]
@@ -1031,7 +1036,7 @@
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
-              (user-fn :init new-pgm-id))
+              (user-fn :init new-pgm-id (:tex-id-fftwave @locals)))
             ;; cleanup the old program
             (when (not= pgm-id 0)
               (GL20/glDetachShader pgm-id vs-id)
@@ -1112,9 +1117,10 @@
     (GL11/glClear GL11/GL_COLOR_BUFFER_BIT)
 
     (when user-fn
-      (user-fn :pre-draw pgm-id))
+      (user-fn :pre-draw pgm-id (:tex-id-fftwave @locals)))
 
     ;; activate textures
+    ;(print "tex-ids" tex-ids)
     (dotimes [i (count tex-ids)]
       (when (nth tex-ids i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
@@ -1191,7 +1197,7 @@
     (except-gl-errors "@ draw prior to post-draw")
 
     (when user-fn
-      (user-fn :post-draw pgm-id))
+      (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
     (except-gl-errors "@ draw after post-draw")
     (GL20/glUseProgram 0)
     ;; copy the rendered image
@@ -1267,7 +1273,7 @@
     ;Stop and release video release-cam-textures
     ;; Delete any user state
     (when user-fn
-      (user-fn :destroy pgm-id))
+      (user-fn :destroy pgm-id (:tex-id-fftwave @locals)))
     ;; Delete the shaders
     (GL20/glUseProgram 0)
     (GL20/glDetachShader pgm-id vs-id)
@@ -1388,7 +1394,7 @@
 (defonce shader-user-data (atom {}))
 (defonce shader-user-locs (atom {}))
 (defn- shader-default-fn
-  [dispatch pgm-id]
+  [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?
     :init ;; find Uniform Location
     (doseq [key (keys @shader-user-data)]
