@@ -445,6 +445,8 @@
     
             i-channel-res-loc     (GL20/glGetUniformLocation pgm-id "iChannelResolution")
             i-date-loc            (GL20/glGetUniformLocation pgm-id "iDate")
+            ;_ (println "i-channel0-loc" i-channel0-loc)
+
             _ (except-gl-errors "@ end of let init-shaders")
             ]
         (swap! locals
@@ -547,7 +549,8 @@
   "load, bind texture from filename.  returns a texture info vector
    [tex-id width height z].  returns nil tex-id if filename is nil"
   ([^String filename]
-     (let [tex-id (GL11/glGenTextures)]
+     (let [tex-id (GL11/glGenTextures)
+     _ (println "tex-id tex" tex-id)]
        (if (cubemap-filename? filename)
          (do
            (dotimes [i 6]
@@ -571,7 +574,7 @@
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
                                          target)]
              ;_ (println "target" target)
-             ;_ (println "tex-id" tex-id)
+             ;_ (println "tex-id input" tex-id)
          (GL11/glBindTexture target tex-id)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -608,7 +611,6 @@
   (let [tex-infos (map load-texture (:tex-filenames @locals))
         ;_ (println "raw" tex-infos)
         tex-ids   (map first tex-infos)
-        ;_ (println "tex-ids" tex-ids)
 
         tex-whd   (map rest tex-infos)
         tex-whd   (flatten
@@ -622,6 +624,8 @@
         _         (-> ^FloatBuffer (:channel-res-buffer @locals)
                       (.put ^floats (float-array tex-whd))
                       (.flip))
+        ;_ (println "tex-ids init!" tex-ids)
+
         ]
     (swap! locals assoc
            :tex-ids tex-ids)))
@@ -684,6 +688,8 @@
  (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
                                     tex-id             (GL11/glGenTextures)
+                                    ;_                   (println "cam-id init" cam-id)
+                                    ;_                   (println "cam tex id" tex-id)
                                     image              (ImageIO/read (FileInputStream. "src/init.png"))
                                     height             (.getHeight image)
                                     width              (.getWidth image) 
@@ -926,6 +932,7 @@
 [locals]
 (let [cam_idxs        (:cams @locals)]
     (doseq [cam-id (range no-cams)]
+        ;(println "cam-id init" cam-id)
         (init-cam-tex locals cam-id ) 
     )
     (doseq [cam-id cam_idxs]
@@ -975,7 +982,7 @@
     (init-shaders locals)
 
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
-    (println "fftwve tex id"  (:tex-id-fftwave @locals))
+    ;(println "fftwve tex id"  (:tex-id-fftwave @locals))
 
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
@@ -1133,6 +1140,7 @@
     (dotimes [i (count tex-ids)]
       (when (nth tex-ids i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+        ;(println "(nth tex-ids i) i" (nth tex-ids i))
         (cond
          (= :cubemap (nth tex-types i))
          (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP (nth tex-ids i))
@@ -1155,11 +1163,11 @@
                       mouse-pos-y
                       mouse-ori-x
                       mouse-ori-y)
-    (GL20/glUniform1i (nth i-channel-loc 0) 0)
-    (GL20/glUniform1i (nth i-channel-loc 1) 1)
-    (GL20/glUniform1i (nth i-channel-loc 2) 2)
-    (GL20/glUniform1i (nth i-channel-loc 3) 3)
-    (GL20/glUniform1i (nth i-cam-loc 0) 5)  ; Why the discontinuation?
+    (GL20/glUniform1i (nth i-channel-loc 0) 1)
+    (GL20/glUniform1i (nth i-channel-loc 1) 2)
+    (GL20/glUniform1i (nth i-channel-loc 2) 3)
+    (GL20/glUniform1i (nth i-channel-loc 3) 4)
+    (GL20/glUniform1i (nth i-cam-loc 0) 5)  
     (GL20/glUniform1i (nth i-cam-loc 1) 6)
     (GL20/glUniform1i (nth i-cam-loc 2) 7)
     (GL20/glUniform1i (nth i-cam-loc 3) 8)
@@ -1190,20 +1198,25 @@
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
     (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
     ;; unbind textures
-    (dotimes [i (count tex-ids)]
-      (when (nth tex-ids i)
-        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-        (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
-    ;cams
-    (doseq [i text-id-cam] 
+    (doseq [i (remove nil? tex-ids)]
+        ;(println "tex-ids array" tex-ids)
+      ;(when (nth tex-ids i)
+        ;(println "tex id i " i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-    ;videos
-    (doseq [i text-id-video] 
+        ;)
+    ;cams
+    (doseq [i text-id-cam] 
+        ;(println "cam i" i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-        (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
+        ;(GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+    ;videos
+    (doseq [i text-id-video]
+        ;(println "video i" i)
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+        ;(GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     (except-gl-errors "@ draw prior to post-draw")
 

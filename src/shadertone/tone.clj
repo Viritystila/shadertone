@@ -138,7 +138,7 @@
                          ^FloatBuffer fftwave-float-buf))
     :post-draw ;; unbind the texture
     (do
-      ;(print "@fftwave-tex-num" @fftwave-tex-num)
+      ;(print "@fftwave-tex-num" tex-id-i)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     :destroy ;;
@@ -182,7 +182,7 @@
   (case dispatch ;; FIXME defmulti?
     :init ;; find Uniform Location
     (doseq [key (keys @tone-user-data)]
-      (let [_ (println " key " key)
+      (let [;_ (println " key " key)
             loc (GL20/glGetUniformLocation ^Integer pgm-id ^String key)]
         (swap! tone-user-locs assoc key loc)))
     :pre-draw
@@ -231,7 +231,7 @@
           user-fn    tone-default-fn
           }}]
   (let [_ (println "start")
-        textures (fix-texture-list textures)
+        ;textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
                               user-data {"iOvertoneVolume"
                                          (atom {:synth voltap-synth
@@ -258,7 +258,7 @@
           videos     []
           user-data  {}
           user-fn    tone-default-fn}}]
-  (let [textures (fix-texture-list textures)
+  (let [;textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
                               user-data {"iOvertoneVolume"
                                          (atom {:synth voltap-synth
