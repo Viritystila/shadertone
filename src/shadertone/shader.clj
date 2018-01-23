@@ -1138,6 +1138,7 @@
     ;; activate textures
     ;(print "tex-ids" tex-ids)
     (dotimes [i (count tex-ids)]
+
       (when (nth tex-ids i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         ;(println "(nth tex-ids i) i" (nth tex-ids i))

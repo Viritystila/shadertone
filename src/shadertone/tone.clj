@@ -176,7 +176,7 @@
 ;;   uniform float iOvertoneVolume;
 ;; at the top of your glsl shader.
 ;; Also calls tone-fftwave-fn to put waveform and fft data into:
-;;   iChannel[0]
+;;   iFftWave
 (defn- tone-default-fn
   [dispatch pgm-id tex-id-i]
   (case dispatch ;; FIXME defmulti?

@@ -31,6 +31,9 @@ void main(void) {
   uv.y = uv.y + 2.5*cos(1.03*iGlobalTime);
   vec4 c1 = texture2D(iChannel0,uv);
   vec4 c1b =texture2D(iChannel1, uv);
+  vec4 c1c =texture2D(iChannel1, uv);
+  vec4 c1d =texture2D(iChannel1, uv);
+
   
   vec4 fftw=texture2D(iFftWave, uv);
   
