@@ -122,7 +122,8 @@
                          ^Integer WAVE-BUF-SIZE
                          2 0 GL11/GL_RED GL11/GL_FLOAT
                          ^FloatBuffer fftwave-float-buf)
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+      (println "init fftwave"))
     :pre-draw ;; grab the data and put it in the texture for drawing.
     (do
       (if (buffer-live? wave-buf) ;; FIXME? assume fft-buf is live
@@ -135,7 +136,9 @@
       (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRg/GL_R32F
                          ^Integer WAVE-BUF-SIZE
                          2 0 GL11/GL_RED GL11/GL_FLOAT
-                         ^FloatBuffer fftwave-float-buf))
+                         ^FloatBuffer fftwave-float-buf)
+    ;(println "pre-draw fftwave " tex-id-i )
+    )
     :post-draw ;; unbind the texture
     (do
       ;(print "@fftwave-tex-num" tex-id-i)

@@ -1200,25 +1200,22 @@
     (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
     ;; unbind textures
     (doseq [i (remove nil? tex-ids)]
-        ;(println "tex-ids array" tex-ids)
-      ;(when (nth tex-ids i)
-        ;(println "tex id i " i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
         ;)
     ;cams
     (doseq [i text-id-cam] 
-        ;(println "cam i" i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-        ;(GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     ;videos
     (doseq [i text-id-video]
-        ;(println "video i" i)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-        ;(GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+        
+        
+    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (:tex-id-fftwave @locals)))
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
     (except-gl-errors "@ draw prior to post-draw")
 
     (when user-fn
