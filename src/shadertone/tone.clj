@@ -167,7 +167,17 @@
   (reset! fftwave-tex-num 0) ;; FIXME this default could mess up other tex0 cases
   (map fix-fftwav-texture (map-indexed vector textures)))
 
+  
+;;Camera and video controls
+;post-start-cam
 
+(defn post-start-cam [cam-id] (s/post-start-cam cam-id))
+
+(defn post-start-video [video-filename video-id] (s/post-start-video video-filename video-id))
+
+(defn release-cam-textures [cam-id](s/release-cam-textures cam-id))
+
+(defn release-video-textures [video-id](s/release-video-textures video-id))
 
 
 
@@ -214,7 +224,7 @@
     :destroy
     nil ;; nothing to do
     )
-  (tone-fftwave-fn dispatch pgm-id tex-id-i)
+  ;(tone-fftwave-fn dispatch pgm-id tex-id-i)
   )
 
 ;; ======================================================================
@@ -260,7 +270,8 @@
           cams       []
           videos     []
           user-data  {}
-          user-fn    tone-default-fn}}]
+          user-fn    tone-default-fn
+          }}]
   (let [;textures (fix-texture-list textures)
         user-data (merge-with #(or %1 %2) ; kibit keep
                               user-data {"iOvertoneVolume"
@@ -271,7 +282,8 @@
                         :textures   textures
                         :cams       cams
                         :videos     videos
-                        :user-fn    user-fn)))
+                        :user-fn    user-fn
+                        )))
 
 (defn stop
   []
