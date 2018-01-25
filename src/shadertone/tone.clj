@@ -4,6 +4,7 @@
   (:use [overtone.helpers lib]
         [overtone.libs event deps]
         [overtone.sc defaults synth ugens buffer node foundation-groups bus]
+        [overtone.sc.machinery.server connection comms native]
         [overtone.sc.cgens buf-io tap]
         [overtone.studio core util]
         )
@@ -35,6 +36,7 @@
 ;; synths pour data into these bufs
 (defonce wave-buf (buffer WAVE-BUF-SIZE))
 (defonce fft-buf (buffer WAVE-BUF-SIZE))
+
 ;; on request from ogl, stuff wave-buf & fft-buf into fftwave-float-buf
 ;; and use that FloatBuffer for texturing
 (defonce fftwave-tex-id (atom 0))
@@ -123,14 +125,18 @@
                          2 0 GL11/GL_RED GL11/GL_FLOAT
                          ^FloatBuffer fftwave-float-buf)
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-      (println "init fftwave"))
+      (println "init fftwave " WAVE-BUF-SIZE))
     :pre-draw ;; grab the data and put it in the texture for drawing.
+    (let [fbbp (buffer-data fft-buf)
+          wbb (buffer-data wave-buf)
+          ]
     (do
       (if (buffer-live? wave-buf) ;; FIXME? assume fft-buf is live
         (-> ^FloatBuffer fftwave-float-buf
-            (.put ^floats (buffer-data fft-buf))
-            (.put ^floats (buffer-data wave-buf))
-            (.flip)))
+            (.put ^floats fbbp) ;(.put ^floats (buffer-data fft-buf)
+            (.put ^floats wbb) ;(.put ^floats (buffer-data wave-buf)
+            (.flip))
+            )
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-i)
       (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRg/GL_R32F
@@ -139,11 +145,15 @@
                          ^FloatBuffer fftwave-float-buf)
     ;(println "pre-draw fftwave " tex-id-i )
     )
+    )
     :post-draw ;; unbind the texture
     (do
       ;(print "@fftwave-tex-num" tex-id-i)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+      (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+      ;(.rewind fftwave-float-buf)
+      ;
+      )
     :destroy ;;
     (do
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
@@ -169,7 +179,6 @@
 
   
 ;;Camera and video controls
-;post-start-cam
 
 (defn post-start-cam [cam-id] (s/post-start-cam cam-id))
 

@@ -1218,6 +1218,8 @@
 
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
+    
+    
     (except-gl-errors "@ draw after post-draw")
     (GL20/glUseProgram 0)
     ;; copy the rendered image
