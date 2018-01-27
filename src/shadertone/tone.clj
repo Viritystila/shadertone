@@ -233,7 +233,7 @@
     :destroy
     nil ;; nothing to do
     )
-  ;(tone-fftwave-fn dispatch pgm-id tex-id-i)
+  (tone-fftwave-fn dispatch pgm-id tex-id-i)
   )
 
 ;; ======================================================================

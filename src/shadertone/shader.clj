@@ -142,6 +142,17 @@
 
 (def not-nil? (complement nil?)) 
 
+;  frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
+; (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) )
+
+(defn set-video-frame [video-id frame] (let[running-video     (:running-video @the-window-state)
+                                     running-video_i     (get running-video video-id)
+                                     capture-video       (:capture-video @the-window-state)
+                                     capture-video_i     (get capture-video video-id)
+                                     frame-count         (get (:frames-video @the-window-state) video-id)
+                                     frame      (if (> frame frame-count) frame)
+                                     frame (if (<= frame 0) frame)]
+                                     (if (= false running-video_i)(vision.core/set-capture-property  @capture-video_i :pos-frames 1 ))))
 
 (defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
                                     running-cam     (:running-cam @locals)
@@ -174,8 +185,8 @@
                                         (println "running-cam at release function after release" (:running-cam @the-window-state))))
 
     
-(defn release-video-textures [video-id](let [tmpvideos (:videos @the-window-state)
-                                             tmp-video-ids (:video-no-id @the-window-state)
+(defn release-video-textures [video-id](let[tmpvideos (:videos @the-window-state)
+                                            tmp-video-ids (:video-no-id @the-window-state)
                                             running-video     (:running-video @the-window-state)
                                             ;_         (println "running-video at release function before release" running-video)
                                             running-video_i   (get running-video video-id)]
@@ -873,17 +884,18 @@
             capture-video     (:capture-video @locals)
             capture-video_i   (get capture-video video-id)
             frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
-            cur-frame          (vision.core/get-capture-property @capture-video_i :pos-frames)
+            cur-frame         (vision.core/get-capture-property @capture-video_i :pos-frames)
             cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
             ;_                (vision.core/set-capture-property  @capture-video_i :pos-frames (- frame-count 2))
             ]
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
-                (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps)) (buffer-video-texture locals video-id capture-video_i) (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) ))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+                (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
+                (buffer-video-texture locals video-id capture-video_i) 
+                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) ))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
- 
- 
+
  (defn vec-remove
   ;;"remove elem in coll"
   [coll pos]
