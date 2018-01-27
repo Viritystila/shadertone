@@ -12,7 +12,7 @@
                  [watchtower          "0.1.1"]
                  ;[org.openpnp/opencv "3.2.0-1"]
                  [vision  "1.0.0-SNAPSHOT"]]
-    :jvm-opts ["-Djna.library.path=../vision/resources/lib"]
+    :jvm-opts ["-Djna.library.path=../vision/resources/lib" "-XX:MaxDirectMemorySize=6G" "-Xmx6g"]
 
   :main ^{:skip-aot true} shadertone.core
   ;; add per WARNING: JVM argument TieredStopAtLevel=1 is active...

@@ -79,7 +79,9 @@
    :width-video         [0 0 0 0 0]
    :height-video        [0 0 0 0 0]
    :frames-video        [0 0 0 0 0]
-   :frame-ctr-video     [0 0 0 0 0]
+   :frame-ctr-video     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :frame-change-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :is-paused-video     [false false false false false]
    ;Other
    :tex-id-fftwave      0
    :i-fftwave-loc      [0]
@@ -150,9 +152,20 @@
                                      capture-video       (:capture-video @the-window-state)
                                      capture-video_i     (get capture-video video-id)
                                      frame-count         (get (:frames-video @the-window-state) video-id)
-                                     frame      (if (> frame frame-count) frame)
-                                     frame (if (<= frame 0) frame)]
-                                     (if (= false running-video_i)(vision.core/set-capture-property  @capture-video_i :pos-frames 1 ))))
+                                     frame      (if (< frame frame-count)  frame frame-count)
+                                     ;_ (print " frame-count " frame-count )
+                                     ;_ (print "input frame " frame )
+                                     frame (if (> frame 1) frame 1)
+                                     ;_ (print "input frame " frame )
+                                     frame-ctr-video (:frame-ctr-video @the-window-state)
+                                     ;_ (print " previous frame-ctr-video " @(nth frame-ctr-video video-id ))
+                                     ]
+                                     (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
+                                     (reset! (nth (:frame-change-video @the-window-state) video-id) true)
+                                     ;(print " next frame-ctr-video " @(nth (:frame-ctr-video @the-window-state) video-id)
+                                     ))
+                                     
+;(if (= true running-video_i)(vision.core/set-capture-property  @capture-video_i :pos-frames frame ))
 
 (defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
                                     running-cam     (:running-cam @locals)
@@ -830,7 +843,7 @@
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
             target           (GL11/GL_TEXTURE_2D)
-            frame-count         (get (:frames-video @locals) video-id)
+            frame-count          (vision.core/get-capture-property @capture-video :frame-count)
             cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
             tex-id             (get (:text-id-video @locals) video-id)
             imageP             (try-capture @capture-video)
@@ -840,7 +853,7 @@
             height             (.getHeight image)
             width              (.getWidth image) 
             image-bytes        (tex-image-bytes image)
-           internal-format    (tex-internal-format image)
+            internal-format    (tex-internal-format image)
             height (vision.core/get-capture-property @capture-video :frame-height)
              width (vision.core/get-capture-property @capture-video :frame-width)
                           fps (vision.core/get-capture-property @capture-video :fps)
@@ -877,6 +890,7 @@
 
                 (buffer-cam-texture locals cam-id capture-cam_i))(vision.core/release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
+ ;:frame-ctr-video
 (defn- start-video-loop [locals video-id]
     (let [_ (println "start video loop " video-id)
             running-video     (:running-video @locals)
@@ -886,10 +900,14 @@
             frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
             cur-frame         (vision.core/get-capture-property @capture-video_i :pos-frames)
             cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
-            ;_                (vision.core/set-capture-property  @capture-video_i :pos-frames (- frame-count 2))
+            locKey            (keyword (str "frame-ctr-"video-id))
             ]
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
+                
+                ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) ) )
+            
+                (reset! (nth (:frame-change-video @the-window-state) video-id) false)
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
                 (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
                 (buffer-video-texture locals video-id capture-video_i) 

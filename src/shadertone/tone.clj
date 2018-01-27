@@ -188,6 +188,8 @@
 
 (defn release-video-textures [video-id](s/release-video-textures video-id))
 
+(defn set-video-frame [video-id frame] (s/set-video-frame video-id frame))
+
 
 
 ;; ======================================================================
