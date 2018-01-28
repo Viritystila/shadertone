@@ -6,7 +6,7 @@
   ;:injections [(nu.pattern.OpenCV/loadShared)
   ;            (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
   :dependencies [;; 1.6.0 causes error with *warn-on-reflection*.  1.7.0-RC1 works
-                 [org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojure "1.9.0"]
                  [hello_lwjgl/lwjgl   "2.9.1"]
                  [overtone            "0.10.3"]
                  [watchtower          "0.1.1"]

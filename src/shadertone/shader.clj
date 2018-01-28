@@ -165,7 +165,83 @@
                                      ;(print " next frame-ctr-video " @(nth (:frame-ctr-video @the-window-state) video-id)
                                      ))
                                      
-;(if (= true running-video_i)(vision.core/set-capture-property  @capture-video_i :pos-frames frame ))
+
+(defn- buffer-swizzle-0123-1230
+  "given a ARGB pixel array, swizzle it to be RGBA.  Or, ABGR to BGRA"
+  ^bytes [^bytes data] ;; Wow!  That ^bytes changes this from 10s for a 256x256 tex to instantaneous.
+  (dotimes [i (/ (alength data) 4)]
+    (let [i0 (* i 4)
+          i1 (inc i0)
+          i2 (inc i1)
+          i3 (inc i2)
+          tmp (aget data i0)]
+      (aset data i0 (aget data i1))
+      (aset data i1 (aget data i2))
+      (aset data i2 (aget data i3))
+      (aset data i3 tmp)))
+  data)
+
+(defn- cubemap-filename
+  [filename i]
+  (clojure.string/replace filename "*" (str i)))
+
+(defn put-texture-data
+  "put the data from the image into the buffer and return the buffer"
+  ^ByteBuffer
+  [^ByteBuffer buffer ^BufferedImage image ^Boolean swizzle-0123-1230]
+  (let [data ^bytes (-> ^WritableRaster (.getRaster image)
+                         ^DataBufferByte (.getDataBuffer)
+                         (.getData))
+        data (if swizzle-0123-1230
+               (buffer-swizzle-0123-1230 data)
+               data)
+        buffer (.put buffer data 0 (alength data))] ; (.order (ByteOrder/nativeOrder)) ?
+    buffer))
+
+(defn tex-image-bytes
+  "return the number of bytes per pixel in this image"
+  [^BufferedImage image]
+  (let [image-type  (.getType image)
+        image-bytes (if (or (= image-type BufferedImage/TYPE_3BYTE_BGR)
+                            (= image-type BufferedImage/TYPE_INT_RGB))
+                      3
+                      (if (or (= image-type BufferedImage/TYPE_4BYTE_ABGR)
+                              (= image-type BufferedImage/TYPE_INT_ARGB))
+                        4
+                        0)) ;; unhandled image type--what to do?
+        ;; _           (println "image-type"
+        ;;                          (cond
+        ;;                           (= image-type BufferedImage/TYPE_3BYTE_BGR)  "TYPE_3BYTE_BGR"
+        ;;                           (= image-type BufferedImage/TYPE_INT_RGB)    "TYPE_INT_RGB"
+        ;;                           (= image-type BufferedImage/TYPE_4BYTE_ABGR) "TYPE_4BYTE_ABGR"
+        ;;                           (= image-type BufferedImage/TYPE_INT_ARGB)   "TYPE_INT_ARGB"
+        ;;                           :else image-type))
+        _           (assert (pos? image-bytes))] ;; die on unhandled image
+    image-bytes))
+
+(defn tex-internal-format
+  "return the internal-format for the glTexImage2D call for this image"
+  ^Integer
+  [^BufferedImage image]
+  (let [image-type      (.getType image)
+        internal-format (cond
+                         (= image-type BufferedImage/TYPE_3BYTE_BGR)  GL11/GL_RGB8
+                         (= image-type BufferedImage/TYPE_INT_RGB)    GL11/GL_RGB8
+                         (= image-type BufferedImage/TYPE_4BYTE_ABGR) GL11/GL_RGBA8
+                         (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA8)]
+    internal-format))
+
+(defn tex-format
+  "return the format for the glTexImage2D call for this image"
+  ^Integer
+  [^BufferedImage image]
+  (let [image-type (.getType image)
+        format     (cond
+                    (= image-type BufferedImage/TYPE_3BYTE_BGR)  GL12/GL_BGR
+                    (= image-type BufferedImage/TYPE_INT_RGB)    GL11/GL_RGB
+                    (= image-type BufferedImage/TYPE_4BYTE_ABGR) GL12/GL_BGRA
+                    (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA)]
+    format))
 
 (defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
                                     running-cam     (:running-cam @locals)
@@ -175,6 +251,63 @@
                                     (if (= false running-cam_i)(do (swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
                                                                 (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (vision.core/capture-from-cam cam-id)) )))
                                                                 (do (println "Unable to init cam: " cam-id) ))))
+
+ (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
+
+ (defn init-vbuff [locals video-id] (let [                                    
+ capture-video     (:capture-video @locals)
+
+                                    capture-video_i   (get capture-video video-id)
+                                                                                 _                  (println "aaaaaaaaaaaaacapture-video" capture-video_i)
+
+            imageP             (try-capture @capture-video_i)
+
+            ;_                   (print imageP)
+            imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
+            image              @imageDef
+            height             (.getHeight image)
+            width              (.getWidth image) 
+            image-bytes        (tex-image-bytes image)
+            internal-format    (tex-internal-format image)
+            height (vision.core/get-capture-property @capture-video_i :frame-height)
+            width (vision.core/get-capture-property @capture-video_i :frame-width)
+            fps (vision.core/get-capture-property @capture-video_i :fps)
+            frame-count         (vision.core/get-capture-property @capture-video_i :frame-count)
+
+            nbytes             (* image-bytes width height)
+            format             (get (:format-video @locals) video-id) 
+            bff                (BufferUtils/createByteBuffer nbytes)
+            buffer             ^ByteBuffer (-> bff
+                               (put-texture-data image (= image-bytes 4))
+                               (.flip))
+                                    _ (print "bff" bff)
+                                    _ (print "buffer" buffer)
+
+            bff_o (assoc (:buffer-video @locals) video-id bff)
+            buffero_o (assoc (:image-video @locals) video-id buffer)
+            image-bytes_i (assoc (:image-bytes-video @locals) video-id image-bytes)
+            nbytes_i (assoc (:nbytes-video @locals) video-id nbytes)
+            internal-format_i (assoc (:internal-format-video @locals) video-id internal-format)
+            format_i (assoc (:format-video @locals) video-id format)
+            width_i (assoc (:width-video @locals) video-id width)
+            height_i (assoc (:height-video @locals) video-id height)
+            frames-video_i (assoc (:frames-video @locals) video-id frame-count)
+            fps-video_i (assoc (:fps-video @locals) video-id fps)
+
+            ext nil
+]                     (swap! locals
+                            assoc
+                                :image-video           buffero_o
+                                :buffer-video          bff_o 
+                                :image-bytes-video     image-bytes_i
+                                :nbytes-video          nbytes_i
+                                :internal-format-video internal-format_i
+                                :format-video          format_i
+                                :width-video           width_i
+                                :height-video          height_i
+                                :frames-video         frames-video_i
+                                :fps-video         fps-video_i)))  
+                          
 
 (defn init-video [locals video-id] (let [_              (println "init video" video-id )
                                     running-video       (:running-video @locals)
@@ -186,7 +319,8 @@
                                     video-no-id         (:video-no-id @locals)]  
                                     (if (and (not-nil? video-filename_i) (= false running-video_i))(do (println "video tb init"video-filename_i)
                                                                                                     (swap! locals assoc :running-video (assoc running-video video-id true)) 
-                                                                                                    (swap!  locals assoc :capture-video (assoc capture-video video-id (future (vision.core/capture-from-file video-filename_i)) )))
+                                                                                                    (swap!  locals assoc :capture-video (assoc capture-video video-id (future (vision.core/capture-from-file video-filename_i)) )
+                                                                                                    )(init-vbuff locals video-id))
                                                                                                     (do (println "Unable to init video: " video-id) ))))
     
 (defn release-cam-textures [cam-id](let [tmpcams (:cams @the-window-state)
@@ -492,83 +626,6 @@
       ;; we didn't load the shader, don't be drawing
       (swap! locals assoc :shader-good false))))
 
-(defn- buffer-swizzle-0123-1230
-  "given a ARGB pixel array, swizzle it to be RGBA.  Or, ABGR to BGRA"
-  ^bytes [^bytes data] ;; Wow!  That ^bytes changes this from 10s for a 256x256 tex to instantaneous.
-  (dotimes [i (/ (alength data) 4)]
-    (let [i0 (* i 4)
-          i1 (inc i0)
-          i2 (inc i1)
-          i3 (inc i2)
-          tmp (aget data i0)]
-      (aset data i0 (aget data i1))
-      (aset data i1 (aget data i2))
-      (aset data i2 (aget data i3))
-      (aset data i3 tmp)))
-  data)
-
-(defn- cubemap-filename
-  [filename i]
-  (clojure.string/replace filename "*" (str i)))
-
-(defn put-texture-data
-  "put the data from the image into the buffer and return the buffer"
-  ^ByteBuffer
-  [^ByteBuffer buffer ^BufferedImage image ^Boolean swizzle-0123-1230]
-  (let [data ^bytes (-> ^WritableRaster (.getRaster image)
-                         ^DataBufferByte (.getDataBuffer)
-                         (.getData))
-        data (if swizzle-0123-1230
-               (buffer-swizzle-0123-1230 data)
-               data)
-        buffer (.put buffer data 0 (alength data))] ; (.order (ByteOrder/nativeOrder)) ?
-    buffer))
-
-(defn tex-image-bytes
-  "return the number of bytes per pixel in this image"
-  [^BufferedImage image]
-  (let [image-type  (.getType image)
-        image-bytes (if (or (= image-type BufferedImage/TYPE_3BYTE_BGR)
-                            (= image-type BufferedImage/TYPE_INT_RGB))
-                      3
-                      (if (or (= image-type BufferedImage/TYPE_4BYTE_ABGR)
-                              (= image-type BufferedImage/TYPE_INT_ARGB))
-                        4
-                        0)) ;; unhandled image type--what to do?
-        ;; _           (println "image-type"
-        ;;                          (cond
-        ;;                           (= image-type BufferedImage/TYPE_3BYTE_BGR)  "TYPE_3BYTE_BGR"
-        ;;                           (= image-type BufferedImage/TYPE_INT_RGB)    "TYPE_INT_RGB"
-        ;;                           (= image-type BufferedImage/TYPE_4BYTE_ABGR) "TYPE_4BYTE_ABGR"
-        ;;                           (= image-type BufferedImage/TYPE_INT_ARGB)   "TYPE_INT_ARGB"
-        ;;                           :else image-type))
-        _           (assert (pos? image-bytes))] ;; die on unhandled image
-    image-bytes))
-
-(defn tex-internal-format
-  "return the internal-format for the glTexImage2D call for this image"
-  ^Integer
-  [^BufferedImage image]
-  (let [image-type      (.getType image)
-        internal-format (cond
-                         (= image-type BufferedImage/TYPE_3BYTE_BGR)  GL11/GL_RGB8
-                         (= image-type BufferedImage/TYPE_INT_RGB)    GL11/GL_RGB8
-                         (= image-type BufferedImage/TYPE_4BYTE_ABGR) GL11/GL_RGBA8
-                         (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA8)]
-    internal-format))
-
-(defn tex-format
-  "return the format for the glTexImage2D call for this image"
-  ^Integer
-  [^BufferedImage image]
-  (let [image-type (.getType image)
-        format     (cond
-                    (= image-type BufferedImage/TYPE_3BYTE_BGR)  GL12/GL_BGR
-                    (= image-type BufferedImage/TYPE_INT_RGB)    GL11/GL_RGB
-                    (= image-type BufferedImage/TYPE_4BYTE_ABGR) GL12/GL_BGRA
-                    (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA)]
-    format))
-
 (defn- load-texture
   "load, bind texture from filename.  returns a texture info vector
    [tex-id width height z].  returns nil tex-id if filename is nil"
@@ -707,7 +764,6 @@
                                 :fps-video         fps-video_i))) 
  
  
- (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
  ;init.png
  (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
@@ -773,8 +829,7 @@
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
                                     )           
                                     )
-                                    
-                                    
+                                 
                                     
  (defn- process-cam-image [locals cam-id] (let [
              image                (get (:image-cam @locals) cam-id)
@@ -798,7 +853,7 @@
 ))         
 
 (defn- process-video-image [locals video-id] (let [
-             image                (get (:image-video @locals) video-id)
+             ;image                (get (:image-video @locals) video-id)
              target               (get (:target-video @locals) video-id)
              internal-format (get (:internal-format-video @locals) video-id)
              format (get (:format-video @locals) video-id)
@@ -806,15 +861,19 @@
              width (get (:width-video @locals) video-id)
              tex-id             (get (:text-id-video @locals) video-id)
              tex-image-target ^Integer (+ 0 target)
+                         bff                (get (:buffer-video @locals) video-id) 
+
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
       ;(println "image" image)
+      ;      (println "bff" bff)
+
       (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer width  ^Integer height 0
                            ^Integer format
                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer image))
+                            ^ByteBuffer bff))
     (except-gl-errors "@ end of load-texture if-stmt")
 ))
 
@@ -842,36 +901,39 @@
  
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
-            target           (GL11/GL_TEXTURE_2D)
-            frame-count          (vision.core/get-capture-property @capture-video :frame-count)
-            cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
-            tex-id             (get (:text-id-video @locals) video-id)
+            ;target           (GL11/GL_TEXTURE_2D)
+            ;frame-count          (vision.core/get-capture-property @capture-video :frame-count)
+            ;cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
+            ;tex-id             (get (:text-id-video @locals) video-id)
+            
             imageP             (try-capture @capture-video)
-            ;_                   (print imageP)
-            imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
-            image              (if(= nil imageP) imageDef @imageDef)
-            height             (.getHeight image)
-            width              (.getWidth image) 
+            ;_                   (println imageP)
+            imageDef           (get imageP :buffered-image)
+            image              (deref imageDef)
+            ;_                   (println image)
+            ;height             (.getHeight image)
+            ;width              (.getWidth image) 
             image-bytes        (tex-image-bytes image)
-            internal-format    (tex-internal-format image)
-            height (vision.core/get-capture-property @capture-video :frame-height)
-             width (vision.core/get-capture-property @capture-video :frame-width)
-                          fps (vision.core/get-capture-property @capture-video :fps)
+            ;internal-format    (tex-internal-format image)
+            ;height (vision.core/get-capture-property @capture-video :frame-height)
+            ; width (vision.core/get-capture-property @capture-video :frame-width)
+            ;              fps (vision.core/get-capture-property @capture-video :fps)
 
-            nbytes             (* image-bytes width height)
-            format             (get (:format-video @locals) video-id) 
-            buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
+                          ;            image_i (assoc (:buffer-video @locals) video-id bff)
+            bff                (get (:buffer-video @locals) video-id)
+            ;            _ (print "bff" bff)
+
+            ;nbytes             (* image-bytes width height)
+            ;format             (get (:format-video @locals) video-id) 
+            buffer             (->  ^ByteBuffer  bff                            ;(BufferUtils/createByteBuffer nbytes)
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
-            image_i (assoc (:image-video @locals) video-id buffer)
-
+            ;image_i (assoc (:image-video @locals) video-id buffer)
+            ;_ (assoc (:buffer-video @locals) video-id bff)
+            ;_ (print "buffer" buffer)
                 
              ]
-      
-            (put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count fps)
-
             
-            ;(put-video-buffer locals buffer target image-bytes nbytes internal-format format height width  video-id tex-id frame-count)
              ))
 ;(defn- start-cam-loop [locals cam-id capture-cam running-cam]
 ;    (let [_ (println "start cam loop " cam-id)]
@@ -893,6 +955,17 @@
  (defn currtime []
   (System/nanoTime))
   
+                                     
+(defn sleepTime [startTime endTime fps] (let [    dtns (- endTime startTime)
+                                                  dtms (* dtns 1e-6)
+                                                 fpdel (/ 1 fps)
+                                                  fpdelms (* 1e3 fpdel)
+                                                  dt (- fpdelms dtms)
+                                                 ;_ (print "dt" dt)
+                                                   ;dt (if (< dt 0) (0) (dt))
+                                                  ]
+                                                  (* 1 dt)))    
+  
 (defn- start-video-loop [locals video-id]
     (let [_ (println "start video loop " video-id)
             running-video     (:running-video @locals)
@@ -909,14 +982,15 @@
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
                 (reset! startTime (System/nanoTime))
-                ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) ) )
+                ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (do(vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) )(reset! (nth (:frame-change-video @the-window-state) video-id) false) ))
             
-                (reset! (nth (:frame-change-video @the-window-state) video-id) false)
+                
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
                 (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
-                (buffer-video-texture locals video-id capture-video_i) 
-                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) )(print (- (System/nanoTime) @startTime)))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+                (buffer-video-texture locals video-id capture-video_i)
+                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 )) (Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) )(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
+  ;(print (- (System/nanoTime) @startTime))
 
  (defn vec-remove
   ;;"remove elem in coll"
@@ -1120,8 +1194,9 @@
                                             running-cam_i   (get running-cam cam-id)]
                                             (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)))
 (defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
-                                            running-video_i   (get running-video video-id)]
-                                            (if (and (= true running-video_i)( not-nil?(get (:image-video @locals) video-id)))(do (process-video-image locals video-id)) :false)))
+                                            running-video_i   (get running-video video-id)
+                                            ]
+                                            (if (and (= true running-video_i))(do (process-video-image locals video-id)) :false)))
 (defn- loop-get-cam-textures [locals cams]
                 (doseq [i (remove nil? cams)]
                 (get-cam-textures locals i)))
@@ -1597,7 +1672,8 @@
           user-data       {}
           user-fn         shader-default-fn}}]
   (let [mode (DisplayMode. width height)]
-    (decorate-display!)
+    ;(decorate-display!)
+    (undecorate-display!)
     (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))
 
 (defn start-fullscreen
