@@ -955,6 +955,7 @@
  (defn currtime []
   (System/nanoTime))
   
+(defn abs [n] (max n (-' n)))
                                      
 (defn sleepTime [startTime endTime fps] (let [    dtns (- endTime startTime)
                                                   dtms (* dtns 1e-6)
@@ -962,9 +963,9 @@
                                                   fpdelms (* 1e3 fpdel)
                                                   dt (- fpdelms dtms)
                                                  ;_ (print "dt" dt)
-                                                   ;dt (if (< dt 0) (0) (dt))
+                                                 ;_   (print (if (< dt 0) (0) (dt)))
                                                   ]
-                                                  (* 1 dt)))    
+                                                  (abs dt)))    
   
 (defn- start-video-loop [locals video-id]
     (let [_ (println "start video loop " video-id)
@@ -984,11 +985,11 @@
                 (reset! startTime (System/nanoTime))
                 ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (do(vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) )(reset! (nth (:frame-change-video @the-window-state) video-id) false) ))
             
-                
+                ;(Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) 
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
                 (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
                 (buffer-video-texture locals video-id capture-video_i)
-                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 )) (Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) )(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 )) (Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) )  )(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
   ;(print (- (System/nanoTime) @startTime))
 
