@@ -890,7 +890,9 @@
 
                 (buffer-cam-texture locals cam-id capture-cam_i))(vision.core/release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
- ;:frame-ctr-video
+ (defn currtime []
+  (System/nanoTime))
+  
 (defn- start-video-loop [locals video-id]
     (let [_ (println "start video loop " video-id)
             running-video     (:running-video @locals)
@@ -901,17 +903,19 @@
             cur-frame         (vision.core/get-capture-property @capture-video_i :pos-frames)
             cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
             locKey            (keyword (str "frame-ctr-"video-id))
+            startTime         (atom (System/nanoTime))
+            ;_                 (print (System/nanoTime))
             ]
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
-                
+                (reset! startTime (System/nanoTime))
                 ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) ) )
             
                 (reset! (nth (:frame-change-video @the-window-state) video-id) false)
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
                 (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
                 (buffer-video-texture locals video-id capture-video_i) 
-                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) ))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
+                (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) )(print (- (System/nanoTime) @startTime)))(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
 
  (defn vec-remove

@@ -180,15 +180,15 @@
   
 ;;Camera and video controls
 
-(defn post-start-cam [cam-id] (s/post-start-cam cam-id))
+(defn post-start-cam [cam-id] (if (= true (integer? cam-id)) (s/post-start-cam cam-id)))
 
-(defn post-start-video [video-filename video-id] (s/post-start-video video-filename video-id))
+(defn post-start-video [video-filename video-id] (if (= true (integer? video-id))  (s/post-start-video video-filename video-id)))
 
-(defn release-cam-textures [cam-id](s/release-cam-textures cam-id))
+(defn release-cam-textures [cam-id](if (= true (integer? cam-id))(s/release-cam-textures cam-id)))
 
-(defn release-video-textures [video-id](s/release-video-textures video-id))
+(defn release-video-textures [video-id] (if (= true (integer? video-id)) (s/release-video-textures video-id)))
 
-(defn set-video-frame [video-id frame] (s/set-video-frame video-id frame))
+(defn set-video-frame [video-id frame]  (if (= true (integer? video-id)) (s/set-video-frame video-id frame)))
 
 
 
