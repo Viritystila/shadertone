@@ -255,14 +255,9 @@
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
 
  (defn init-vbuff [locals video-id] (let [                                    
- capture-video     (:capture-video @locals)
-
-                                    capture-video_i   (get capture-video video-id)
-                                                                                 _                  (println "aaaaaaaaaaaaacapture-video" capture-video_i)
-
+            capture-video     (:capture-video @locals)
+            capture-video_i   (get capture-video video-id)
             imageP             (try-capture @capture-video_i)
-
-            ;_                   (print imageP)
             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
             image              @imageDef
             height             (.getHeight image)
@@ -280,10 +275,8 @@
             buffer             ^ByteBuffer (-> bff
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
-                                    _ (print "bff" bff)
-                                    _ (print "buffer" buffer)
 
-            bff_o (assoc (:buffer-video @locals) video-id bff)
+            bff_o (assoc (:buffer-video @locals) video-id imageDef)
             buffero_o (assoc (:image-video @locals) video-id buffer)
             image-bytes_i (assoc (:image-bytes-video @locals) video-id image-bytes)
             nbytes_i (assoc (:nbytes-video @locals) video-id nbytes)
@@ -814,8 +807,6 @@
                                     internal-format    (tex-internal-format image)
                                     format             (tex-format image)
                                     nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-                                    ;                        _                   (println "capture-video_i" capture-video_i)
-
                                     buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
                                              (put-texture-data image (= image-bytes 4))
                                               (.flip))
@@ -853,27 +844,28 @@
 ))         
 
 (defn- process-video-image [locals video-id] (let [
-             ;image                (get (:image-video @locals) video-id)
-             target               (get (:target-video @locals) video-id)
-             internal-format (get (:internal-format-video @locals) video-id)
-             format (get (:format-video @locals) video-id)
-             height (get (:height-video @locals) video-id)
-             width (get (:width-video @locals) video-id)
-             tex-id             (get (:text-id-video @locals) video-id)
-             tex-image-target ^Integer (+ 0 target)
-                         bff                (get (:buffer-video @locals) video-id) 
-
+            target               (get (:target-video @locals) video-id)
+            internal-format (get (:internal-format-video @locals) video-id)
+            format (get (:format-video @locals) video-id)
+            height (get (:height-video @locals) video-id)
+            width (get (:width-video @locals) video-id)
+            tex-id             (get (:text-id-video @locals) video-id)
+            tex-image-target ^Integer (+ 0 target)
+            bff                (get (:buffer-video @locals) video-id) 
+            image              (deref bff)
+            image-bytes (get (:image-bytes-video @locals) video-id)
+            nbytes (get (:nbytes-video @locals) video-id)
+            buffer             (->  ^ByteBuffer (BufferUtils/createByteBuffer nbytes)
+                               (put-texture-data image (= image-bytes 4))
+                               (.flip))
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
-      ;(println "image" image)
-      ;      (println "bff" bff)
-
       (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                             ^Integer width  ^Integer height 0
                            ^Integer format
                            GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer bff))
+                            ^ByteBuffer buffer))
     (except-gl-errors "@ end of load-texture if-stmt")
 ))
 
@@ -901,46 +893,15 @@
  
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
-            ;target           (GL11/GL_TEXTURE_2D)
-            ;frame-count          (vision.core/get-capture-property @capture-video :frame-count)
-            ;cur-frame           (vision.core/get-capture-property @capture-video :pos-frames)
-            ;tex-id             (get (:text-id-video @locals) video-id)
-            
             imageP             (try-capture @capture-video)
-            ;_                   (println imageP)
             imageDef           (get imageP :buffered-image)
-            image              (deref imageDef)
-            ;_                   (println image)
-            ;height             (.getHeight image)
-            ;width              (.getWidth image) 
-            image-bytes        (tex-image-bytes image)
-            ;internal-format    (tex-internal-format image)
-            ;height (vision.core/get-capture-property @capture-video :frame-height)
-            ; width (vision.core/get-capture-property @capture-video :frame-width)
-            ;              fps (vision.core/get-capture-property @capture-video :fps)
-
-                          ;            image_i (assoc (:buffer-video @locals) video-id bff)
-            bff                (get (:buffer-video @locals) video-id)
-            ;            _ (print "bff" bff)
-
-            ;nbytes             (* image-bytes width height)
-            ;format             (get (:format-video @locals) video-id) 
-            buffer             (->  ^ByteBuffer  bff                            ;(BufferUtils/createByteBuffer nbytes)
-                               (put-texture-data image (= image-bytes 4))
-                               (.flip))
-            ;image_i (assoc (:image-video @locals) video-id buffer)
-            ;_ (assoc (:buffer-video @locals) video-id bff)
-            ;_ (print "buffer" buffer)
-                
-             ]
-            
+            bff_o (assoc (:buffer-video @locals) video-id imageDef)
+]                     (swap! locals
+                            assoc
+                                :buffer-video          bff_o 
+                                )
              ))
-;(defn- start-cam-loop [locals cam-id capture-cam running-cam]
-;    (let [_ (println "start cam loop " cam-id)]
-;        (if (= true @running-cam) 
-;            (do (while  @running-cam
-;                (buffer-cam-texture locals cam-id capture-cam))(vision.core/release @capture-cam)(println "cam loop stopped" cam-id)))))   
-                
+   
 (defn- start-cam-loop [locals cam-id]
     (let [_ (println "start cam loop " cam-id)
             running-cam     (:running-cam @locals)
@@ -986,7 +947,7 @@
 
                 ;(Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) 
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
-                (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count cur-fps))
+                (if (< (vision.core/get-capture-property @capture-video_i :pos-frames) (- frame-count 0))
                 (buffer-video-texture locals video-id capture-video_i)
                 (vision.core/set-capture-property  @capture-video_i :pos-frames 1 )) 
                 ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) (do(vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @the-window-state) video-id) )(reset! (nth (:frame-change-video @the-window-state) video-id) false))(Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) )  )

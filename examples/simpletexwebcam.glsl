@@ -52,10 +52,12 @@ void main(void) {
   vec4 c = mix(v1,v2,0.3-sin(c1.w));  // alpha blend between two textures
   vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf2 = mix(c6,cf1,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf3 = mix(c2,fftw,0.29-sin(c1.w));  // alpha blend between two textures
-  vec4 cf4 = mix(v1,cf3,sin(0.1*fftw.r));  // alpha blend between two textures
+  vec4 cf2 = mix(c6,cf1,0.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf3 = mix(c2,v2,0.01-sin(c1.w));  // alpha blend between two textures
+  vec4 cf4 = mix(v1,cf3,0.9*sin(0.51*fftw.r));  // alpha blend between two textures
+  vec4 cf5 = mix(cf4,fftw,sin(0.51*fftw.r)); 
+  vec4 cf6 = mix(cf5,v3,sin(0.51*fftw.r)); 
 
-  gl_FragColor = cf4;
+  gl_FragColor = v3;
   
 }
