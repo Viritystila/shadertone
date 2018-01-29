@@ -276,8 +276,8 @@
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
 
-            bff_o (assoc (:buffer-video @locals) video-id imageDef)
-            buffero_o (assoc (:image-video @locals) video-id buffer)
+            bff_o (assoc (:buffer-video @locals) video-id image)
+            buffero_o (assoc (:image-video @locals) video-id bff)
             image-bytes_i (assoc (:image-bytes-video @locals) video-id image-bytes)
             nbytes_i (assoc (:nbytes-video @locals) video-id nbytes)
             internal-format_i (assoc (:internal-format-video @locals) video-id internal-format)
@@ -851,11 +851,11 @@
             width (get (:width-video @locals) video-id)
             tex-id             (get (:text-id-video @locals) video-id)
             tex-image-target ^Integer (+ 0 target)
-            bff                (get (:buffer-video @locals) video-id) 
-            image              (deref bff)
+            image                (get (:buffer-video @locals) video-id) 
+            origBuffer         (get (:image-video @locals) video-id)
             image-bytes (get (:image-bytes-video @locals) video-id)
             nbytes (get (:nbytes-video @locals) video-id)
-            buffer             (->  ^ByteBuffer (BufferUtils/createByteBuffer nbytes)
+            buffer             (->  ^ByteBuffer origBuffer; (BufferUtils/createByteBuffer nbytes)
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
              ]
@@ -893,10 +893,12 @@
  
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
+            ;_                (println " capture-video " @capture-video) 
             imageP             (try-capture @capture-video)
             imageDef           (get imageP :buffered-image)
-            bff_o (assoc (:buffer-video @locals) video-id imageDef)
-]                     (swap! locals
+            image              @imageDef
+            bff_o (assoc (:buffer-video @locals) video-id image)]
+            (swap! locals
                             assoc
                                 :buffer-video          bff_o 
                                 )
