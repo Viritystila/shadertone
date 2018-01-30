@@ -69,6 +69,7 @@
    :video-no-id         [nil nil nil nil nil]
    :capture-video       [nil nil nil nil nil]
    :buffer-video        [0 0 0 0 0]
+   :buffer-video-frame  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :target-video        [0 0 0 0 0]
    :text-id-video       [0 0 0 0 0]
    :image-bytes-video   [0 0 0 0 0]
@@ -286,6 +287,8 @@
             height_i (assoc (:height-video @locals) video-id height)
             frames-video_i (assoc (:frames-video @locals) video-id frame-count)
             fps-video_i (assoc (:fps-video @locals) video-id fps)
+            _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
+
 
             ext nil
 ]                     (swap! locals
@@ -786,13 +789,6 @@
 (defn- init-video-tex [locals video-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
                                     tex-id             (GL11/glGenTextures)
-                                    ;image              (ImageIO/read (FileInputStream. "src/init.png"))
-                                    ;height             (.getHeight image)
-                                    ;width              (.getWidth image) 
-                                    ;image-bytes        (tex-image-bytes image)
-                                    ;internal-format    (tex-internal-format image)
-
-                                    ;format             (tex-format image)
                                     capture-video     (:capture-video @locals)
                                     _                  (println "capture-video" capture-video)
                                     capture-video_i   (get capture-video video-id)
@@ -820,7 +816,14 @@
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
                                     )           
                                     )
-                                 
+ 
+                         ;target_i (assoc (:target-video @locals) video-id target)
+                        ;text-id-video_i (assoc (:text-id-video @locals) video-id tex-id)
+                        ;            ]
+                        ;        (swap! locals
+                        ;        assoc
+                        ;        :target-video          target_i
+                        ;        :text-id-video         text-id-video_i)
                                     
  (defn- process-cam-image [locals cam-id] (let [
              image                (get (:image-cam @locals) cam-id)
@@ -851,7 +854,7 @@
             width (get (:width-video @locals) video-id)
             tex-id             (get (:text-id-video @locals) video-id)
             tex-image-target ^Integer (+ 0 target)
-            image                (get (:buffer-video @locals) video-id) 
+            image               @(nth (:buffer-video-frame @locals) video-id)
             origBuffer         (get (:image-video @locals) video-id)
             image-bytes (get (:image-bytes-video @locals) video-id)
             nbytes (get (:nbytes-video @locals) video-id)
@@ -871,7 +874,6 @@
 
 (defn- buffer-cam-texture [locals cam-id capture-cam](let [
              target           (GL11/GL_TEXTURE_2D)
-             ;tex-id             (+ no-textures cam-id)
              tex-id             (get (:text-id-cam @locals) cam-id)
              imageP             (try-capture @capture-cam)
              imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
@@ -893,15 +895,11 @@
  
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
-            ;_                (println " capture-video " @capture-video) 
             imageP             (try-capture @capture-video)
             imageDef           (get imageP :buffered-image)
             image              @imageDef
-            bff_o (assoc (:buffer-video @locals) video-id image)]
-            (swap! locals
-                            assoc
-                                :buffer-video          bff_o 
-                                )
+            _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
+            ]
              ))
    
 (defn- start-cam-loop [locals cam-id]
