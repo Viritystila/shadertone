@@ -12,13 +12,9 @@
                  [watchtower          "0.1.1"]
                  ;[org.openpnp/opencv "3.2.0-1"]
                  [vision  "1.0.0-SNAPSHOT"]]
-    :jvm-opts ["-Djna.library.path=../vision/resources/lib" "-XX:MaxDirectMemorySize=6G" "-Xmx6g"]
 
   :main ^{:skip-aot true} shadertone.core
   ;; add per WARNING: JVM argument TieredStopAtLevel=1 is active...
-
-  ;; add leipzig for use in examples
-  :profiles {:dev {:dependencies [[leipzig "0.6.0" :exclusions [[overtone]]]]
-                   ;; enabling this outputs a lot of spew. disable for normal runs
-                   ;; :global-vars {*warn-on-reflection* true *assert* false}
-                   }})
+  ;:jvm-opts ["-Djna.library.path=resources/lib/"]
+  :jvm-opts [~(str "-Djava.library.path=resources/lib/:" (System/getenv "LD_LIBRARY_PATH"))]
+  )

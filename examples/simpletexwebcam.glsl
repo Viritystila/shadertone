@@ -44,7 +44,7 @@ void main(void) {
   vec4 c6 = texture2D(iCam4,uv2);
   
   vec4 v1= texture2D(iVideo0, uv2);
-  vec4 v2= texture2D(iVideo1, uv2);
+  vec4 v2= texture2D(iVideo1, uv3);
   vec4 v3= texture2D(iVideo2, uv2);
   vec4 v4= texture2D(iVideo3, uv2);
 
