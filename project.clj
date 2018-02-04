@@ -11,7 +11,8 @@
                  [overtone            "0.10.3"]
                  [watchtower          "0.1.1"]
                  ;[org.openpnp/opencv "3.2.0-1"]
-                 [vision  "1.0.0-SNAPSHOT"]]
+                 [vision  "1.0.0-SNAPSHOT"]
+                 ]
 
   :main ^{:skip-aot true} shadertone.core
   ;; add per WARNING: JVM argument TieredStopAtLevel=1 is active...

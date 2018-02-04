@@ -190,7 +190,9 @@
 
 (defn set-video-frame [video-id frame]  (if (= true (integer? video-id)) (s/set-video-frame video-id frame)))
 
-(defn set-video-frame-limits [video-id min max]  (if (= true (integer? video-id)) (s/set-video-frame-limits video-id min max)))
+(defn set-video-frame-limits [video-id min max] (if (= true (integer? video-id)) (s/set-video-frame-limits video-id min max)))
+
+(defn set-video-fps [video-id new-fps] (if (= true (integer? video-id)) (s/set-video-fps video-id  new-fps)))
 
 ;; ======================================================================
 (defonce tone-user-data (atom {}))

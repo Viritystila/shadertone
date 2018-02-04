@@ -176,6 +176,20 @@
                                      (reset! (nth (:frame-stop-video @the-window-state) video-id) max_val)
                                      (if (< cur_pos min_val) (set-video-frame video-id min_val) (if (> cur_pos max_val) (set-video-frame video-id max_val) 0 ))
                                      ))
+                          
+
+(defn set-video-fps [video-id new-fps] (let[running-video     (:running-video @the-window-state)
+                                     running-video_i     (get running-video video-id)
+                                     capture-video       (:capture-video @the-window-state)
+                                     capture-video_i     (get capture-video video-id) 
+                                     fps (vision.core/get-capture-property @capture-video_i :fps)
+                                     fpstbs (if (< 0 new-fps) new-fps 1)
+                                     fps-video_i (assoc (:fps-video @the-window-state) video-id fpstbs)]
+                                     (vision.core/set-capture-property @capture-video_i :fps fpstbs)
+                                     (swap! the-window-state
+                            assoc
+                                :fps-video         fps-video_i)
+                                (println "new fps " fpstbs )))
                                      
 
 (defn- buffer-swizzle-0123-1230
@@ -287,8 +301,8 @@
             buffer             ^ByteBuffer (-> bff
                                (put-texture-data image (= image-bytes 4))
                                (.flip))
-            ;(reset! (nth (:frame-start-video @the-window-state) video-id) 0)
-            ;(reset! (nth (:frame-stop-video @locals) video-id) frame-count)
+            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
+            _ (reset! (nth (:frame-stop-video @locals) video-id) (- frame-count 1))
             
             _ (set-video-frame-limits video-id 1 frame-count)
             
@@ -954,11 +968,12 @@
             cur-fps           (vision.core/get-capture-property @capture-video_i :fps)
             locKey            (keyword (str "frame-ctr-"video-id))
             startTime         (atom (System/nanoTime))
-            ;_                 (print (System/nanoTime)) :frame-start-video
+            ;_                 (print (System/nanoTime)) :frame-start-video :fps-video
             ]
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
                 (reset! startTime (System/nanoTime))
+                ;(println "AAAAAAAAAAAAAAAAAAa " (nth (:fps-video @locals) video-id))
                 ;min ( @(nth (:frame-stop-video @the-window-state) video-id) frame-count))
                 ;(Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) 
                 ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
@@ -967,10 +982,10 @@
                 (buffer-video-texture locals video-id capture-video_i)
                 (vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-start-video @locals) video-id) )) 
                 
-                ( if (= true @(nth (:frame-change-video @the-window-state) video-id)) 
+                ( if (= true @(nth (:frame-change-video @locals) video-id)) 
                 (do(vision.core/set-capture-property  @capture-video_i :pos-frames @(nth (:frame-ctr-video @locals) video-id) )
-                (reset! (nth (:frame-change-video @the-window-state) video-id) false))
-                (Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) )  )
+                (reset! (nth (:frame-change-video @locals) video-id) false))
+                (Thread/sleep (sleepTime @startTime (System/nanoTime) (nth (:fps-video @locals) video-id)) )  )
                 )(vision.core/release @capture-video_i)(println "video loop stopped" video-id)))))   
   
   ;(print (- (System/nanoTime) @startTime))
