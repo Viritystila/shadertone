@@ -1,6 +1,7 @@
 // The shadertoy uniform variables are available by default.
 // iChannel0,2 should contain 2D textures
 // use iChannel0's alpha to blend between 1 & 2
+uniform float iOvertoneVolume;
 
 void main(void) {
   vec2 uv = (gl_FragCoord.xy / iResolution.xy);
@@ -49,15 +50,15 @@ void main(void) {
   vec4 v4= texture2D(iVideo3, uv2);
 
   
-  vec4 c = mix(v1,v2,0.3-sin(c1.w));  // alpha blend between two textures
+  vec4 c = mix(c2,c3,0.3-sin(c1.w));  // alpha blend between two textures
   vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c6,cf1,0.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf3 = mix(c2,v2,0.01-sin(c1.w));  // alpha blend between two textures
-  vec4 cf4 = mix(v1,cf3,0.9*sin(0.51*fftw.r));  // alpha blend between two textures
-  vec4 cf5 = mix(cf4,fftw,sin(0.51*fftw.r)); 
-  vec4 cf6 = mix(cf5,v3,sin(0.51*fftw.r)); 
+  vec4 cf4 = mix(v1,cf3,0.9*sin(0.51*iOvertoneVolume));  // alpha blend between two textures
+  vec4 cf5 = mix(cf4,fftw,sin(0.51*iOvertoneVolume)); 
+  vec4 cf6 = mix(cf5,v3,sin(0.51*iOvertoneVolume)); 
 
-  gl_FragColor = v1;
+  gl_FragColor = c2;
   
 }

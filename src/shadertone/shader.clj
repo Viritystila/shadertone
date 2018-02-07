@@ -4,7 +4,10 @@
   (:require [watchtower.core :as watcher] 
             clojure.string)
    (:use [vision core] :reload-all)
-  (:import (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
+  (:import [org.opencv.core Mat Core CvType]
+    [org.opencv.videoio Videoio VideoCapture]
+    [org.opencv.video Video]
+           (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
            (java.util Calendar)
@@ -148,6 +151,119 @@
 
 (def not-nil? (complement nil?)) 
 
+
+
+;OPENCV 3 functions
+(defn oc-capture-from-cam [cam-id] (new org.opencv.videoio.VideoCapture cam-id ))
+
+(defn oc-release [capture] (.release capture))
+
+(defn oc-query-frame [capture buffer] (.read capture buffer))
+
+(defn oc-set-capture-property [dispatch capture val](case dispatch 
+                                              :pos-msec
+                                              (.set capture Videoio/CAP_PROP_POS_MSEC  val)          
+
+                                              :pos-frames
+                                              (.set capture Videoio/CAP_PROP_POS_FRAMES   val)          
+
+                                              :pos-avi-ratio
+                                              (.set capture Videoio/CAP_PROP_POS_AVI_RATIO  val)          
+                                                                                            
+                                              :frame-width
+                                              (.set capture Videoio/CAP_PROP_FRAME_WIDTH  val)          
+                                              
+                                              :frame-height
+                                              (.set capture Videoio/CAP_PROP_FRAME_HEIGHT  val)          
+                                              
+                                              :fps
+                                              (.set capture Videoio/CAP_PROP_FPS  val)          
+                                              
+                                              :fourcc
+                                              (.set capture Videoio/CAP_PROP_FOURCC   val)          
+                                              
+                                              :frame-count
+                                              (.set capture Videoio/CAP_PROP_FRAME_COUNT  val)          
+                                              
+                                              :brightness
+                                              (.set capture Videoio/CAP_PROP_BRIGHTNESS   val)          
+                                              
+                                              :contrast
+                                              (.set capture Videoio/CAP_PROP_CONTRAST   val)          
+                                              
+                                              :saturation
+                                              (.set capture Videoio/CAP_PROP_SATURATION   val)          
+                                              
+                                              :hue
+                                              (.set capture Videoio/CAP_PROP_HUE   val)          
+                                              
+:default (throw (Exception. "Unknown Property.")))
+)
+
+(defn oc-get-capture-property [dispatch capture](case dispatch
+                                              :pos-msec
+                                              (.get capture Videoio/CAP_PROP_POS_MSEC)          
+
+                                              :pos-frames
+                                              (.get capture Videoio/CAP_PROP_POS_FRAMES)          
+
+                                              :pos-avi-ratio
+                                              (.get capture Videoio/CAP_PROP_POS_AVI_RATIO)          
+                                                                                            
+                                              :frame-width
+                                              (.get capture Videoio/CAP_PROP_FRAME_WIDTH)          
+                                              
+                                              :frame-height
+                                              (.get capture Videoio/CAP_PROP_FRAME_HEIGHT)          
+                                              
+                                              :fps
+                                              (.get capture Videoio/CAP_PROP_FPS)          
+                                              
+                                              :fourcc
+                                              (.get capture Videoio/CAP_PROP_FOURCC)          
+                                              
+                                              :frame-count
+                                              (.get capture Videoio/CAP_PROP_FRAME_COUNT)          
+                                              
+                                              :brightness
+                                              (.get capture Videoio/CAP_PROP_BRIGHTNESS)          
+                                              
+                                              :contrast
+                                              (.get capture Videoio/CAP_PROP_CONTRAST)          
+                                              
+                                              :saturation
+                                              (.get capture Videoio/CAP_PROP_SATURATION)          
+                                              
+                                              :hue
+                                              (.get capture Videoio/CAP_PROP_HUE)          
+                                              
+:default (throw (Exception. "Unknown Property.")))
+)
+
+(defn oc-mat-to-bytebuffer [mat] (let [height      (.height mat)
+                                       width       (.width mat)
+                                       channels    (.channels mat)
+                                       size        (* height width channels)
+                                       data        (byte-array size)
+                                       _           (.get mat 0 0 data)
+                                       
+] ^ByteBuffer (-> (BufferUtils/createByteBuffer size)
+                                              (.put data)
+                                              (.flip))))
+
+
+(defn oc-new-mat
+([int_0 int_1 int_2 org_opencv_core_scalar_3 ]
+  (new org.opencv.core.Mat int_0 int_1 int_2 org_opencv_core_scalar_3 ))
+([org_opencv_core_size_0 int_1 org_opencv_core_scalar_2 ]
+  (new org.opencv.core.Mat org_opencv_core_size_0 int_1 org_opencv_core_scalar_2 ))
+([org_opencv_core_mat_0 org_opencv_core_range_1 ]
+  (new org.opencv.core.Mat org_opencv_core_mat_0 org_opencv_core_range_1 ))
+([long_0 ]
+  (new org.opencv.core.Mat long_0 ))
+([]
+  (new org.opencv.core.Mat )))
+;;;;;;;;;;;;;;;;;;;;;;;;
 ;  frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
 ; (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) )
 
@@ -275,7 +391,7 @@
                                     capture-cam     (:capture-cam @locals)
                                     capture-cam_i   (get capture-cam cam-id)]  
                                     (if (= false running-cam_i)(do (swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
-                                                                (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (vision.core/capture-from-cam cam-id)) )))
+                                                                (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (oc-capture-from-cam cam-id)) )))
                                                                 (do (println "Unable to init cam: " cam-id) ))))
 
  (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
@@ -793,20 +909,37 @@
  (defn- init-cam-tex [locals cam-id](let [
                                     target              (GL11/GL_TEXTURE_2D)
                                     tex-id             (GL11/glGenTextures)
-                                    ;_                   (println "cam-id init" cam-id)
-                                    ;_                   (println "cam tex id" tex-id)
-                                    image              (ImageIO/read (FileInputStream. "src/init.png"))
-                                    height             (.getHeight image)
-                                    width              (.getWidth image) 
-                                    image-bytes        (tex-image-bytes image)
-                                    internal-format    (tex-internal-format image)
-                                    format             (tex-format image)
-                                    nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-                                    buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                             (put-texture-data image (= image-bytes 4))
-                                              (.flip))
-                                    ]
-                                    (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
+                                    height              1
+                                    width               1
+                                    mat  (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+                                    image-bytes         (.channels mat)
+                                    nbytes              (* height width image-bytes)
+                                    internal-format     GL11/GL_RGB8
+                                    format              GL12/GL_BGR
+                                    buffer               (oc-mat-to-bytebuffer mat)
+                                    _                    (println buffer)
+                                    image_i (assoc (:image-cam @locals) cam-id buffer)
+                                    target_i (assoc (:target-cam @locals) cam-id target)
+                                    image-bytes_i (assoc (:image-bytes-cam @locals) cam-id image-bytes)
+                                    nbytes_i (assoc (:nbytes-cam @locals) cam-id nbytes)
+                                    internal-format_i (assoc (:internal-format-cam @locals) cam-id internal-format)
+                                    format_i (assoc (:format-cam @locals) cam-id format)
+                                    width_i (assoc (:width-cam @locals) cam-id width)
+                                    height_i (assoc (:height-cam @locals) cam-id height)
+                                    text-id-cam_i (assoc (:text-id-cam @locals) cam-id tex-id)
+                                        ]                                             
+                                    (swap! locals
+                                        assoc
+                                        :image-cam           image_i
+                                        :target-cam          target_i
+                                        :image-bytes-cam     image-bytes_i
+                                        :nbytes-cam          nbytes_i
+                                        :internal-format-cam internal-format_i
+                                        :format-cam          format_i
+                                        :width-cam           width_i
+                                        :height-cam          height_i
+                                        :text-id-cam         text-id-cam_i)
+                                    ;(put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
                                     (GL11/glBindTexture target tex-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -853,7 +986,7 @@
                         ;        assoc
                         ;        :target-video          target_i
                         ;        :text-id-video         text-id-video_i)
-                                    
+                                   
  (defn- process-cam-image [locals cam-id] (let [
              image                (get (:image-cam @locals) cam-id)
              target               (get (:target-cam @locals) cam-id)
@@ -863,16 +996,11 @@
              width (get (:width-cam @locals) cam-id)
              tex-id             (get (:text-id-cam @locals) cam-id)
              tex-image-target ^Integer (+ 0 target)
+             ;_              (println "imageeee "image "hieght "  height "width " width "btes ")
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
-      ;(println "image" image)
-      (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-                            ^Integer width  ^Integer height 0
-                           ^Integer format
-                           GL11/GL_UNSIGNED_BYTE
-                            ^ByteBuffer image))
-    (except-gl-errors "@ end of load-texture if-stmt")
+      (GL11/glTexImage2D tex-image-target, 0, internal-format, width, height, 0, format, GL11/GL_UNSIGNED_BYTE, image)
 ))         
 
 (defn- process-video-image [locals video-id] (let [
@@ -904,19 +1032,15 @@
 (defn- buffer-cam-texture [locals cam-id capture-cam](let [
              target           (GL11/GL_TEXTURE_2D)
              tex-id             (get (:text-id-cam @locals) cam-id)
-             imageP             (try-capture @capture-cam)
-             imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
-             image              @imageDef
-             height             (.getHeight image)
-             width              (.getWidth image)              
-             image-bytes        (tex-image-bytes image)
-             internal-format    (tex-internal-format image)
-             format             (tex-format image)
-             nbytes             (* image-bytes (.getWidth image) (.getHeight image))
-             buffer             ^ByteBuffer (-> (BufferUtils/createByteBuffer nbytes)
-                                (put-texture-data image (= image-bytes 4))
-                                (.flip))
-
+             image              (oc-new-mat)
+             imageP             (oc-query-frame @capture-cam image)
+             height         (.height image)
+             width          (.width image)          
+             image-bytes        (.channels image)
+             internal-format     GL11/GL_RGB8
+             format              GL12/GL_BGR
+             nbytes               (* width height image-bytes)
+             buffer             (oc-mat-to-bytebuffer image)
              ]
             (put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
 
@@ -939,8 +1063,8 @@
             capture-cam_i   (get capture-cam cam-id)]
         (if (= true running-cam_i) 
             (do (while  (get (:running-cam @locals) cam-id)
-
-                (buffer-cam-texture locals cam-id capture-cam_i))(vision.core/release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
+                ;(Thread/sleep (/ 1 30))
+                (buffer-cam-texture locals cam-id capture-cam_i))(oc-release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
  (defn currtime []
   (System/nanoTime))
@@ -1003,7 +1127,7 @@
                                             capture-cam     (:capture-cam @locals)
                                             capture-cam_i   (get capture-cam cam-id)](do 
 (swap! locals assoc :running-cam (assoc running-cam cam-id false)) 
-(vision.core/release @capture-cam_i)
+(oc-release @capture-cam_i)
 (swap! locals assoc :cams (set-nil cams_tmp cam-id))))) 
 
 (defn- remove-if-bad-video [locals video-id] (let [videos_tmp (:videos @locals)            
@@ -1020,7 +1144,7 @@
                                         capture-cam     (:capture-cam @locals)
                                         capture-cam_i   (get capture-cam cam-id)] (cond
         (= cam-id nil) (println "no cam")
-        :else (do (init-cam locals cam-id) (if (get @(get (:capture-cam @locals) cam-id) :pointer)(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
+        :else (do (init-cam locals cam-id) (if (= 1 1)(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
 ))))
 
 (defn- check-video-idx [locals video-id](let  [running-video     (:running-video @locals)
