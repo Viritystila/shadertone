@@ -1,9 +1,9 @@
 (ns #^{:author "Roger Allen"
        :doc "Shadertoy-like core library."}
   shadertone.shader
-  (:require [watchtower.core :as watcher] 
+  (:require [watchtower.core :as watcher]
+            [clojure.java.io :as io]
             clojure.string)
-   (:use [vision core] :reload-all)
   (:import [org.opencv.core Mat Core CvType]
     [org.opencv.videoio Videoio VideoCapture]
     [org.opencv.video Video]
@@ -156,7 +156,11 @@
 ;OPENCV 3 functions
 (defn oc-capture-from-cam [cam-id] (new org.opencv.videoio.VideoCapture cam-id ))
 
-(defn oc-capture-from-video [video-filename] (new org.opencv.videoio.VideoCapture video-filename ))
+(defn oc-capture-from-video [video-filename] (let [ vc (new org.opencv.videoio.VideoCapture) 
+                                                    _  (println "vc" vc)
+                                                    vco (try (.open vc video-filename) (catch Exception e (str "caught exception: " (.getMessage e))))
+                                                    _  (println "vco " vco)]
+                                                    vc))
 
 
 (defn oc-release [capture] (.release capture))
@@ -267,8 +271,6 @@
 ([]
   (new org.opencv.core.Mat )))
 ;;;;;;;;;;;;;;;;;;;;;;;;
-;  frame-count       (vision.core/get-capture-property @capture-video_i :frame-count)
-; (vision.core/set-capture-property  @capture-video_i :pos-frames 1 ) )
 
 (defn set-video-frame [video-id frame] (let[running-video     (:running-video @the-window-state)
                                      running-video_i     (get running-video video-id)
@@ -290,7 +292,7 @@
                                      frame-count         (get (:frames-video @the-window-state) video-id)
                                      min_val (if  (and (< min max) ( <= min frame-count) (> min 0)) min 1) 
                                      max_val (if  (and (< min max) ( <= max frame-count) (> max 0)) max frame-count)
-                                     cur_pos    (oc-get-capture-property :pos-frames @capture-video_i )]
+                                     cur_pos    (oc-get-capture-property :pos-frames capture-video_i )]
                                      (reset! (nth (:frame-start-video @the-window-state) video-id) min_val)
                                      (reset! (nth (:frame-stop-video @the-window-state) video-id) max_val)
                                      (if (< cur_pos min_val) (set-video-frame video-id min_val) (if (> cur_pos max_val) (set-video-frame video-id max_val) 0 ))
@@ -301,10 +303,10 @@
                                      running-video_i     (get running-video video-id)
                                      capture-video       (:capture-video @the-window-state)
                                      capture-video_i     (get capture-video video-id) 
-                                     fps (oc-get-capture-property :fps @capture-video_i )
+                                     fps (oc-get-capture-property :fps capture-video_i )
                                      fpstbs (if (< 0 new-fps) new-fps 1)
                                      fps-video_i (assoc (:fps-video @the-window-state) video-id fpstbs)]
-                                     (oc-set-capture-property :fps @capture-video_i  fpstbs)
+                                     (oc-set-capture-property :fps capture-video_i  fpstbs)
                                      (swap! the-window-state
                             assoc
                                 :fps-video         fps-video_i)
@@ -397,60 +399,36 @@
                                                                 (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (oc-capture-from-cam cam-id)) )))
                                                                 (do (println "Unable to init cam: " cam-id) ))))
 
- (defn- try-capture [cc] (try (vision.core/query-frame cc)(catch Exception e (println "ff"))))
- 
- 
- 
-            ;target           (GL11/GL_TEXTURE_2D)
-             ;tex-id             (get (:text-id-cam @locals) cam-id)
-             ;image              (oc-new-mat)
-             ;imageP             (oc-query-frame @capture-cam image)
-             ;height         (.height image)
-             ;width          (.width image)          
-             ;image-bytes        (.channels image)
-             ;internal-format     GL11/GL_RGB8
-             ;format              GL12/GL_BGR
-             ;nbytes               (* width height image-bytes)
-             ;buffer             (oc-mat-to-bytebuffer image)
-
  (defn init-vbuff [locals video-id] (let [    
-            _ (print "inititititit")
+            _ (println  "inititititit")
             capture-video     (:capture-video @locals)
             capture-video_i   (get capture-video video-id)
+            _ (println "capure video " capture-video_i)
+            _ (println "capure video " capture-video_i)
             image              (oc-new-mat)
-            imageP             (oc-query-frame @capture-video_i image)
-            ;imageDef           (if(not-nil? imageP) (get imageP :buffered-image)(ImageIO/read (FileInputStream. "src/init.png")))
-            ;image              @imageDef
+            _ (println "image pre buf " image)
+            imageP             (oc-query-frame capture-video_i image)
+            _ (println "imageP" imageP)
+            _ (println "image " image)
             height             (.height image)
-            width              (.width image) 
+            _ (println " height " height)
+            width              (.width image)
+            _ (println "width " width)
             image-bytes        (.channels image)
-            ;internal-format    (tex-internal-format image)
+            _ (println "image-bytes" image-bytes) 
             internal-format     GL11/GL_RGB8
             format              GL12/GL_BGR
-            ;height (vision.core/get-capture-property @capture-video_i :frame-height)
-            ;width (vision.core/get-capture-property @capture-video_i :frame-width)
-            ;_ (print "aaaaaaaaaaaa " capture-video)
-
-            _ (println "aaaaaaaaaaaaaa " @capture-video_i)
-            
-            frame-count 1
-            frame-count         (oc-get-capture-property :frame-count  @capture-video_i )
-            fps 20
-            fps (oc-get-capture-property :fps @capture-video_i)
-
+            frame-count         (oc-get-capture-property :frame-count  capture-video_i )
+            _ (println "frame-count" frame-count)
+            fps                 (oc-get-capture-property :fps capture-video_i)
+            _ (println "fps " fps)
             nbytes             (* image-bytes width height)
-            ;format             (get (:format-video @locals) video-id) 
+            _ (println "nbytes" nbytes)
             bff                (BufferUtils/createByteBuffer nbytes)
-            ;buffer             ^ByteBuffer (-> bff
-            ;                   (put-texture-data image (= image-bytes 4))
-            ;                   (.flip))
+            _ (println "bff" bff)
             buffer             (oc-mat-to-bytebuffer image)
-            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
-            _ (reset! (nth (:frame-stop-video @locals) video-id) (- frame-count 1))
-            
-            _ (set-video-frame-limits video-id 1 frame-count)
-            
-            bff_o (assoc (:buffer-video @locals) video-id buffer)
+            _ (println "buffer" buffer)
+             bff_o (assoc (:buffer-video @locals) video-id image)
             buffero_o (assoc (:image-video @locals) video-id bff)
             image-bytes_i (assoc (:image-bytes-video @locals) video-id image-bytes)
             nbytes_i (assoc (:nbytes-video @locals) video-id nbytes)
@@ -461,9 +439,9 @@
             frames-video_i (assoc (:frames-video @locals) video-id frame-count)
             fps-video_i (assoc (:fps-video @locals) video-id fps)
             _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
-
-
-            ext nil
+            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
+            _ (reset! (nth (:frame-stop-video @locals) video-id) frame-count)
+            _ (set-video-frame-limits video-id 1 frame-count)
 ]                     (swap! locals
                             assoc
                                 :image-video           buffero_o
@@ -485,11 +463,17 @@
                                     capture-video_i     (get capture-video video-id)
                                     video-filename      (:videos @locals)
                                     video-filename_i    (get video-filename video-id)
-                                    video-no-id         (:video-no-id @locals)]  
-                                    (if (and (not-nil? video-filename_i) (= false running-video_i))(do (println "video tb init"video-filename_i)
-                                                                                                    (swap! locals assoc :running-video (assoc running-video video-id true)) 
-                                                                                                    (swap!  locals assoc :capture-video (assoc capture-video video-id (future (oc-capture-from-video video-filename_i)) )
-                                                                                                    )(init-vbuff locals video-id))
+                                    video-no-id         (:video-no-id @locals)
+                                    ]  
+                                    (if (and (not-nil? video-filename_i) (= false running-video_i)(.exists (io/file video-filename_i)))(do (println "video tb init"video-filename_i)
+                                                                                                    (println "before anythig")
+                                                                                                    (println "here")
+                                                                                                    (swap!  locals assoc :capture-video (assoc capture-video video-id (oc-capture-from-video video-filename_i) ))
+                                                                                                    (swap! locals assoc :running-video (assoc running-video video-id true))                                                                                                  
+                                                                                                    (println "maybe problem is in the opnecv VideoCapture")
+                                                                                                    (init-vbuff locals video-id)
+                                                                                                    (println "what")
+                                                                                                    )
                                                                                                     (do (println "Unable to init video: " video-id) ))))
     
 (defn release-cam-textures [cam-id](let [tmpcams (:cams @the-window-state)
@@ -962,13 +946,6 @@
                                     )           
                                     )
  
-                         ;target_i (assoc (:target-video @locals) video-id target)
-                        ;text-id-video_i (assoc (:text-id-video @locals) video-id tex-id)
-                        ;            ]
-                        ;        (swap! locals
-                        ;        assoc
-                        ;        :target-video          target_i
-                        ;        :text-id-video         text-id-video_i)
                                    
  (defn- process-cam-image [locals cam-id] (let [
              image                (get (:image-cam @locals) cam-id)
@@ -1060,11 +1037,12 @@
  
  
 (defn- buffer-video-texture [locals video-id capture-video](let [
-            ;imageP             (try-capture @capture-video)
             ;imageDef           (get imageP :buffered-image)
             ;image              @imageDef
             image              (oc-new-mat)
-            imageP             (oc-query-frame @capture-video image)
+            ;image               (get (:buffer-video @locals) video-id)
+            imageP             (oc-query-frame capture-video image)
+            ;_ (print image)
             _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
             ]
              ))
@@ -1102,9 +1080,9 @@
             running-video_i   (get running-video video-id)
             capture-video     (:capture-video @locals)
             capture-video_i   (get capture-video video-id)
-            frame-count       (oc-get-capture-property :frame-count @capture-video_i )
-            cur-frame         (oc-get-capture-property :pos-frames @capture-video_i )
-            cur-fps           (oc-get-capture-property :fps @capture-video_i )
+            frame-count       (oc-get-capture-property :frame-count capture-video_i )
+            cur-frame         (oc-get-capture-property :pos-frames capture-video_i )
+            cur-fps           (oc-get-capture-property :fps capture-video_i )
             locKey            (keyword (str "frame-ctr-"video-id))
             startTime         (atom (System/nanoTime))
             ;_                 (print (System/nanoTime)) :frame-start-video :fps-video
@@ -1112,20 +1090,16 @@
         (if (= true running-video_i) 
             (do (while  (get (:running-video @locals) video-id)
                 (reset! startTime (System/nanoTime))
-                ;(println "AAAAAAAAAAAAAAAAAAa " (nth (:fps-video @locals) video-id))
-                ;min ( @(nth (:frame-stop-video @the-window-state) video-id) frame-count))
-                ;(Thread/sleep (sleepTime @startTime (System/nanoTime) (vision.core/get-capture-property @capture-video_i :fps)) ) 
-                ;Video playback gets stopped 1 sec before the end due to some vides having a corrput ending. This can ,abe be removed once I know how to handle the situation
-                ;(println "aaaa"  @(nth (:frame-start-video @locals) video-id))
-                (if (< (oc-get-capture-property :pos-frames @capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
+
+                (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                 (buffer-video-texture locals video-id capture-video_i)
-                (oc-set-capture-property :pos-frames @capture-video_i  @(nth (:frame-start-video @locals) video-id) )) 
+                (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id) )) 
                 
                 ( if (= true @(nth (:frame-change-video @locals) video-id)) 
-                (do(oc-set-capture-property :pos-frames  @capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
+                (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
                 (reset! (nth (:frame-change-video @locals) video-id) false))
                 (Thread/sleep (sleepTime @startTime (System/nanoTime) (nth (:fps-video @locals) video-id)) )  )
-                )(oc-release @capture-video_i)(println "video loop stopped" video-id)))))   
+                )(oc-release capture-video_i)(println "video loop stopped" video-id)))))   
   
   ;(print (- (System/nanoTime) @startTime))
 
@@ -1151,7 +1125,7 @@
                                             capture-video     (:capture-video @locals)
                                             capture-video_i   (get capture-video video-id)](do 
 (swap! locals assoc :running-video (assoc running-video video-id false)) 
-(oc-release @capture-video_i)
+(oc-release capture-video_i)
 (swap! locals assoc :videos (set-nil videos_tmp video-id)))))
 
 (defn- check-cam-idx [locals cam-id](let  [running-cam     (:running-cam @locals)
@@ -1162,14 +1136,14 @@
         :else (do (init-cam locals cam-id) (if (= 1 1)(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
 ))))
 
-(defn- check-video-idx [locals video-id](let  [running-video     (:running-video @locals)
-                                        running-video_i   (get running-video video-id)
-                                        capture-video     (:capture-video @locals)
-                                        capture-video_i   (get capture-video video-id)
+(defn- check-video-idx [locals video-id](let  [;running-video     (:running-video @locals)
+                                        ;running-video_i   (get running-video video-id)
+                                        ;capture-video     (:capture-video @locals)
+                                        ;capture-video_i   (get capture-video video-id)
                                         video_idxs        (:videos @locals)
                                         vid             (get video_idxs video-id)] (cond
         (= vid nil) (println "no video" video-id)
-        :else (do (init-video locals video-id ) (if (= 1 1)(do (future (start-video-loop locals video-id)))(do (remove-if-bad-video locals video-id)(println " bad video " video-id)))
+        :else (do (println "start video number" video-id) (init-video locals video-id ) (println "init ok for video " video-id) (if (= 1 1)(do (future (start-video-loop locals video-id)))(do (remove-if-bad-video locals video-id)(println " bad video " video-id)))
 ))))
 
 
@@ -1223,6 +1197,7 @@
     (init-textures locals)
 
     (init-cams locals)
+    (Thread/sleep 100)
     (init-videos locals)
     (init-shaders locals)
 
