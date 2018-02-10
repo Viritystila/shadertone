@@ -154,7 +154,11 @@
 
 
 ;OPENCV 3 functions
-(defn oc-capture-from-cam [cam-id] (new org.opencv.videoio.VideoCapture cam-id ))
+(defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
+                                                    _  (println "vc" vc)
+                                                    vco (try (.open vc cam-id) (catch Exception e (str "caught exception: " (.getMessage e))))
+                                                    _  (println "vc openened " (.isOpened vc))]
+                                                    vc))
 
 (defn oc-capture-from-video [video-filename] (let [ vc (new org.opencv.videoio.VideoCapture) 
                                                     _  (println "vc" vc)
@@ -1131,9 +1135,10 @@
 (defn- check-cam-idx [locals cam-id](let  [running-cam     (:running-cam @locals)
                                         running-cam_i   (get running-cam cam-id)
                                         capture-cam     (:capture-cam @locals)
-                                        capture-cam_i   (get capture-cam cam-id)] (cond
+                                        capture-cam_i   (get capture-cam cam-id)
+                                        _ (println "AAAAAAAAAAAAAAAAAAAAAAA" running-cam_i)] (cond
         (= cam-id nil) (println "no cam")
-        :else (do (init-cam locals cam-id) (if (= 1 1)(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
+        :else (do (init-cam locals cam-id) (if (.isOpened @(get (:capture-cam @locals) cam-id))(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
 ))))
 
 (defn- check-video-idx [locals video-id](let  [;running-video     (:running-video @locals)
