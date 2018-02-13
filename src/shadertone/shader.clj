@@ -68,9 +68,9 @@
    :height-cam          [0 0 0 0 0]
    ;Video feeds
    :i-video-loc         [0 0 0 0 0]
-   :running-video       [false false false false false]
-   :video-no-id         [nil nil nil nil nil]
-   :capture-video       [nil nil nil nil nil]
+   :running-video       [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :video-no-id         [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :capture-video       [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :buffer-video-frame  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :target-video        [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :text-id-video       [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -84,8 +84,7 @@
    :frame-change-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :frame-start-video   [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
    :frame-stop-video    [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
-
-   :is-paused-video     [false false false false false]
+   :is-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    ;Other
    :tex-id-fftwave      0
    :i-fftwave-loc      [0]
@@ -443,13 +442,18 @@
 (defn- sort-videos
   [locals videos_in]
   (let [videos      (remove nil? videos_in)
-        fullVec     (vec (replicate no-videos nil))
-        _           (swap! locals assoc :video-no-id fullVec)
+        ;fullVec     (vec (replicate no-videos nil))
+        ;_           (swap! locals assoc :video-no-id fullVec)
+        ;_ (println "AAAAAAAAAAAaaa" @(nth (:video-no-id @the-window-state) 1 ))
         ] 
         (doseq [video-filename-idx (range no-videos)]
-            (swap! locals assoc :video-no-id (assoc  (:video-no-id @locals)  video-filename-idx  (if (= nil (get videos_in video-filename-idx)) nil  video-filename-idx))))))
+            (reset! (nth (:video-no-id @the-window-state) video-filename-idx) (if (= nil (get videos_in video-filename-idx)) nil  video-filename-idx))
+            ;(println "AAAAAAAAAAAaaa" @(nth (:video-no-id @the-window-state) video-filename-idx ))
+            ;(reset! locals assoc :video-no-id (assoc  (:video-no-id @locals)  video-filename-idx  (if (= nil (get videos_in video-filename-idx)) nil  video-filename-idx)))
+            )))
    
-        
+ ;        (reset! (nth (:video-no-id @the-window-state) video-id) nil)
+       
       
 (defn- uniform-sampler-type-str
   [tex-types n]
@@ -866,23 +870,17 @@
 ;;;;;;;;;;;;;;;;;
 (defn set-video-frame 
     [video-id frame] 
-    (let [  running-video       (:running-video @the-window-state)
-            running-video_i     (get running-video video-id)
-            capture-video       (:capture-video @the-window-state)
-            capture-video_i     (get capture-video video-id)
-            frame-count         @(nth (:frames-video @the-window-state) video-id)
+    (let [  frame-count         @(nth (:frames-video @the-window-state) video-id)
             frame               (if (< frame frame-count)  frame frame-count)
             frame               (if (> frame 1) frame 1)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
             (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
             (reset! (nth (:frame-change-video @the-window-state) video-id) true)))
-                                     
+                            
+             
 (defn set-video-frame-limits 
     [video-id min max] 
-    (let [  running-video       (:running-video @the-window-state)
-            running-video_i     (get running-video video-id)
-            capture-video       (:capture-video @the-window-state)
-            capture-video_i     (get capture-video video-id)
+    (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
             frame-count         @(nth (:frames-video @the-window-state) video-id)
             min_val             (if  (and (< min max) ( <= min frame-count) (> min 0)) min 1) 
             max_val             (if  (and (< min max) ( <= max frame-count) (> max 0)) max frame-count)
@@ -894,10 +892,7 @@
 
 (defn set-video-fps 
     [video-id new-fps] 
-    (let [  running-video     (:running-video @the-window-state)
-            running-video_i     (get running-video video-id)
-            capture-video       (:capture-video @the-window-state)
-            capture-video_i     (get capture-video video-id) 
+    (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
             fps (oc-get-capture-property :fps capture-video_i )
             fpstbs (if (< 0 new-fps) new-fps 1)
             _ (reset! ( nth (:fps-video @the-window-state) video-id) fpstbs)]
@@ -908,8 +903,7 @@
  
 (defn init-vbuff 
    [locals video-id] 
-   (let [  capture-video        (:capture-video @locals)
-           capture-video_i      (get capture-video video-id)
+   (let [   capture-video_i      @(nth (:capture-video @the-window-state) video-id)
            image                (oc-new-mat)
            imageP               (oc-query-frame capture-video_i image)
            height               (.height image)
@@ -922,10 +916,6 @@
            nbytes               (* image-bytes width height)
            bff                  (BufferUtils/createByteBuffer nbytes)
            buffer               (oc-mat-to-bytebuffer image)
-           width_i              (assoc (:width-video @locals) video-id width)
-           height_i             (assoc (:height-video @locals) video-id height)
-           frames-video_i       (assoc (:frames-video @locals) video-id frame-count)
-           fps-video_i          (assoc (:fps-video @locals) video-id fps) 
            _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
            _ (reset! (nth (:frame-stop-video @locals) video-id) frame-count)
@@ -940,12 +930,10 @@
 (defn release-video-textures 
     [video-id]
     (let[tmpvideos          (:videos @the-window-state)
-        tmp-video-ids       (:video-no-id @the-window-state)
-        running-video       (:running-video @the-window-state)
-        running-video_i   (get running-video video-id)]
-        (swap! the-window-state assoc :running-video (assoc running-video video-id false))
+        tmp-video-ids       (:video-no-id @the-window-state)]
+        (reset! (nth (:running-video @the-window-state) video-id) false)
+        (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
-        (swap! the-window-state assoc :video-no-id (assoc tmp-video-ids video-id nil))
         (println ":running-video at release function after release" (:running-video @the-window-state))
         (println ":video-no-id at release function after release" (:video-no-id @the-window-state))
         (println ":videos at release function after release" (:videos @the-window-state))))    
@@ -1017,17 +1005,16 @@
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                 (println "start video loop " video-id)
-            running-video     (:running-video @locals)
-            running-video_i   (get running-video video-id)
-            capture-video     (:capture-video @locals)
-            capture-video_i   (get capture-video video-id)
+            capture-video_i     @(nth (:capture-video @locals) video-id)
+            _ (println "capture-video_i " capture-video_i)
+            running-video_i     @(nth (:running-video @locals) video-id)
             frame-count       (oc-get-capture-property :frame-count capture-video_i )
             cur-frame         (oc-get-capture-property :pos-frames capture-video_i )
             cur-fps           (oc-get-capture-property :fps capture-video_i )
             locKey            (keyword (str "frame-ctr-"video-id))
             startTime         (atom (System/nanoTime))]
             (if (= true running-video_i) 
-                (do (while  (get (:running-video @locals) video-id)
+                (do (while  @(nth (:running-video @locals) video-id)
                     (reset! startTime (System/nanoTime))
                     (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                         (buffer-video-texture locals video-id capture-video_i)
@@ -1041,38 +1028,45 @@
     
 (defn- check-video-idx 
    [locals video-id]
-   (let [  _                   (println "init video" video-id )
-           running-video       (:running-video @locals)
-           running-video_i     (get running-video video-id)
-           capture-video       (:capture-video @locals)
-           capture-video_i     (get capture-video video-id)
-           video-filename      (:videos @locals)
-           video-filename_i    (get video-filename video-id)
-           video-no-id         (:video-no-id @locals)] 
-           (if (and (not-nil? video-filename_i) (= false running-video_i)(.exists (io/file video-filename_i)))
-               (do (println "video tb init"video-filename_i)
-               (swap!  locals assoc :capture-video (assoc capture-video video-id (oc-capture-from-video video-filename_i) ))
-               (swap! locals assoc :running-video (assoc running-video video-id true))
-               (init-vbuff locals video-id)
-               (if (.isOpened (get (:capture-video @locals) video-id))
-                   (do (future (start-video-loop locals video-id)))
-                   (do (swap! locals assoc :running-video (assoc running-video video-id false))
-                       (oc-release capture-video_i)
-                       (swap! locals assoc :videos (set-nil video-filename video-id))
-                       (println " bad video " video-id))))
+   (let [   _                   (println "init video" video-id )
+            capture-video_i     @(nth (:capture-video @locals) video-id)
+            running-video_i     @(nth (:running-video @locals) video-id)
+            video-filename      (:videos @locals)
+            video-filename_i    (get video-filename video-id)] 
+            (if (and (not-nil? video-filename_i) (= false running-video_i)(.exists (io/file video-filename_i)))
+                (do (println "video tb init"video-filename_i)
+                    (reset! (nth (:capture-video @locals) video-id) (oc-capture-from-video video-filename_i))
+                    (reset! (nth (:running-video @locals) video-id) true)
+                    (init-vbuff locals video-id)
+                    (if (.isOpened @(nth (:capture-video @locals) video-id))
+                        (do (future (start-video-loop locals video-id)))
+                        (do (reset! (nth (:running-video @locals) video-id) false)
+                            (oc-release capture-video_i)
+                            (swap! locals assoc :videos (set-nil video-filename video-id))
+                            (println " bad video " video-id))))
                (do (println "Unable to init video: " video-id) ))))   
                 
 (defn post-start-video 
     [video-filename video-id] 
     (let [  tmpvideo            (:videos @the-window-state)
-            tmpvideo_ids        (:video-no-id @the-window-state)
-            capture-video       (:capture-video @the-window-state)
-            capture-video_i     (get capture-video video-id)] 
+            tmpvideo_ids        (:video-no-id @the-window-state)] 
             (release-video-textures video-id)
             (Thread/sleep 100)
             (swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
-            (swap! the-window-state assoc :video-no-id (assoc tmpvideo_ids video-id video-id))
+            (reset! (nth (:video-no-id @the-window-state) video-id) video-id)
             (check-video-idx the-window-state video-id)))
+            
+(defn- get-video-textures
+    [locals video-id]
+    (let [  running-video_i   @(nth (:running-video @locals) video-id)]
+            (if (and (= true running-video_i))(do (process-video-image locals video-id)) :false)))
+                                            
+(defn- loop-get-video-textures 
+    [locals videos]
+    (let [  {:keys [video-no-id]} @locals]
+                (doseq [i video-no-id]
+                (if (= @i nil)  nil (get-video-textures locals @i)))))
+                                  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
                                                                                                     
 (defn- remove-if-bad [locals cam-id] (let [cams_tmp (:cams @locals)            
@@ -1238,18 +1232,16 @@
 (defn- get-cam-textures[locals cam-id](let[running-cam     (:running-cam @locals)
                                             running-cam_i   (get running-cam cam-id)]
                                             (if (and (= true running-cam_i)( not-nil?(get (:image-cam @locals) cam-id)))(do (process-cam-image locals cam-id)) :false)))
-(defn- get-video-textures[locals video-id](let[running-video     (:running-video @locals)
-                                            running-video_i   (get running-video video-id)
-                                            ]
-                                            (if (and (= true running-video_i))(do (process-video-image locals video-id)) :false)))
+
+
+                                            
+                                            
+                                            
 (defn- loop-get-cam-textures [locals cams]
                 (doseq [i (remove nil? cams)]
                 (get-cam-textures locals i)))
                 
-(defn- loop-get-video-textures [locals videos](let [{:keys [video-no-id]} @locals]
-                (doseq [i (remove nil? video-no-id)]
-                (get-video-textures locals i))))
-                                            
+                      
 (defn- draw
   [locals]
   (let [{:keys [width height i-resolution-loc
@@ -1444,7 +1436,8 @@
     (swap! locals assoc :cams (vec (replicate no-cams nil)))
     
     (println " Videos tbd" (:videos @the-window-state))
-    (doseq [i (remove nil? (:video-no-id @the-window-state))](println "release videos " i)(release-video-textures i))
+    (doseq [i (:video-no-id @the-window-state)]
+        (if (= @i nil) (println "no video")  (release-video-textures @i)))
     (swap! locals assoc :videos (vec (replicate no-videos nil)))
     ;Stop and release video release-cam-textures
     ;; Delete any user state
