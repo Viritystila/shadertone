@@ -1016,7 +1016,7 @@
  
 (defn- start-video-loop 
     [locals video-id]
-    (let [_ (println "start video loop " video-id)
+    (let [  _                 (println "start video loop " video-id)
             running-video     (:running-video @locals)
             running-video_i   (get running-video video-id)
             capture-video     (:capture-video @locals)
@@ -1031,8 +1031,7 @@
                     (reset! startTime (System/nanoTime))
                     (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                         (buffer-video-texture locals video-id capture-video_i)
-                        (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))) 
-                
+                        (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))                 
                     (if (= true @(nth (:frame-change-video @locals) video-id)) 
                         (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
                             (reset! (nth (:frame-change-video @locals) video-id) false))
