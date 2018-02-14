@@ -523,7 +523,6 @@
         videos              (fill-filenames videos no-videos)
         cams                (sort-cams cams)
         tttt                (sort-videos locals videos)
-        ;_                   (println "sorted cams" cams)
         tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
@@ -752,6 +751,30 @@
     (swap! locals assoc
            :tex-ids tex-ids)))
 
+;;;;;;;;;;;;;;;;;;
+;;Camera functions
+;;;;;;;;;;;;;;;;;;
+(defn init-camera-buffer 
+   [locals cam-id] 
+   (let [  capture-cam_i        @(nth (:capture-cam @locals) cam-id)
+           image                (oc-new-mat)
+           imageP               (oc-query-frame capture-cam_i image)
+           height               (.height image)
+           width                (.width image)
+           image-bytes          (.channels image)
+           internal-format      GL11/GL_RGB8
+           format               GL12/GL_BGR
+           nbytes               (* image-bytes width height)
+           bff                  (BufferUtils/createByteBuffer nbytes)
+           buffer               (oc-mat-to-bytebuffer image)
+           _ (reset! (nth (:buffer-cam-frame @locals) cam-id) image)
+           _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
+           _ (reset! (nth (:format-cam @locals) cam-id) format)
+           _ (reset! (nth (:width-cam @locals) cam-id) width)
+           _ (reset! (nth (:height-cam @locals) cam-id) height)]))    
+  
+  
+  
   
 
  (defn- init-cam-tex [locals cam-id](let [
@@ -898,12 +921,10 @@
             _ (reset! ( nth (:fps-video @the-window-state) video-id) fpstbs)]
             (oc-set-capture-property :fps capture-video_i  fpstbs)
             (println "new fps " fpstbs )))
-                                     
-
  
-(defn init-vbuff 
+(defn init-video-buffer 
    [locals video-id] 
-   (let [   capture-video_i      @(nth (:capture-video @the-window-state) video-id)
+   (let [   capture-video_i     @(nth (:capture-video @the-window-state) video-id)
            image                (oc-new-mat)
            imageP               (oc-query-frame capture-video_i image)
            height               (.height image)
@@ -925,7 +946,7 @@
            _ (reset! (nth (:width-video @locals) video-id) width)
            _ (reset! (nth (:height-video @locals) video-id) height)
            _ (reset! (nth (:frames-video @locals) video-id) frame-count)
-           _ (set-video-frame-limits video-id 1 frame-count)] ))  
+           _ (set-video-frame-limits video-id 1 frame-count)]))  
                           
 (defn release-video-textures 
     [video-id]
@@ -997,22 +1018,22 @@
  
 (defn- buffer-video-texture 
     [locals video-id capture-video]
-    (let [  image              (oc-new-mat)
-            imageP             (oc-query-frame capture-video image)
+    (let [  image               (oc-new-mat)
+            imageP              (oc-query-frame capture-video image)
             _                   (reset! (nth (:buffer-video-frame @locals) video-id) image)]))
     
  
 (defn- start-video-loop 
     [locals video-id]
-    (let [  _                 (println "start video loop " video-id)
+    (let [  _                   (println "start video loop " video-id)
             capture-video_i     @(nth (:capture-video @locals) video-id)
-            _ (println "capture-video_i " capture-video_i)
+            _                   (println "capture-video_i " capture-video_i)
             running-video_i     @(nth (:running-video @locals) video-id)
-            frame-count       (oc-get-capture-property :frame-count capture-video_i )
-            cur-frame         (oc-get-capture-property :pos-frames capture-video_i )
-            cur-fps           (oc-get-capture-property :fps capture-video_i )
-            locKey            (keyword (str "frame-ctr-"video-id))
-            startTime         (atom (System/nanoTime))]
+            frame-count         (oc-get-capture-property :frame-count capture-video_i )
+            cur-frame           (oc-get-capture-property :pos-frames capture-video_i )
+            cur-fps             (oc-get-capture-property :fps capture-video_i )
+            locKey              (keyword (str "frame-ctr-"video-id))
+            startTime           (atom (System/nanoTime))]
             (if (= true running-video_i) 
                 (do (while  @(nth (:running-video @locals) video-id)
                     (reset! startTime (System/nanoTime))
@@ -1037,7 +1058,7 @@
                 (do (println "video tb init"video-filename_i)
                     (reset! (nth (:capture-video @locals) video-id) (oc-capture-from-video video-filename_i))
                     (reset! (nth (:running-video @locals) video-id) true)
-                    (init-vbuff locals video-id)
+                    (init-video-buffer locals video-id)
                     (if (.isOpened @(nth (:capture-video @locals) video-id))
                         (do (future (start-video-loop locals video-id)))
                         (do (reset! (nth (:running-video @locals) video-id) false)
