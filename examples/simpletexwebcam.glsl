@@ -38,7 +38,7 @@ void main(void) {
   
   vec4 fftw=texture2D(iFftWave, uv);
   
-  vec4 c2 = texture2D(iCam0,vec2(uv3.x, -uv3.y * prop));
+  vec4 c2 = texture2D(iCam0,uv2);
   vec4 c3 = texture2D(iCam1,uv2);
   vec4 c4 = texture2D(iCam2,uv2);
   vec4 c5 = texture2D(iCam3,uv2);
@@ -59,6 +59,6 @@ void main(void) {
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
   vec4 cf6 = mix(cf5,v3,c2.w); 
 
-  gl_FragColor = v1;
+  gl_FragColor = c2;
   
 }
