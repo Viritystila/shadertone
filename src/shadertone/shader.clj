@@ -54,18 +54,18 @@
    :i-channel-loc       [0 0 0 0]
    ;V4l2 feeds
    :i-cam-loc           [0 0 0 0 0]
-   :running-cam         [false false false false false]
-   :capture-cam         [0 0 0 0 0]
-   :buffer-cam          [0 0 0 0 0]
-   :target-cam          [0 0 0 0 0]
-   :text-id-cam         [0 0 0 0 0]
-   :image-bytes-cam     [0 0 0 0 0]
-   :nbytes-cam          [0 0 0 0 0]
-   :internal-format-cam [0 0 0 0 0]
-   :format-cam          [0 0 0 0 0]
-   :fps-cam             [0 0 0 0 0]
-   :width-cam           [0 0 0 0 0]
-   :height-cam          [0 0 0 0 0]
+   :running-cam         [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :capture-cam         [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :buffer-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :target-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :text-id-cam         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   ;:image-bytes-cam     [0 0 0 0 0]
+   ;:nbytes-cam          [0 0 0 0 0]
+   :internal-format-cam [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :format-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :fps-cam             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :width-cam           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :height-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    ;Video feeds
    :i-video-loc         [0 0 0 0 0]
    :running-video       [(atom false) (atom false) (atom false) (atom false) (atom false)]
@@ -370,25 +370,10 @@
                     (= image-type BufferedImage/TYPE_INT_ARGB)   GL11/GL_RGBA)]
     format))
 
-(defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
-                                    running-cam     (:running-cam @locals)
-                                    running-cam_i   (get running-cam cam-id)
-                                    capture-cam     (:capture-cam @locals)
-                                    capture-cam_i   (get capture-cam cam-id)]  
-                                    (if (= false running-cam_i)(do (swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
-                                                                (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (oc-capture-from-cam cam-id)) )))
-                                                                (do (println "Unable to init cam: " cam-id) ))))
-                         
+                       
                                                                 
                                                                         
                                                                                                     
-(defn release-cam-textures [cam-id](let [tmpcams (:cams @the-window-state)
-                                        running-cam     (:running-cam @the-window-state)
-                                        _         (println "running-cam at release function before release" running-cam)
-                                        running-cam_i   (get running-cam cam-id)]
-                                        (swap! the-window-state assoc :running-cam (assoc running-cam cam-id false))
-                                        (swap! the-window-state assoc :cams (assoc tmpcams cam-id nil))
-                                        (println "running-cam at release function after release" (:running-cam @the-window-state))))
 
     
 
@@ -441,19 +426,11 @@
  
 (defn- sort-videos
   [locals videos_in]
-  (let [videos      (remove nil? videos_in)
-        ;fullVec     (vec (replicate no-videos nil))
-        ;_           (swap! locals assoc :video-no-id fullVec)
-        ;_ (println "AAAAAAAAAAAaaa" @(nth (:video-no-id @the-window-state) 1 ))
-        ] 
+  (let [videos      (remove nil? videos_in)] 
         (doseq [video-filename-idx (range no-videos)]
             (reset! (nth (:video-no-id @the-window-state) video-filename-idx) (if (= nil (get videos_in video-filename-idx)) nil  video-filename-idx))
-            ;(println "AAAAAAAAAAAaaa" @(nth (:video-no-id @the-window-state) video-filename-idx ))
-            ;(reset! locals assoc :video-no-id (assoc  (:video-no-id @locals)  video-filename-idx  (if (= nil (get videos_in video-filename-idx)) nil  video-filename-idx)))
             )))
-   
- ;        (reset! (nth (:video-no-id @the-window-state) video-id) nil)
-       
+        
       
 (defn- uniform-sampler-type-str
   [tex-types n]
@@ -767,126 +744,287 @@
            nbytes               (* image-bytes width height)
            bff                  (BufferUtils/createByteBuffer nbytes)
            buffer               (oc-mat-to-bytebuffer image)
-           _ (reset! (nth (:buffer-cam-frame @locals) cam-id) image)
+           _ (reset! (nth (:buffer-cam @locals) cam-id) image)
            _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
            _ (reset! (nth (:format-cam @locals) cam-id) format)
            _ (reset! (nth (:width-cam @locals) cam-id) width)
            _ (reset! (nth (:height-cam @locals) cam-id) height)]))    
-  
-  
-  
-  
 
- (defn- init-cam-tex [locals cam-id](let [
-                                    target              (GL11/GL_TEXTURE_2D)
-                                    tex-id             (GL11/glGenTextures)
-                                    height              1
-                                    width               1
-                                    mat  (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
-                                    image-bytes         (.channels mat)
-                                    nbytes              (* height width image-bytes)
-                                    internal-format     GL11/GL_RGB8
-                                    format              GL12/GL_BGR
-                                    buffer               (oc-mat-to-bytebuffer mat)
-                                    image_i (assoc (:image-cam @locals) cam-id buffer)
-                                    target_i (assoc (:target-cam @locals) cam-id target)
-                                    image-bytes_i (assoc (:image-bytes-cam @locals) cam-id image-bytes)
-                                    nbytes_i (assoc (:nbytes-cam @locals) cam-id nbytes)
-                                    internal-format_i (assoc (:internal-format-cam @locals) cam-id internal-format)
-                                    format_i (assoc (:format-cam @locals) cam-id format)
-                                    width_i (assoc (:width-cam @locals) cam-id width)
-                                    height_i (assoc (:height-cam @locals) cam-id height)
-                                    text-id-cam_i (assoc (:text-id-cam @locals) cam-id tex-id)
-                                        ]                                             
-                                    (swap! locals
-                                        assoc
-                                        :image-cam           image_i
-                                        :target-cam          target_i
-                                        :image-bytes-cam     image-bytes_i
-                                        :nbytes-cam          nbytes_i
-                                        :internal-format-cam internal-format_i
-                                        :format-cam          format_i
-                                        :width-cam           width_i
-                                        :height-cam          height_i
-                                        :text-id-cam         text-id-cam_i)
+           
+;; (defn release-video-textures 
+;;     [video-id]
+;;     (let[tmpvideos          (:videos @the-window-state)
+;;         tmp-video-ids       (:video-no-id @the-window-state)]
+;;         (reset! (nth (:running-video @the-window-state) video-id) false)
+;;         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
+;;         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
+;;         (println ":running-video at release function after release" (:running-video @the-window-state))
+;;         (println ":video-no-id at release function after release" (:video-no-id @the-window-state))
+;;         (println ":videos at release function after release" (:videos @the-window-state))))    
+           
+           
+           
+(defn release-cam-textures 
+    [cam-id]
+    (let [  tmpcams (:cams @the-window-state)
+                                        ;running-cam     (:running-cam @the-window-state)
+                                        ;_         (println "running-cam at release function before release" running-cam)
+                                        ;running-cam_i   (get running-cam cam-id)
+                                        ]
+                                        (reset! (nth (:running-cam @the-window-state) cam-id) false)
+                                        ;(swap! the-window-state assoc :running-cam (assoc running-cam cam-id false))
+                                        (swap! the-window-state assoc :cams (assoc tmpcams cam-id nil))
+                                        (println "running-cam at release function after release" (:running-cam @the-window-state))))
+           
+           
+ (defn- init-cam-tex 
+    [locals cam-id]    
+    (let [  target              (GL11/GL_TEXTURE_2D)
+            tex-id              (GL11/glGenTextures)
+            height              1
+            width               1
+            mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+            image-bytes         (.channels mat)
+            nbytes              (* height width image-bytes)
+            internal-format     GL11/GL_RGB8
+            format              GL12/GL_BGR
+            buffer              (oc-mat-to-bytebuffer mat)]
+            (reset! (nth (:target-cam @locals) cam-id) target)
+            (reset! (nth (:text-id-cam @locals) cam-id) tex-id)
+            (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
+            (reset! (nth (:format-cam @locals) cam-id) format)
+            (reset! (nth (:fps-cam @locals) cam-id) 1)
+            (reset! (nth (:width-cam @locals) cam-id) width)
+            (reset! (nth (:height-cam @locals) cam-id) height)
+;;                                     image_i (assoc (:image-cam @locals) cam-id buffer)
+;;                                     target_i (assoc (:target-cam @locals) cam-id target)
+;;                                     image-bytes_i (assoc (:image-bytes-cam @locals) cam-id image-bytes)
+;;                                     nbytes_i (assoc (:nbytes-cam @locals) cam-id nbytes)
+;;                                     internal-format_i (assoc (:internal-format-cam @locals) cam-id internal-format)
+;;                                     format_i (assoc (:format-cam @locals) cam-id format)
+;;                                     width_i (assoc (:width-cam @locals) cam-id width)
+;;                                     height_i (assoc (:height-cam @locals) cam-id height)
+;;                                     text-id-cam_i (assoc (:text-id-cam @locals) cam-id tex-id)
+;;                                         ]                                             
+;;                                     (swap! locals
+;;                                         assoc
+;;                                         :image-cam           image_i
+;;                                         :target-cam          target_i
+;;                                         :image-bytes-cam     image-bytes_i
+;;                                         :nbytes-cam          nbytes_i
+;;                                         :internal-format-cam internal-format_i
+;;                                         :format-cam          format_i
+;;                                         :width-cam           width_i
+;;                                         :height-cam          height_i
+;;                                         :text-id-cam         text-id-cam_i)
                                     (GL11/glBindTexture target tex-id)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
                                     (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
-                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)
-                                    )      
+                                    (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))
+
                                     
-                                    )
+                                    
+;; (defn- process-video-image 
+;;     [locals video-id] 
+;;     (let[   target              @(nth (:target-video @locals) video-id)
+;;             internal-format     @(nth (:internal-format-video @locals) video-id)
+;;             format              @(nth (:format-video @locals) video-id)
+;;             image               @(nth (:buffer-video-frame @locals) video-id)
+;;             height              (.height image)
+;;             width               (.width image)          
+;;             image-bytes         (.channels image)
+;;             tex-id              @(nth (:text-id-video @locals) video-id)
+;;             tex-image-target    ^Integer (+ 0 target)
+;;             nbytes              (* width height image-bytes)
+;;             buffer              (oc-mat-to-bytebuffer image)]
+;;             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
+;;             (GL11/glBindTexture target tex-id)
+;;             (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+;;                 ^Integer width  ^Integer height 0
+;;                 ^Integer format
+;;                 GL11/GL_UNSIGNED_BYTE
+;;                 ^ByteBuffer buffer))
+;;             (except-gl-errors "@ end of load-texture if-stmt")))
+                                     
+                                   
                             
- (defn- process-cam-image [locals cam-id] (let [
-             image                (get (:image-cam @locals) cam-id)
-             target               (get (:target-cam @locals) cam-id)
-             internal-format (get (:internal-format-cam @locals) cam-id)
-             format (get (:format-cam @locals) cam-id)
-             height (get (:height-cam @locals) cam-id)
-             width (get (:width-cam @locals) cam-id)
-             tex-id             (get (:text-id-cam @locals) cam-id)
-             tex-image-target ^Integer (+ 0 target)
+ (defn- process-cam-image 
+    [locals cam-id] 
+    (let [  target              @(nth (:target-cam @locals) cam-id)
+            internal-format     @(nth (:internal-format-cam @locals) cam-id)
+            format              @(nth (:format-cam @locals) cam-id)
+            image               @(nth (:buffer-cam @locals) cam-id)
+            height              (.height image)
+            width               (.width image)          
+            image-bytes         (.channels image)
+            tex-id              @(nth (:text-id-cam @locals) cam-id)
+            tex-image-target    ^Integer (+ 0 target)
+            nbytes              (* width height image-bytes)
+            buffer              (oc-mat-to-bytebuffer image)             
+             ;image                (get (:image-cam @locals) cam-id)
+             ;target               (get (:target-cam @locals) cam-id)
+             ;internal-format (get (:internal-format-cam @locals) cam-id)
+             ;format (get (:format-cam @locals) cam-id)
+             ;height (get (:height-cam @locals) cam-id)
+             ;width (get (:width-cam @locals) cam-id)
+             ;tex-id             (get (:text-id-cam @locals) cam-id)
+             ;tex-image-target ^Integer (+ 0 target)
              ]
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
       (GL11/glBindTexture target tex-id)
-      (GL11/glTexImage2D tex-image-target, 0, internal-format, width, height, 0, format, GL11/GL_UNSIGNED_BYTE, image)
+      (GL11/glTexImage2D tex-image-target, 0, internal-format, width, height, 0, format, GL11/GL_UNSIGNED_BYTE, buffer)
 ))         
 
 
-(defn- buffer-cam-texture [locals cam-id capture-cam](let [
-             target           (GL11/GL_TEXTURE_2D)
-             tex-id             (get (:text-id-cam @locals) cam-id)
-             image              (oc-new-mat)
-             imageP             (oc-query-frame @capture-cam image)
-             height         (.height image)
-             width          (.width image)          
-             image-bytes        (.channels image)
-             internal-format     GL11/GL_RGB8
-             format              GL12/GL_BGR
-             nbytes               (* width height image-bytes)
-             buffer             (oc-mat-to-bytebuffer image)
-             
-             image_i (assoc (:image-cam @locals) cam-id buffer)
-             target_i (assoc (:target-cam @locals) cam-id target)
-             image-bytes_i (assoc (:image-bytes-cam @locals) cam-id image-bytes)
-             nbytes_i (assoc (:nbytes-cam @locals) cam-id nbytes)
-             internal-format_i (assoc (:internal-format-cam @locals) cam-id internal-format)
-             format_i (assoc (:format-cam @locals) cam-id format)
-             width_i (assoc (:width-cam @locals) cam-id width)
-             height_i (assoc (:height-cam @locals) cam-id height)
-             text-id-cam_i (assoc (:text-id-cam @locals) cam-id tex-id)
-             ]                                             
-             (swap! locals
-                    assoc
-                    :image-cam           image_i
-                    :target-cam          target_i
-                    :image-bytes-cam     image-bytes_i
-                    :nbytes-cam          nbytes_i
-                    :internal-format-cam internal-format_i
-                    :format-cam          format_i
-                    :width-cam           width_i
-                    :height-cam          height_i
-                    :text-id-cam         text-id-cam_i)
-             
+;; (defn- buffer-video-texture 
+;;     [locals video-id capture-video]
+;;     (let [  image               (oc-new-mat)
+;;             imageP              (oc-query-frame capture-video image)
+;;             _                   (reset! (nth (:buffer-video-frame @locals) video-id) image)]))
+;;   
+
+(defn- buffer-cam-texture 
+    [locals cam-id capture-cam]
+    (let [  image               (oc-new-mat)
+            imageP              (oc-query-frame capture-cam image)
+;;              target           (GL11/GL_TEXTURE_2D)
+;;              tex-id             (get (:text-id-cam @locals) cam-id)
+;;              image              (oc-new-mat)
+;;              imageP             (oc-query-frame @capture-cam image)
+;;              height         (.height image)
+;;              width          (.width image)          
+;;              image-bytes        (.channels image)
+;;              internal-format     GL11/GL_RGB8
+;;              format              GL12/GL_BGR
+;;              nbytes               (* width height image-bytes)
+;;              buffer             (oc-mat-to-bytebuffer image)
+;;              
+;;              image_i (assoc (:image-cam @locals) cam-id buffer)
+;;              target_i (assoc (:target-cam @locals) cam-id target)
+;;              image-bytes_i (assoc (:image-bytes-cam @locals) cam-id image-bytes)
+;;              nbytes_i (assoc (:nbytes-cam @locals) cam-id nbytes)
+;;              internal-format_i (assoc (:internal-format-cam @locals) cam-id internal-format)
+;;              format_i (assoc (:format-cam @locals) cam-id format)
+;;              width_i (assoc (:width-cam @locals) cam-id width)
+;;              height_i (assoc (:height-cam @locals) cam-id height)
+;;              text-id-cam_i (assoc (:text-id-cam @locals) cam-id tex-id)
+             ]      
+             (reset! (nth (:buffer-cam @locals) cam-id) image)
+;;              (swap! locals
+;;                     assoc
+;;                     :image-cam           image_i
+;;                     :target-cam          target_i
+;;                     :image-bytes-cam     image-bytes_i
+;;                     :nbytes-cam          nbytes_i
+;;                     :internal-format-cam internal-format_i
+;;                     :format-cam          format_i
+;;                     :width-cam           width_i
+;;                     :height-cam          height_i
+;;                     :text-id-cam         text-id-cam_i)
+;;              
             ;(put-cam-buffer locals buffer target image-bytes nbytes internal-format format height width  cam-id tex-id)
 
              )) 
  
+
+;; (defn- start-video-loop 
+;;     [locals video-id]
+;;     (let [  _                   (println "start video loop " video-id)
+;;             capture-video_i     @(nth (:capture-video @locals) video-id)
+;;             _                   (println "capture-video_i " capture-video_i)
+;;             running-video_i     @(nth (:running-video @locals) video-id)
+;;             frame-count         (oc-get-capture-property :frame-count capture-video_i )
+;;             cur-frame           (oc-get-capture-property :pos-frames capture-video_i )
+;;             cur-fps             (oc-get-capture-property :fps capture-video_i )
+;;             locKey              (keyword (str "frame-ctr-"video-id))
+;;             startTime           (atom (System/nanoTime))]
+;;             (if (= true running-video_i) 
+;;                 (do (while  @(nth (:running-video @locals) video-id)
+;;                     (reset! startTime (System/nanoTime))
+;;                     (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
+;;                         (buffer-video-texture locals video-id capture-video_i)
+;;                         (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))                 
+;;                     (if (= true @(nth (:frame-change-video @locals) video-id)) 
+;;                         (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
+;;                             (reset! (nth (:frame-change-video @locals) video-id) false))
+;;                         (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))))
+;;                     (oc-release capture-video_i)
+;;                     (println "video loop stopped" video-id)))))   
+     
  
 
 (defn- start-cam-loop [locals cam-id]
-    (let [_ (println "start cam loop " cam-id)
-            running-cam     (:running-cam @locals)
-            running-cam_i   (get running-cam cam-id)
-            capture-cam     (:capture-cam @locals)
-            capture-cam_i   (get capture-cam cam-id)
+    (let [  _                   (println "start cam loop " cam-id)
+            ;running-cam     (:running-cam @locals)
+            running-cam_i       @(nth (:running-cam @locals) cam-id) ;(get running-cam cam-id)
+            ;capture-cam     (:capture-cam @locals)
+            capture-cam_i       @(nth (:capture-cam @locals) cam-id); (get capture-cam cam-id)
             ]
         (if (= true running-cam_i) 
-            (do (while  (get (:running-cam @locals) cam-id)
-                (buffer-cam-texture locals cam-id capture-cam_i))(oc-release @capture-cam_i)(println "cam loop stopped" cam-id)))))   
+            (do (while  @(nth (:running-cam @locals) cam-id) ;(get (:running-cam @locals) cam-id)
+                (buffer-cam-texture locals cam-id capture-cam_i))(oc-release capture-cam_i)(println "cam loop stopped" cam-id)))))   
 
-                
+ 
+(defn- remove-if-bad [locals cam-id] (let [cams_tmp (:cams @locals)            
+                                            running-cam     (:running-cam @locals)
+                                            running-cam_i   (get running-cam cam-id)
+                                            capture-cam     (:capture-cam @locals)
+                                            capture-cam_i   (get capture-cam cam-id)](do 
+(swap! locals assoc :running-cam (assoc running-cam cam-id false)) 
+(oc-release @capture-cam_i)
+(swap! locals assoc :cams (set-nil cams_tmp cam-id))))) 
+
+
+;; (defn- check-video-idx 
+;;    [locals video-id]
+;;    (let [   _                   (println "init video" video-id )
+;;             capture-video_i     @(nth (:capture-video @locals) video-id)
+;;             running-video_i     @(nth (:running-video @locals) video-id)
+;;             video-filename      (:videos @locals)
+;;             video-filename_i    (get video-filename video-id)] 
+;;             (if (and (not-nil? video-filename_i) (= false running-video_i)(.exists (io/file video-filename_i)))
+;;                 (do (println "video tb init"video-filename_i)
+;;                     (reset! (nth (:capture-video @locals) video-id) (oc-capture-from-video video-filename_i))
+;;                     (reset! (nth (:running-video @locals) video-id) true)
+;;                     (init-video-buffer locals video-id)
+;;                     (if (.isOpened @(nth (:capture-video @locals) video-id))
+;;                         (do (future (start-video-loop locals video-id)))
+;;                         (do (reset! (nth (:running-video @locals) video-id) false)
+;;                             (oc-release capture-video_i)
+;;                             (swap! locals assoc :videos (set-nil video-filename video-id))
+;;                             (println " bad video " video-id))))
+;;                (do (println "Unable to init video: " video-id) ))))   
+;;  
+
+(defn init-cam [locals cam-id] (let [_              (println "init cam" cam-id )
+                                    running-cam     (:running-cam @locals)
+                                    running-cam_i   (get running-cam cam-id)
+                                    capture-cam     (:capture-cam @locals)
+                                    capture-cam_i   (get capture-cam cam-id)]  
+                                    (if (= false running-cam_i)(do (swap! locals assoc :running-cam (assoc running-cam cam-id true)) 
+                                                                (swap!  locals assoc :capture-cam (assoc capture-cam cam-id (future (oc-capture-from-cam cam-id)) )))
+                                                                (do (println "Unable to init cam: " cam-id) ))))
+  
+
+
+
+(defn- check-cam-idx 
+    [locals cam-id]
+    (let [  _                   (println "init cam" cam-id )
+            running-cam_i   @(nth (:running-cam @locals) cam-id)
+            capture-cam_i   @(nth (:capture-cam @locals) cam-id)] 
+            (if (and (not-nil? cam-id) (= false running-cam_i))
+                (do (println "video tb init"video-filename_i))
+                (reset! (nth (:capture-cam @locals) cam-id) (oc-capture-from-cam cam-id))
+            )                            
+                                        
+                                        
+(cond
+        (= cam-id nil) (println "no cam")
+        :else (do (init-cam locals cam-id) (if (and (.isOpened @(nth (:capture-cam @locals) cam-id)) (= false running-cam_i))(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
+)))) 
+  
                                      
 ;;;;;;;;;;;;;;;;;
 ;;Video functions
@@ -1087,26 +1225,19 @@
     (let [  {:keys [video-no-id]} @locals]
                 (doseq [i video-no-id]
                 (if (= @i nil)  nil (get-video-textures locals @i)))))
-                                  
+   
+(defn- init-videos 
+    [locals]
+    (let [  video_idxs        (:videos @locals)]
+            (doseq [video-id (range no-videos)]
+                (init-video-tex locals video-id ))
+            (doseq [video-id (range no-videos)]
+                (println "video_id" video-id)
+                (check-video-idx locals video-id))))    
+       
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
                                                                                                     
-(defn- remove-if-bad [locals cam-id] (let [cams_tmp (:cams @locals)            
-                                            running-cam     (:running-cam @locals)
-                                            running-cam_i   (get running-cam cam-id)
-                                            capture-cam     (:capture-cam @locals)
-                                            capture-cam_i   (get capture-cam cam-id)](do 
-(swap! locals assoc :running-cam (assoc running-cam cam-id false)) 
-(oc-release @capture-cam_i)
-(swap! locals assoc :cams (set-nil cams_tmp cam-id))))) 
 
-
-(defn- check-cam-idx [locals cam-id](let  [running-cam     (:running-cam @locals)
-                                        running-cam_i   (get running-cam cam-id)
-                                        capture-cam     (:capture-cam @locals)
-                                        capture-cam_i   (get capture-cam cam-id)] (cond
-        (= cam-id nil) (println "no cam")
-        :else (do (init-cam locals cam-id) (if (.isOpened @(get (:capture-cam @locals) cam-id))(do (future (start-cam-loop locals cam-id)))(do (remove-if-bad locals cam-id)(println " bad cam " cam-id)))
-))))
 
 
 (defn- init-cams
@@ -1121,15 +1252,7 @@
         (check-cam-idx locals cam-id))))    
 
     
-(defn- init-videos 
-    [locals]
-    (let [  video_idxs        (:videos @locals)]
-            (doseq [video-id (range no-videos)]
-                (init-video-tex locals video-id ))
-            (doseq [video-id (range no-videos)]
-                (println "video_id" video-id)
-                (check-video-idx locals video-id))))    
-    
+
 (defn post-start-cam [cam-id] (let [tmpcams (:cams @the-window-state)] 
     (release-cam-textures cam-id)
     (Thread/sleep 10)
