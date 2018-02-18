@@ -347,6 +347,32 @@
         _           (assert (pos? image-bytes))] ;; die on unhandled image
     image-bytes))
 
+    
+(defn oc-tex-internal-format
+ "return the internal-format for the glTexImage2D call for this image"
+ ^Integer
+ [image]
+ (let [image-type      (.type image)
+       internal-format (cond
+                        (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB8
+                        (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB8
+                        (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA8
+                        (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA8)]
+   internal-format))
+  
+(defn oc-tex-format
+  "return the format for the glTexImage2D call for this image"
+  ^Integer
+  [image]
+  (let [image-type (.type image)
+        format     (cond
+                    (= image-type org.opencv.core.CvType/CV_8UC3)       GL12/GL_BGR
+                    (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB
+                    (= image-type org.opencv.core.CvType/CV_8UC4)       GL12/GL_BGRA
+                    (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA)]
+    format))  
+    
+    
 (defn tex-internal-format
   "return the internal-format for the glTexImage2D call for this image"
   ^Integer
