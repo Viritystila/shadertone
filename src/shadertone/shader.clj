@@ -169,6 +169,7 @@
 ;;;;;;;;;;;;;;;;;;;;
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
                                                     vco (.open vc cam-id)]
+                                                    ;(while (= false (.read vc)) (.open vc cam-id))
                                                     vc))
 
 (defn oc-capture-from-video [video-filename] (let [ vc (new org.opencv.videoio.VideoCapture) 
@@ -841,17 +842,16 @@
   
                                                                                                     
 
-(defn- get-cam-textures[locals cam-id](let[;running-cam     (:running-cam @locals)
-                                            ;running-cam_i   (get running-cam cam-id)
-                                                        running-cam_i   @(nth (:running-cam @locals) cam-id)
-
-                                            ]
-                                            (if (and (= true running-cam_i))(do (process-cam-image locals cam-id)) :false)))
+(defn- get-cam-textures
+    [locals cam-id]
+    (let[ running-cam_i   @(nth (:running-cam @locals) cam-id)]
+    (if (and (= true running-cam_i))(do (process-cam-image locals cam-id)) :false)))
                                             
                                             
-(defn- loop-get-cam-textures [locals cams]
-                (doseq [i cams]
-                (if (= i nil) nil (get-cam-textures locals i))))
+(defn- loop-get-cam-textures 
+    [locals cams]
+    (doseq [i cams]
+        (if (= i nil) nil (get-cam-textures locals i))))
           
 
 (defn- init-cams
@@ -909,7 +909,7 @@
  
 (defn init-video-buffer 
    [locals video-id] 
-   (let [   capture-video_i     @(nth (:capture-video @the-window-state) video-id)
+   (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
            image                (oc-new-mat)
            imageP               (oc-query-frame capture-video_i image)
            height               (.height image)
