@@ -347,7 +347,7 @@
         _           (assert (pos? image-bytes))] ;; die on unhandled image
     image-bytes))
 
-    
+
 (defn oc-tex-internal-format
  "return the internal-format for the glTexImage2D call for this image"
  ^Integer
@@ -759,23 +759,25 @@
 ;;Camera functions
 ;;;;;;;;;;;;;;;;;;
 (defn init-cam-buffer 
-   [locals cam-id] 
-   (let [  capture-cam_i        @(nth (:capture-cam @locals) cam-id)
-           image                (oc-new-mat)
-           imageP               (oc-query-frame @capture-cam_i image)
-           height               (.height image)
-           width                (.width image)
-           image-bytes          (.channels image)
-           internal-format      GL11/GL_RGB8
-           format               GL12/GL_BGR
-           nbytes               (* image-bytes width height)
-           bff                  (BufferUtils/createByteBuffer nbytes)
-           buffer               (oc-mat-to-bytebuffer image)
-           _ (reset! (nth (:buffer-cam @locals) cam-id) image)
-           _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
-           _ (reset! (nth (:format-cam @locals) cam-id) format)
-           _ (reset! (nth (:width-cam @locals) cam-id) width)
-           _ (reset! (nth (:height-cam @locals) cam-id) height)]))    
+   [locals  cam-id] 
+   (let [   capture-cam_i        @(nth (:capture-cam @locals) cam-id)
+            image                (oc-new-mat)
+            imageP               (oc-query-frame @capture-cam_i image)
+            height               (.height image)
+            width                (.width image)
+            image-bytes          (.channels image)
+            internal-format      (oc-tex-internal-format image)
+            format               (oc-tex-format image)
+            ;internal-format      GL11/GL_RGB8
+            ;format               GL12/GL_BGR
+            nbytes               (* image-bytes width height)
+            bff                  (BufferUtils/createByteBuffer nbytes)
+            buffer               (oc-mat-to-bytebuffer image)
+            _ (reset! (nth (:buffer-cam @locals) cam-id) image)
+            _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
+            _ (reset! (nth (:format-cam @locals) cam-id) format)
+            _ (reset! (nth (:width-cam @locals) cam-id) width)
+            _ (reset! (nth (:height-cam @locals) cam-id) height)]))    
            
 (defn release-cam-textures 
     [cam-id]
@@ -794,8 +796,10 @@
             mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
             image-bytes         (.channels mat)
             nbytes              (* height width image-bytes)
-            internal-format     GL11/GL_RGB8
-            format              GL12/GL_BGR
+            ;internal-format     GL11/GL_RGB8
+            ;format              GL12/GL_BGR
+            internal-format      (oc-tex-internal-format mat)
+            format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)]
             (reset! (nth (:target-cam @locals) cam-id) target)
             (reset! (nth (:text-id-cam @locals) cam-id) tex-id)
@@ -941,8 +945,10 @@
            height               (.height image)
            width                (.width image)
            image-bytes          (.channels image)
-           internal-format      GL11/GL_RGB8
-           format               GL12/GL_BGR
+           ;internal-format      GL11/GL_RGB8
+           ;format               GL12/GL_BGR
+           internal-format      (oc-tex-internal-format image)
+           format               (oc-tex-format image)           
            frame-count          (oc-get-capture-property :frame-count  capture-video_i )
            fps                  (oc-get-capture-property :fps capture-video_i)
            nbytes               (* image-bytes width height)
@@ -984,8 +990,10 @@
             mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
             image-bytes         (.channels mat)
             nbytes              (* height width image-bytes)
-            internal-format     GL11/GL_RGB8
-            format              GL12/GL_BGR
+            ;internal-format     GL11/GL_RGB8
+            ;format              GL12/GL_BGR
+            internal-format      (oc-tex-internal-format mat)
+            format               (oc-tex-format mat)
             buffer              (oc-mat-to-bytebuffer mat)
             _ (reset! (nth (:target-video @locals) video-id) target)
             _ (reset! (nth (:text-id-video @locals) video-id) tex-id)
