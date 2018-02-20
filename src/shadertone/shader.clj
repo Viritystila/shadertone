@@ -84,7 +84,8 @@
    :frame-change-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :frame-start-video   [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
    :frame-stop-video    [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
-   :is-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :frame-paused-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :play-mode-video     [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
    ;Other
    :tex-id-fftwave      0
    :i-fftwave-loc      [0]
@@ -357,7 +358,8 @@
                         (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB8
                         (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB8
                         (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA8
-                        (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA8)]
+                        (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA8
+                        :else GL11/GL_RGB8)]
    internal-format))
   
 (defn oc-tex-format
@@ -369,7 +371,8 @@
                     (= image-type org.opencv.core.CvType/CV_8UC3)       GL12/GL_BGR
                     (= image-type org.opencv.core.CvType/CV_8UC3)       GL11/GL_RGB
                     (= image-type org.opencv.core.CvType/CV_8UC4)       GL12/GL_BGRA
-                    (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA)]
+                    (= image-type org.opencv.core.CvType/CV_8UC4)       GL11/GL_RGBA
+                    :else GL12/GL_BGR)]
     format))  
     
     
@@ -827,7 +830,10 @@
             tex-id              @(nth (:text-id-cam @locals) cam-id)
             tex-image-target    ^Integer (+ 0 target)
             nbytes              (* width height image-bytes)
-            buffer              (oc-mat-to-bytebuffer image)]
+            buffer              (oc-mat-to-bytebuffer image)
+            ;_ (println "format" format)
+            ;_ (println "internal-format" internal-format)
+            ]
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
             (GL11/glBindTexture target tex-id)
             (GL11/glTexImage2D tex-image-target, 0, internal-format, width, height, 0, format, GL11/GL_UNSIGNED_BYTE, buffer)))         
@@ -1041,7 +1047,7 @@
             imageP              (oc-query-frame capture-video image)
             _                   (reset! (nth (:buffer-video-frame @locals) video-id) image)]))
     
- 
+;:pause :reverse
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                   (println "start video loop " video-id)
@@ -1052,13 +1058,25 @@
             cur-frame           (oc-get-capture-property :pos-frames capture-video_i )
             cur-fps             (oc-get-capture-property :fps capture-video_i )
             locKey              (keyword (str "frame-ctr-"video-id))
-            startTime           (atom (System/nanoTime))]
+            startTime           (atom (System/nanoTime))
+            playmode            (nth (:play-mode-video @locals) video-id)]
             (if (= true running-video_i) 
                 (do (while  @(nth (:running-video @locals) video-id)
                     (reset! startTime (System/nanoTime))
-                    (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
-                        (buffer-video-texture locals video-id capture-video_i)
-                        (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))                 
+                    (cond 
+                        (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
+                                (buffer-video-texture locals video-id capture-video_i)
+                                (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))                        
+                    
+                        
+                        
+                        
+                        
+                        
+                        
+                        (= :pause @playmode) (println "pause")
+                    )
+                 
                     (if (= true @(nth (:frame-change-video @locals) video-id)) 
                         (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
                             (reset! (nth (:frame-change-video @locals) video-id) false))
