@@ -26,7 +26,7 @@
    :width               0
    :height              0
    :title               ""
-   :display-sync-hz     60
+   :display-sync-hz     60 
    :start-time          0
    :last-time           0
    ;; mouse
@@ -912,6 +912,13 @@
 ;;;;;;;;;;;;;;;;;
 ;;Video functions
 ;;;;;;;;;;;;;;;;;
+(defn set-video-play [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :play))
+
+(defn set-video-pause [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :pause))
+
+(defn set-video-reverse [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :reverse))
+
+
 (defn set-video-frame 
     [video-id frame] 
     (let [  frame-count         @(nth (:frames-video @the-window-state) video-id)
@@ -919,7 +926,7 @@
             frame               (if (> frame 1) frame 1)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
             (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
-            (reset! (nth (:frame-change-video @the-window-state) video-id) true)))
+            (reset! (nth (:play-mode-video @the-window-state) video-id) :goto)))
                             
              
 (defn set-video-frame-limits 
@@ -1055,7 +1062,7 @@
             _                   (println "capture-video_i " capture-video_i)
             running-video_i     @(nth (:running-video @locals) video-id)
             frame-count         (oc-get-capture-property :frame-count capture-video_i )
-            cur-frame           (oc-get-capture-property :pos-frames capture-video_i )
+            cur-frame           (atom 0)
             cur-fps             (oc-get-capture-property :fps capture-video_i )
             locKey              (keyword (str "frame-ctr-"video-id))
             startTime           (atom (System/nanoTime))
@@ -1066,21 +1073,32 @@
                     (cond 
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                 (buffer-video-texture locals video-id capture-video_i)
-                                (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))                        
-                    
+                                (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
+                                (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
+                        (= :pause @playmode) (do (Thread/sleep ( / 1 (:display-sync-hz  @locals))))
+                        (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
+                            (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
+                                (buffer-video-texture locals video-id capture-video_i))
+                                (do (Thread/sleep ( / 1 (:display-sync-hz  @locals))))))
+                        (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
+                        (do (oc-set-capture-property :pos-frames capture-video_i (- (int (oc-get-capture-property :pos-frames capture-video_i)) 2))
+                        (buffer-video-texture locals video-id capture-video_i))
+                        (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id)))
                         
-                        
-                        
-                        
-                        
-                        
-                        (= :pause @playmode) (println "pause")
-                    )
+                        )
+                        (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                        )        
+                                
+                                
+                                
+                                
+                                )
                  
-                    (if (= true @(nth (:frame-change-video @locals) video-id)) 
-                        (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
-                            (reset! (nth (:frame-change-video @locals) video-id) false))
-                        (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))))
+                    ;(if (= true @(nth (:frame-change-video @locals) video-id)) 
+                    ;    (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
+                    ;        (reset! (nth (:frame-change-video @locals) video-id) false))
+                    ;    (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
+                    )
                     (oc-release capture-video_i)
                     (println "video loop stopped" video-id)))))   
     
