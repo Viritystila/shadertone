@@ -1306,7 +1306,7 @@
     (dotimes [i (count tex-ids)]
       (when (nth tex-ids i)
         ;(print "AAa" tex-ids)
-        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (nth tex-ids i)))
         ;(println "(nth tex-ids i) i" (nth tex-ids i))
         (cond
          (= :cubemap (nth tex-types i))
@@ -1331,10 +1331,10 @@
                       mouse-ori-x
                       mouse-ori-y)
 
-    (GL20/glUniform1i (nth i-channel-loc 0) 0)
-    (GL20/glUniform1i (nth i-channel-loc 1) 1)
-    (GL20/glUniform1i (nth i-channel-loc 2) 2)
-    (GL20/glUniform1i (nth i-channel-loc 3) 3)  ;;Why the discontinuation
+    (GL20/glUniform1i (nth i-channel-loc 0) 1)
+    (GL20/glUniform1i (nth i-channel-loc 1) 2)
+    (GL20/glUniform1i (nth i-channel-loc 2) 3)
+    (GL20/glUniform1i (nth i-channel-loc 3) 4)  ;;Why the discontinuation
     (GL20/glUniform1i (nth i-cam-loc 0) 5)  
     (GL20/glUniform1i (nth i-cam-loc 1) 6)
     (GL20/glUniform1i (nth i-cam-loc 2) 7)
