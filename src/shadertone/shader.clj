@@ -22,103 +22,106 @@
 ;; State Variables
 ;; a map of state variables for use in the gl thread
 (defonce default-state-values
-  {:active              :no  ;; :yes/:stopping/:no
-   :width               0
-   :height              0
-   :title               ""
-   :display-sync-hz     60 
-   :start-time          0
-   :last-time           0
+  {:active                  :no  ;; :yes/:stopping/:no
+   :width                   0
+   :height                  0
+   :title                   ""
+   :display-sync-hz         60 
+   :start-time              0
+   :last-time               0
    ;; mouse
-   :mouse-clicked       false
-   :mouse-pos-x         0
-   :mouse-pos-y         0
-   :mouse-ori-x         0
-   :mouse-ori-y         0
+   :mouse-clicked           false
+   :mouse-pos-x             0
+   :mouse-pos-y             0
+   :mouse-ori-x             0
+   :mouse-ori-y             0
    ;; geom ids
-   :vbo-id              0
-   :vertices-count      0
+   :vbo-id                  0
+   :vertices-count          0
    ;; shader program
-   :shader-good         true ;; false in error condition
-   :shader-filename     nil
-   :shader-str-atom     (atom nil)
-   :shader-str          ""
-   :vs-id               0
-   :fs-id               0
-   :pgm-id              0
+   :shader-good             true ;; false in error condition
+   :shader-filename         nil
+   :shader-str-atom         (atom nil)
+   :shader-str              ""
+   :vs-id                   0
+   :fs-id                   0
+   :pgm-id                  0
    ;; shader uniforms
-   :i-resolution-loc    0
-   :i-global-time-loc   0
-   :i-channel-time-loc  0
-   :i-mouse-loc         0
-   :i-channel-loc       [0 0 0 0]
+   :i-resolution-loc        0
+   :i-global-time-loc       0
+   :i-channel-time-loc      0
+   :i-mouse-loc             0
+   :i-channel-loc           [0 0 0 0]
    ;V4l2 feeds
-   :i-cam-loc           [0 0 0 0 0]
-   :running-cam         [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :capture-cam         [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :buffer-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :target-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :text-id-cam         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   ;:image-bytes-cam     [0 0 0 0 0]
-   ;:nbytes-cam          [0 0 0 0 0]
-   :internal-format-cam [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :format-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :fps-cam             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :width-cam           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :height-cam          [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :i-cam-loc               [0 0 0 0 0]
+   :running-cam             [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :capture-cam             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :buffer-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :target-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :text-id-cam             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :internal-format-cam     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :format-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :fps-cam                 [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    ;Video feeds
-   :i-video-loc         [0 0 0 0 0]
-   :running-video       [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :video-no-id         [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :capture-video       [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :buffer-video-frame  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :target-video        [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :text-id-video       [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :internal-format-video [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :format-video        [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :fps-video           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :width-video         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :height-video        [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :frames-video        [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :frame-ctr-video     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :frame-change-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :frame-start-video   [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
-   :frame-stop-video    [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
-   :frame-paused-video  [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :play-mode-video     [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
+   :i-video-loc             [0 0 0 0 0]
+   :running-video           [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :video-no-id             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :capture-video           [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+
+   :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :buffer-section-video    [(atom []) (atom []) (atom []) (atom []) (atom [])]
+
+   :buffer-video-frame      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :text-id-video           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :internal-format-video   [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :format-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :fps-video               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :width-video             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :height-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :frames-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+   :frame-ctr-video         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :frame-change-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :frame-start-video       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
+   :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
+   :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+   :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
+   :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
    ;Other
-   :tex-id-fftwave      0
-   :i-fftwave-loc      [0]
-   :i-channel-res-loc   0
-   :i-date-loc          0
-   :channel-time-buffer (-> (BufferUtils/createFloatBuffer 4)
-                            (.put (float-array
+   :tex-id-fftwave          0
+   :i-fftwave-loc           [0]
+   :i-channel-res-loc       0
+   :i-date-loc              0
+   :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
+                                (.put (float-array
                                    [0.0 0.0 0.0 0.0]))
-                            (.flip))
-   :channel-res-buffer (-> (BufferUtils/createFloatBuffer (* 3 12))
-                            (.put (float-array
-                                   [0.0 0.0 0.0
+                                    (.flip))
+   :channel-res-buffer      (-> (BufferUtils/createFloatBuffer (* 4 12))
+                                (.put (float-array
+                                    [0.0 0.0 0.0
                                     0.0 0.0 0.0
                                     0.0 0.0 0.0
                                     0.0 0.0 0.0]))
-                            (.flip))
+                                    (.flip))
    ;; textures
-   :tex-filenames       []
-   :tex-no-id           [nil nil nil nil nil]
-   :tex-ids             []
-   :cams                []
-   :videos              []
-   :tex-types           [] ; :cubemap, :previous-frame
+   :tex-filenames           []
+   :tex-no-id               [nil nil nil nil nil]
+   :tex-ids                 []
+   :cams                    []
+   :videos                  []
+   :tex-types               [] ; :cubemap, :previous-frame
    ;; a user draw function
-   :user-fn             nil
+   :user-fn                 nil
    ;; pixel read
-   :pixel-read-enable   false
-   :pixel-read-pos-x    0
-   :pixel-read-pos-y    0
-   :pixel-read-data      (-> (BufferUtils/createByteBuffer 3)
-                            (.put (byte-array (map byte [0 0 0])))
-                            (.flip))
-   })
+   :pixel-read-enable       false
+   :pixel-read-pos-x        0
+   :pixel-read-pos-y        0
+   :pixel-read-data         (-> (BufferUtils/createByteBuffer 3)
+                                (.put (byte-array (map byte [0 0 0])))
+                                (.flip))
+})
 
 ;; GLOBAL STATE ATOMS
 ;; Tried to get rid of this atom, but LWJGL is limited to only
@@ -479,12 +482,11 @@
                       "uniform float     iGlobalTime;\n"
                       "uniform float     iChannelTime[4];\n"
                       "uniform vec3      iChannelResolution[4];\n"
-                      "uniform vec4      iMouse;\n"
+                      "uniform vec4      iMouse; \n"
                       (uniform-sampler-type-str tex-types 0)
                       (uniform-sampler-type-str tex-types 1)
                       (uniform-sampler-type-str tex-types 2)
                       (uniform-sampler-type-str tex-types 3)
-                      "uniform sampler2D iFftWave; \n";
                       "uniform sampler2D iCam0; \n"
                       "uniform sampler2D iCam1; \n"
                       "uniform sampler2D iCam2; \n"
@@ -496,6 +498,7 @@
                       "uniform sampler2D iVideo3; \n"
                       "uniform sampler2D iVideo4; \n"
                       "uniform vec4      iDate;\n"
+                      "uniform sampler2D iFftWave; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -635,12 +638,11 @@
             i-global-time-loc     (GL20/glGetUniformLocation pgm-id "iGlobalTime")
             i-channel-time-loc    (GL20/glGetUniformLocation pgm-id "iChannelTime")
             i-mouse-loc           (GL20/glGetUniformLocation pgm-id "iMouse")
+            
             i-channel0-loc        (GL20/glGetUniformLocation pgm-id "iChannel0")
             i-channel1-loc        (GL20/glGetUniformLocation pgm-id "iChannel1")
             i-channel2-loc        (GL20/glGetUniformLocation pgm-id "iChannel2")
             i-channel3-loc        (GL20/glGetUniformLocation pgm-id "iChannel3")
-            
-            i-fftwave-loc         (GL20/glGetUniformLocation pgm-id "iFftWave")
 
             i-cam0-loc        (GL20/glGetUniformLocation pgm-id "iCam0")
             i-cam1-loc        (GL20/glGetUniformLocation pgm-id "iCam1")
@@ -653,9 +655,14 @@
             i-video2-loc        (GL20/glGetUniformLocation pgm-id "iVideo2")
             i-video3-loc        (GL20/glGetUniformLocation pgm-id "iVideo3")
             i-video4-loc        (GL20/glGetUniformLocation pgm-id "iVideo4")
+            _ (println "i-video0-loc " i-video0-loc)
+            _ (println "i-video1-loc " i-video1-loc)
+
     
             i-channel-res-loc     (GL20/glGetUniformLocation pgm-id "iChannelResolution")
             i-date-loc            (GL20/glGetUniformLocation pgm-id "iDate")
+
+            i-fftwave-loc         (GL20/glGetUniformLocation pgm-id "iFftWave")
 
             _ (except-gl-errors "@ end of let init-shaders")
             ]
@@ -741,9 +748,11 @@
 
 (defn- init-textures
   [locals]
-  (let [tex-infos (map load-texture (:tex-filenames @locals))
-        ;_ (println "raw" tex-infos)
+  (let [;_   (println "AAAAAAAAAAAAAAAAA" (:tex-filenames @locals))
+        tex-infos (map load-texture (:tex-filenames @locals))
+        ;_ (println "rawAAAAAAAAAAAAAAAAAAA" tex-infos)
         tex-ids   (map first tex-infos)
+        ;_ (println "BBBBBBBBBBBBBBBBBBBB" tex-ids)
 
         tex-whd   (map rest tex-infos)
         tex-whd   (flatten
@@ -799,8 +808,6 @@
             mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
             image-bytes         (.channels mat)
             nbytes              (* height width image-bytes)
-            ;internal-format     GL11/GL_RGB8
-            ;format              GL12/GL_BGR
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)]
@@ -1075,30 +1082,16 @@
                                 (buffer-video-texture locals video-id capture-video_i)
                                 (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
                                 (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
-                        (= :pause @playmode) (do (Thread/sleep ( / 1 (:display-sync-hz  @locals))))
+                        (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
                         (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
                             (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
                                 (buffer-video-texture locals video-id capture-video_i))
-                                (do (Thread/sleep ( / 1 (:display-sync-hz  @locals))))))
+                                (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
                         (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
                         (do (oc-set-capture-property :pos-frames capture-video_i (- (int (oc-get-capture-property :pos-frames capture-video_i)) 2))
                         (buffer-video-texture locals video-id capture-video_i))
-                        (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id)))
-                        
-                        )
-                        (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                        )        
-                                
-                                
-                                
-                                
-                                )
-                 
-                    ;(if (= true @(nth (:frame-change-video @locals) video-id)) 
-                    ;    (do(oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id) )
-                    ;        (reset! (nth (:frame-change-video @locals) video-id) false))
-                    ;    (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
-                    )
+                        (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
+                        (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))))
                     (oc-release capture-video_i)
                     (println "video loop stopped" video-id)))))   
     
@@ -1166,7 +1159,6 @@
     (init-textures locals)
 
     (init-cams locals)
-    (Thread/sleep 100)
     (init-videos locals)
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
@@ -1217,9 +1209,7 @@
                 i-channel1-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel1")
                 i-channel2-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel2")
                 i-channel3-loc     (GL20/glGetUniformLocation new-pgm-id "iChannel3")
-                
-                i-fftwave-loc         (GL20/glGetUniformLocation new-pgm-id "iFftWave")
-                
+                               
                 i-cam0-loc        (GL20/glGetUniformLocation new-pgm-id "iCam0")
                 i-cam1-loc        (GL20/glGetUniformLocation new-pgm-id "iCam1")
                 i-cam2-loc        (GL20/glGetUniformLocation new-pgm-id "iCam2")
@@ -1233,7 +1223,9 @@
                 i-video4-loc        (GL20/glGetUniformLocation new-pgm-id "iVideo4")
 
                 i-channel-res-loc  (GL20/glGetUniformLocation new-pgm-id "iChannelResolution")
-                i-date-loc         (GL20/glGetUniformLocation new-pgm-id "iDate")]
+                i-date-loc         (GL20/glGetUniformLocation new-pgm-id "iDate")
+                i-fftwave-loc         (GL20/glGetUniformLocation new-pgm-id "iFftWave")]
+                
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
@@ -1312,8 +1304,8 @@
     ;; activate textures
     ;(print "tex-ids" tex-ids)
     (dotimes [i (count tex-ids)]
-
       (when (nth tex-ids i)
+        ;(print "AAa" tex-ids)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         ;(println "(nth tex-ids i) i" (nth tex-ids i))
         (cond
@@ -1338,10 +1330,11 @@
                       mouse-pos-y
                       mouse-ori-x
                       mouse-ori-y)
-    (GL20/glUniform1i (nth i-channel-loc 0) 1)
-    (GL20/glUniform1i (nth i-channel-loc 1) 2)
-    (GL20/glUniform1i (nth i-channel-loc 2) 3)
-    (GL20/glUniform1i (nth i-channel-loc 3) 4)
+
+    (GL20/glUniform1i (nth i-channel-loc 0) 0)
+    (GL20/glUniform1i (nth i-channel-loc 1) 1)
+    (GL20/glUniform1i (nth i-channel-loc 2) 2)
+    (GL20/glUniform1i (nth i-channel-loc 3) 3)  ;;Why the discontinuation
     (GL20/glUniform1i (nth i-cam-loc 0) 5)  
     (GL20/glUniform1i (nth i-cam-loc 1) 6)
     (GL20/glUniform1i (nth i-cam-loc 2) 7)

@@ -30,10 +30,10 @@ void main(void) {
   
   uv.x = uv.x + 5.5*sin(0.15*iGlobalTime);
   uv.y = uv.y + 2.5*cos(1.03*iGlobalTime);
-  vec4 c1 = texture2D(iChannel0,uv);
+  vec4 c1 = texture2D(iChannel0, uv);
   vec4 c1b =texture2D(iChannel1, uv);
-  vec4 c1c =texture2D(iChannel1, uv);
-  vec4 c1d =texture2D(iChannel1, uv);
+  vec4 c1c =texture2D(iChannel2, uv);
+  vec4 c1d =texture2D(iChannel3, uv);
 
   
   vec4 fftw=texture2D(iFftWave, uv);
@@ -45,20 +45,19 @@ void main(void) {
   vec4 c6 = texture2D(iCam4,uv2);
   
   vec4 v1= texture2D(iVideo0, uv2);
-  vec4 v2= texture2D(iVideo1, uv3);
+  vec4 v2= texture2D(iVideo1, uv2);
   vec4 v3= texture2D(iVideo2, uv2);
   vec4 v4= texture2D(iVideo3, uv2);
-
   
-  vec4 c = mix(c2,c3,0.3-sin(c1.w));  // alpha blend between two textures
-  vec4 cf = mix(c4,c,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf1 = mix(cf,c5,1.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf2 = mix(c6,cf1,0.5-sin(c1.w));  // alpha blend between two textures
-  vec4 cf3 = mix(c2,v2,0.01-sin(c1.w));  // alpha blend between two textures
+  vec4 c = mix(v1,v2,0.3-sin(c1.w));  // alpha blend between two textures
+  vec4 cf = mix(c1,c,1.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf1 = mix(cf,c1b,1.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf2 = mix(c1c,cf1,0.5-sin(c1.w));  // alpha blend between two textures
+  vec4 cf3 = mix(cf2,c1d,0.01-sin(c1.w));  // alpha blend between two textures
   vec4 cf4 = mix(v1,cf3,iOvertoneVolume);  // alpha blend between two textures
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
-  vec4 cf6 = mix(cf5,v3,c2.w); 
+  vec4 cf6 = mix(cf3,c1d,0.1); 
 
-  gl_FragColor = v1;
+  gl_FragColor = c2;
   
 }
