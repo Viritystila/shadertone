@@ -1334,7 +1334,7 @@
     (GL20/glUniform1i (nth i-channel-loc 0) 1)
     (GL20/glUniform1i (nth i-channel-loc 1) 2)
     (GL20/glUniform1i (nth i-channel-loc 2) 3)
-    (GL20/glUniform1i (nth i-channel-loc 3) 4)  ;;Why the discontinuation
+    (GL20/glUniform1i (nth i-channel-loc 3) 4)
     (GL20/glUniform1i (nth i-cam-loc 0) 5)  
     (GL20/glUniform1i (nth i-cam-loc 1) 6)
     (GL20/glUniform1i (nth i-cam-loc 2) 7)
