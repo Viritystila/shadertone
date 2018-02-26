@@ -194,6 +194,12 @@
 
 (defn set-video-fps [video-id new-fps] (if (= true (integer? video-id)) (s/set-video-fps video-id  new-fps)))
 
+(defn set-video-play [video-id](if (= true (integer? video-id)) (s/set-video-play)))
+
+(defn set-video-pause [video-id](if (= true (integer? video-id)) (s/set-video-pause)))
+
+(defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse)))
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))

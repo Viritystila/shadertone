@@ -71,7 +71,8 @@
    :capture-video           [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
 
    :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :buffer-section-video    [(atom []) (atom []) (atom []) (atom []) (atom [])]
+   :buffer-section-video    [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
+                             (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
 
    :buffer-video-frame      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -164,8 +165,16 @@
             dtout  (if (< dt 0)  0  dt)]
             dtout))    
  
-(defn- set-nil [coll pos] (assoc coll pos nil)) 
+(defn- set-nil [coll pos] (assoc coll pos nil))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Queue functions
+
+(defn queue-video-image [video-id image] (dosync (alter (nth (:buffer-section-video  @the-window-state) video-id) conj image)))
+
+(defn dequeue-video-image [video-id] (dosync (alter (nth (:buffer-section-video  @the-window-state) video-id) pop)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;
