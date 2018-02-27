@@ -58,6 +58,6 @@ void main(void) {
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
   vec4 cf6 = mix(cf3,c1d,0.1); 
 
-  gl_FragColor = c1;
+  gl_FragColor = c3;
   
 }
