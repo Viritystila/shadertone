@@ -75,8 +75,6 @@
                              (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
    :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
 
-
-   :buffer-video-frame      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :text-id-video           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :internal-format-video   [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
@@ -973,6 +971,17 @@
             (oc-set-capture-property :fps capture-video_i  fpstbs)
             (println "new fps " fpstbs )))
  
+ 
+(defn- buffer-video-texture 
+    [locals video-id capture-video]
+    (let [  image               (oc-new-mat)
+            imageP              (oc-query-frame capture-video image)
+            maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
+            bufferLength        (get-video-queue-length video-id)
+            ]
+            (if (< bufferLength maxBufferLength ) (queue-video-image video-id image) nil)))
+     
+ 
 (defn init-video-buffer 
    [locals video-id] 
    (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
@@ -981,16 +990,13 @@
            height               (.height image)
            width                (.width image)
            image-bytes          (.channels image)
-           ;internal-format      GL11/GL_RGB8
-           ;format               GL12/GL_BGR
            internal-format      (oc-tex-internal-format image)
            format               (oc-tex-format image)           
            frame-count          (oc-get-capture-property :frame-count  capture-video_i )
            fps                  (oc-get-capture-property :fps capture-video_i)
            nbytes               (* image-bytes width height)
            bff                  (BufferUtils/createByteBuffer nbytes)
-           buffer               (oc-mat-to-bytebuffer image)
-           _ (reset! (nth (:buffer-video-frame @locals) video-id) image)
+           _                    (buffer-video-texture locals video-id capture-video_i)
            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
            _ (reset! (nth (:frame-stop-video @locals) video-id) frame-count)
            _ (reset! (nth (:internal-format-video @locals) video-id) internal-format)
@@ -1068,67 +1074,12 @@
            (except-gl-errors "@ end of load-texture if-stmt")))
  
   
- 
-;(defn- process-video-image 
-;    [locals video-id] 
-;    (let[   ;image               @(nth (:buffer-video-frame @locals) video-id)
-            ;target              @(nth (:target-video @locals) video-id)
-            ;internal-format     @(nth (:internal-format-video @locals) video-id)
-            ;format              @(nth (:format-video @locals) video-id)
-;            imageqqq            (dequeue-video-image video-id)
-            ;height              (.height image)
-            ;width               (.width image)          
-            ;image-bytes         (.channels image)
-            ;tex-id              @(nth (:text-id-video @locals) video-id)
-            ;tex-image-target    ^Integer (+ 0 target)
-            ;nbytes              (* width height image-bytes)
-            ;buffer              (oc-mat-to-bytebuffer image)
-;            ]
-            ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-            ;(GL11/glBindTexture target tex-id)
-            ;(try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-            ;    ^Integer width  ^Integer height 0
-            ;    ^Integer format
-            ;    GL11/GL_UNSIGNED_BYTE
-            ;    ^ByteBuffer buffer))
-            ;(except-gl-errors "@ end of load-texture if-stmt")
-;            (if imageqqq (set-video-opengl-texture locals video-id imageqqq) nil )))
- 
-
- 
-;(defn- process-video-image 
-;    [locals video-id] 
-;    (if-let[image               @(nth (:buffer-video-frame @locals) video-id)]
-;    (let    [_                  (println "image" image)
-;            target              @(nth (:target-video @locals) video-id)
-;            internal-format     @(nth (:internal-format-video @locals) video-id)
-;            format              @(nth (:format-video @locals) video-id)
-;            imageqqq            (dequeue-video-image 0)
-;            height              (.height image)
-;            width               (.width image)          
-;            image-bytes         (.channels image)
-;            tex-id              @(nth (:text-id-video @locals) video-id)
-;            tex-image-target    ^Integer (+ 0 target)
-;            nbytes              (* width height image-bytes)
-;            buffer              (oc-mat-to-bytebuffer image)](
-;
-;            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
-;            (GL11/glBindTexture target tex-id)
-;            (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-;                ^Integer width  ^Integer height 0
-;                ^Integer format
-;                GL11/GL_UNSIGNED_BYTE
-;                ^ByteBuffer buffer))
-;            (except-gl-errors "@ end of load-texture if-stmt")))
-;            (print "nil image"))) 
- 
 (defn- buffer-video-texture 
     [locals video-id capture-video]
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-video image)
             maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
-            bufferLength        (get-video-queue-length video-id)
-            _                   (reset! (nth (:buffer-video-frame @locals) video-id) image)]
+            bufferLength        (get-video-queue-length video-id)]
             (if (< bufferLength maxBufferLength ) (queue-video-image video-id image) nil)))
     
 ;:pause :reverse
