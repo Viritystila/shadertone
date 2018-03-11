@@ -898,7 +898,9 @@
             ]
         (if (= true running-cam_i) 
             (do (while  @(nth (:running-cam @locals) cam-id) ;(get (:running-cam @locals) cam-id)
-                (buffer-cam-texture locals cam-id capture-cam_i))(oc-release capture-cam_i)(println "cam loop stopped" cam-id)))))   
+                (reset! (nth (:frame-set-cam @locals) cam-id) true)
+                (buffer-cam-texture locals cam-id capture-cam_i)
+                (reset! (nth (:frame-set-cam @locals) cam-id) nil))(oc-release capture-cam_i)(println "cam loop stopped" cam-id)))))   
  
 
 (defn- check-cam-idx 
@@ -927,8 +929,8 @@
     (let [  running-cam_i   @(nth (:running-cam @locals) cam-id)
             image            (dequeue-cam-image cam-id)]
             (if (and (= true running-cam_i) (not (nil? image)))
-                (do (set-cam-opengl-texture locals cam-id image)(reset! (nth (:frame-set-cam @the-window-state) cam-id) true)) 
-                (reset! (nth (:frame-set-cam @the-window-state) cam-id) nil))))
+                (do (set-cam-opengl-texture locals cam-id image)) 
+                nil )))
                      
  
 (defn- loop-get-cam-textures 
@@ -971,7 +973,7 @@
             frame               (if (< frame frame-count)  frame frame-count)
             frame               (if (> frame 1) frame 1)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
-            (clear-video-queue 0)
+            (clear-video-queue video-id)
             (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
             (reset! (nth (:play-mode-video @the-window-state) video-id) :goto)))
                             
@@ -994,6 +996,7 @@
             fps (oc-get-capture-property :fps capture-video_i )
             fpstbs (if (< 0 new-fps) new-fps 1)
             _ (reset! ( nth (:fps-video @the-window-state) video-id) fpstbs)]
+            (clear-video-queue video-id)
             (oc-set-capture-property :fps capture-video_i  fpstbs)
             (println "new fps " fpstbs )))
  
@@ -1113,9 +1116,9 @@
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                 (buffer-video-texture locals video-id capture-video_i)
                                 (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
-                                (reset! (nth (:frame-set-video @the-window-state) video-id) true)
+                                (reset! (nth (:frame-set-video @locals) video-id) true)
                                 (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                                (reset! (nth (:frame-set-video @the-window-state) video-id) nil)
+                                (reset! (nth (:frame-set-video @locals) video-id) nil)
                                 )                        
                         (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
                         (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
@@ -1419,7 +1422,7 @@
     ;cams
     (dotimes [i (count text-id-cam)]
         (when (nth text-id-cam i)
-        (if (nth (:frame-set-cam @locals) i)
+        (if (= nil @(nth (:frame-set-cam @locals) i))
             (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)) 
             nil )))
