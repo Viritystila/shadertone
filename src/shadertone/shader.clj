@@ -973,7 +973,7 @@
             frame               (if (< frame frame-count)  frame frame-count)
             frame               (if (> frame 1) frame 1)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
-            (clear-video-queue video-id)
+            ;(clear-video-queue video-id)
             (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
             (reset! (nth (:play-mode-video @the-window-state) video-id) :goto)))
                             
@@ -1164,11 +1164,7 @@
             (check-video-idx the-window-state video-id)))
             ;:frame-set-video
  
- 
-(defn fps-ticker-video [video-id] (let [state @(nth (:frame-set-video @the-window-state) video-id)]
-    (if state (reset! (nth (:frame-set-video @the-window-state) video-id) true) nil)
-    (Thread/sleep (/ 1 @(nth (:fps-video @the-window-state) video-id)))))
-            
+          
 (defn- get-video-textures
     [locals video-id]
     (let [  running-video_i   @(nth (:running-video @locals) video-id)
@@ -1420,21 +1416,22 @@
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
         ;)
     ;cams
-    (dotimes [i (count text-id-cam)]
-        (when (nth text-id-cam i)
-        (if (= nil @(nth (:frame-set-cam @locals) i))
-            (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-            (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)) 
-            nil )))
+    ;(dotimes [i (count text-id-cam)]
+    ;    (when (nth text-id-cam i)
+    ;    (if (= nil @(nth (:frame-set-cam @locals) i))
+    ;        (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+    ;        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)) 
+    ;        nil )))
     ;videos
     ;(doseq [i text-id-video]
-    (dotimes [i (count text-id-video)]
-        (when (nth text-id-video i)
-            ;(println "(nth (:frame-set-video @the-window-state) video-id) " @(nth text-id-video i))
-            (if (= nil @(nth (:frame-set-video @locals) i))
-            (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
-            (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-            nil )))
+    ;(dotimes [i (count text-id-video)]
+    ;    (when (nth text-id-video i)
+    ;        ;(println "(nth (:frame-set-video @the-window-state) video-id) " @(nth text-id-video i))
+    ;        (if (= nil @(nth (:frame-set-video @locals) i))
+    ;            (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
+    ;                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    ;                )
+    ;        nil )))
         
         
     (except-gl-errors "@ draw prior to post-draw")
