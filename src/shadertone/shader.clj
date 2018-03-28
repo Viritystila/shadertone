@@ -1112,74 +1112,30 @@
 
            
 (defn- buffer-reverse-video-texture [locals video-id capture-video] 
-    (let    [maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
-             bufferLength        (get-video-queue-length video-id)
-
-            bwb     @(nth (:backwards-buffer-video @locals) video-id)
-            bwbl    (count bwb)
-            len     (/ maxBufferLength 2)
-            ;nf      (fn [x] (bfff-video x locals capture-video))
-            ;tmp     (if (< bufferLength len) (nf (range len)) nil)
-            ]
-            (println "buffer length" bwbl)
-            (println "is true" (< bwbl len))
-            (println "max buffer length" len)
-
+    (let    [   maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
+                bufferLength        (get-video-queue-length video-id)
+                bwb     @(nth (:backwards-buffer-video @locals) video-id)
+                bwbl    (count bwb)
+                len     (/ maxBufferLength 2)]
             (if (< (count @(nth (:backwards-buffer-video @locals) video-id)) len)
                 (do 
-                
-                (doseq [x (range maxBufferLength)] 
-                (let [  bwb     @(nth (:backwards-buffer-video @locals) video-id)
-                        img (bfff-video video-id locals capture-video)
-                        newSeq  (conj @(nth (:backwards-buffer-video @locals) video-id) img)
-                ]
-                
-                (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))
-                ;(assoc tmp x (bfff-video video-id locals capture-video))
-
-                )
-                
-                )
-                ;(oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 1 maxBufferLength)))
-                (println "buffer refill" (count @(nth (:backwards-buffer-video @locals) video-id)))
-
-                ;(reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) (bfff-video video-id locals capture-video)))
-                ;(reset! (nth (:backwards-buffer-video @locals) video-id) (concat (seq bwb) tmp))
-                ;(println "aaaaaa" (count @(nth (:backwards-buffer-video @locals) video-id)))
-                
-                )
+                    (doseq [x (range len)] 
+                        (let [  bwb     @(nth (:backwards-buffer-video @locals) video-id)
+                                img (bfff-video video-id locals capture-video)
+                                newSeq  (conj @(nth (:backwards-buffer-video @locals) video-id) img)]
+               
+                    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))))
+                (oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 2 len))))
                 nil)
-            ;(println "BABABAB"  (nth tmp 0))    
-            ;(if (= nil tmp) nil (println "xxxx" tmp))
-            
-            
-            ;(if (< bwbl len)  )
-            ;(reset! (nth (:backwards-buffer-video @locals) video-id) (reverse tmp) ))
-            
-            ;(reset! (nth (:backwards-buffer-video @locals) video-id) (reverse tmp) ) nil)
-            ;(do (queue-video-image video-id (nth tmp 0)) (reset! (nth (:frame-set-video @locals) video-id) true) (Thread/sleep 0.1)  (reset! (nth (:frame-set-video @locals) video-id) nil) )
-            ;(println "(nth tmp 0)" (nth tmp 0))
-            ;(for [x (reverse tmp)] (println "X" x))
-            
-            ;             (if (<= bufferLength maxBufferLength ) (do (queue-video-image video-id image)) nil)
-            ;(if (<= bwbl maxBufferLength) 
-            ;    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
-            (do (if (and (<= bufferLength maxBufferLength ) (> bwbl 1)) 
-            (do (queue-video-image video-id (first bwb))
-            (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 bwb))) nil) 
-            
-            (reset! (nth (:frame-set-video @locals) video-id) true) 
-            (Thread/sleep 0.04)  
-            (reset! (nth (:frame-set-video @locals) video-id) nil) ) 
-
-
-            ;(doseq [x bwb] (do (if (<= bufferLength maxBufferLength ) (do (queue-video-image video-id x)) nil) (reset! (nth (:frame-set-video @locals) video-id) true) (Thread/sleep 0.04)  (reset! (nth (:frame-set-video @locals) video-id) nil) )  )
-            
+            (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 1)) 
+                (do (queue-video-image video-id (first @(nth (:backwards-buffer-video @locals) video-id)))
+                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil)   
+                ;(reset! (nth (:frame-set-video @locals) video-id) true) 
+                ;(Thread/sleep 0.04)  
+                ;(reset! (nth (:frame-set-video @locals) video-id) nil)
+                ) 
             ) nil )
-            
-  ;(queue-video-image video-id image)
-  ;(reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) (bfff-video)))
-  ;(if (<= bwbl maxBufferLength) (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) nil )
+
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                   (println "start video loop " video-id)
@@ -1210,14 +1166,12 @@
                                 (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
                         (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
                             (do 
-                            ;(oc-set-capture-property :pos-frames capture-video_i (- (int (oc-get-capture-property :pos-frames capture-video_i)) 20))
                             (buffer-reverse-video-texture locals video-id capture-video_i)
-                            ;(buffer-video-texture locals video-id capture-video_i)
                             )
                             (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
-                            ;(reset! (nth (:frame-set-video @locals) video-id) true)
-                            ;(Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                            ;(reset! (nth (:frame-set-video @locals) video-id) nil)
+                            (reset! (nth (:frame-set-video @locals) video-id) true)
+                            (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                            (reset! (nth (:frame-set-video @locals) video-id) nil)
                             )))
                     (oc-release capture-video_i)
                     (println "video loop stopped" video-id)))))   
