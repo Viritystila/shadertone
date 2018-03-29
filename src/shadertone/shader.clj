@@ -961,6 +961,7 @@
 ;;;;;;;;;;;;;;;;;
 ;;Video functions
 ;;;;;;;;;;;;;;;;;
+
 (defn set-video-play [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :play))
 
 (defn set-video-pause [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :pause))
@@ -1108,8 +1109,6 @@
             imageP              (oc-query-frame capture-video image)]
             image)
             )
-     ;(reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image))
-
            
 (defn- buffer-reverse-video-texture [locals video-id capture-video] 
     (let    [   maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
@@ -1119,23 +1118,21 @@
                 len     (/ maxBufferLength 2)]
             (if (< (count @(nth (:backwards-buffer-video @locals) video-id)) len)
                 (do 
+                    (oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 2 len)))
                     (doseq [x (range len)] 
                         (let [  bwb     @(nth (:backwards-buffer-video @locals) video-id)
                                 img (bfff-video video-id locals capture-video)
                                 newSeq  (conj @(nth (:backwards-buffer-video @locals) video-id) img)]
                
                     (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))))
-                (oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 2 len))))
+                )
                 nil)
             (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 1)) 
                 (do (queue-video-image video-id (first @(nth (:backwards-buffer-video @locals) video-id)))
-                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil)   
-                ;(reset! (nth (:frame-set-video @locals) video-id) true) 
-                ;(Thread/sleep 0.04)  
-                ;(reset! (nth (:frame-set-video @locals) video-id) nil)
-                ) 
+                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
             ) nil )
 
+            
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                   (println "start video loop " video-id)
@@ -1153,28 +1150,27 @@
                     (reset! startTime (System/nanoTime))
                     (cond 
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
-                                (buffer-video-texture locals video-id capture-video_i)
-                                (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
+                                    (buffer-video-texture locals video-id capture-video_i)
+                                    (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
                                 (reset! (nth (:frame-set-video @locals) video-id) true)
                                 (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
                                 (reset! (nth (:frame-set-video @locals) video-id) nil)
                                 )                        
                         (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
                         (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
-                            (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
-                                (buffer-video-texture locals video-id capture-video_i))
+                                    (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
+                                    (buffer-video-texture locals video-id capture-video_i))
                                 (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
                         (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
-                            (do 
-                            (buffer-reverse-video-texture locals video-id capture-video_i)
-                            )
-                            (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
+                                (do (buffer-reverse-video-texture locals video-id capture-video_i))
+                                (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
                             (reset! (nth (:frame-set-video @locals) video-id) true)
                             (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
                             (reset! (nth (:frame-set-video @locals) video-id) nil)
                             )))
                     (oc-release capture-video_i)
                     (println "video loop stopped" video-id)))))   
+    
     
 (defn- check-video-idx 
    [locals video-id]
