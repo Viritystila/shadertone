@@ -82,6 +82,7 @@
    :buffer-section-video    [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
                              (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
    :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
+   :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
 
    :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -1010,12 +1011,33 @@
             maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
             bufferLength        (get-video-queue-length video-id)
             bwb                 @(nth (:backwards-buffer-video @locals) video-id)
-            bwbl                (count bwb)]
+            bwbl                (count bwb)
+            fbwb                @(nth (:forwards-buffer-video @locals) video-id)
+            fbwbl               (count fbwb)
+            image                  (if (> fbwbl 1) (do (first @(nth (:forwards-buffer-video @locals) video-id))
+                                    ;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop-last @(nth (:forwards-buffer-video @locals) video-id)))
+                                    ) image) 
+            
+            _ (if (> fbwbl 0) 
+                (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) nil)
+            ;_ (drop 1 @(nth (:forwards-buffer-video @locals) video-id))
+            ;_ (println (count @(nth (:forwards-buffer-video @locals) video-id)))
+            ;_ (if (> (count @(nth (:forwards-buffer-video @locals) video-id)) 1) (reset! (nth (:forwards-buffer-video @locals) video-id) (drop-last @(nth (:forw+ards-buffer-video @locals) video-id))) nil)
+            ;_ (println "sss" (nth (:forwards-buffer-video @locals) video-id))
+            ;_ (println "sss" (nth (:backwards-buffer-video @locals) video-id))
+
+            ]
             (if (<= bufferLength maxBufferLength ) (do (queue-video-image video-id image)) nil)
+            
             (if (<= bwbl maxBufferLength) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )))
-     ;(reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image))
+ 
+;(if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:forwards-buffer-video @locals) video-id)) 0)) 
+            ;(do
+            ;(queue-video-image video-id (first @(nth (:forwards-buffer-video @locals) video-id)))
+            ;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:fowards-buffer-video @locals) video-id)))) nil )
+             
  
 (defn init-video-buffer 
    [locals video-id] 
@@ -1115,6 +1137,8 @@
                 bufferLength        (get-video-queue-length video-id)
                 bwb     @(nth (:backwards-buffer-video @locals) video-id)
                 bwbl    (count bwb)
+                fbwb     @(nth (:forwards-buffer-video @locals) video-id)
+                fbwbl    (count fbwb)
                 len     (/ maxBufferLength 2)]
             (if (< (count @(nth (:backwards-buffer-video @locals) video-id)) len)
                 (do 
@@ -1127,11 +1151,13 @@
                     (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))))
                 )
                 nil)
-            (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 1)) 
+            (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 0)) 
                 (do (queue-video-image video-id (first @(nth (:backwards-buffer-video @locals) video-id)))
+                    (if (<= fbwbl maxBufferLength) 
+                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (seq fbwb) (first @(nth (:backwards-buffer-video @locals) video-id)))) 
+                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (drop-last (seq fbwb)) (first @(nth (:backwards-buffer-video @locals) video-id)))))
                     (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
             ) nil )
-
             
 (defn- start-video-loop 
     [locals video-id]
