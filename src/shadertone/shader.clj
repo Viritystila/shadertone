@@ -101,7 +101,7 @@
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
    ;Data Array
-   :dataArray               (make-array Float/TYPE 256)
+   :dataArray               (vec (make-array Float/TYPE 256))
    :i-dataArray-loc         0
    ;Other
    :tex-id-fftwave          0
@@ -180,9 +180,16 @@
  
 (defn- set-nil [coll pos] (assoc coll pos nil))
 
-;(Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+(defn set-dataArray-item [idx val](let [oa (:dataArray  @the-window-state)
+                                        na (assoc oa idx val)
+]
+(swap! the-window-state assoc :dataArray na)
+;(println "(:dataArray  @the-window-state)" (:dataArray  @the-window-state)) 
 
+;(swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
 
+)
+)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Queue functions
 ;Cam
@@ -541,7 +548,7 @@
                       "uniform sampler2D iVideo4; \n"
                       "uniform vec4      iDate;\n"
                       "uniform sampler2D iFftWave; \n"
-                      "uniform sampler2D iDataArray; \n"
+                      "uniform float iDataArray[256]; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -1377,6 +1384,12 @@
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
 
+    
+;(defn create-float-buffer-from-values [values]
+;  (let [float-buffer (BufferUtils/createFloatBuffer (count values))]
+;    (.put float-buffer (float-array values))
+;    (.rewind float-buffer)
+;    float-buffer))
       
                       
 (defn- draw
@@ -1443,7 +1456,12 @@
     (GL20/glUniform1f i-global-time-loc cur-time)
     (GL20/glUniform1  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
     (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer (-> (BufferUtils/createFloatBuffer 256)
-                                (.put (:dataArray @locals))))
+                                (.put (float-array
+                                   (:dataArray @locals)))
+                                    (.flip)))
+                                
+                                 
+                                
 
     (GL20/glUniform4f i-mouse-loc
                       mouse-pos-x
