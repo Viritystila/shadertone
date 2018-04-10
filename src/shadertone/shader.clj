@@ -100,6 +100,9 @@
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
+   ;Data Array
+   :dataArray               (make-array Float/TYPE 256)
+   :i-dataArray-loc         0
    ;Other
    :tex-id-fftwave          0
    :i-fftwave-loc           [0]
@@ -538,6 +541,7 @@
                       "uniform sampler2D iVideo4; \n"
                       "uniform vec4      iDate;\n"
                       "uniform sampler2D iFftWave; \n"
+                      "uniform sampler2D iDataArray; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -694,14 +698,14 @@
             i-video2-loc        (GL20/glGetUniformLocation pgm-id "iVideo2")
             i-video3-loc        (GL20/glGetUniformLocation pgm-id "iVideo3")
             i-video4-loc        (GL20/glGetUniformLocation pgm-id "iVideo4")
-            _ (println "i-video0-loc " i-video0-loc)
-            _ (println "i-video1-loc " i-video1-loc)
-
     
             i-channel-res-loc     (GL20/glGetUniformLocation pgm-id "iChannelResolution")
             i-date-loc            (GL20/glGetUniformLocation pgm-id "iDate")
 
             i-fftwave-loc         (GL20/glGetUniformLocation pgm-id "iFftWave")
+            
+            i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
+
 
             _ (except-gl-errors "@ end of let init-shaders")
             ]
@@ -717,6 +721,7 @@
                :i-mouse-loc i-mouse-loc
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                :i-fftwave-loc [i-fftwave-loc]
+               :i-dataArray-loc i-dataArray-loc
                :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                :i-channel-res-loc i-channel-res-loc
@@ -1333,7 +1338,9 @@
 
                 i-channel-res-loc  (GL20/glGetUniformLocation new-pgm-id "iChannelResolution")
                 i-date-loc         (GL20/glGetUniformLocation new-pgm-id "iDate")
-                i-fftwave-loc         (GL20/glGetUniformLocation new-pgm-id "iFftWave")]
+                i-fftwave-loc         (GL20/glGetUniformLocation new-pgm-id "iFftWave")
+                i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
+]
                 
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
@@ -1355,7 +1362,8 @@
                    :i-channel-time-loc i-channel-time-loc
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
-                   :i-fftwave-loc [i-fftwave-loc]
+                   :i-fftwave-loc [i-fftwave-loc] 
+                   :i-dataArray-loc i-dataArray-loc
                    :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                    :i-channel-res-loc i-channel-res-loc
@@ -1382,7 +1390,7 @@
                 mouse-pos-x mouse-pos-y
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
-                i-channel-res-loc
+                i-channel-res-loc i-dataArray-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
                 tex-ids cams text-id-cam videos text-id-video tex-types
@@ -1434,6 +1442,9 @@
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
     (GL20/glUniform1  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
+    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer (-> (BufferUtils/createFloatBuffer 256)
+                                (.put (:dataArray @locals))))
+
     (GL20/glUniform4f i-mouse-loc
                       mouse-pos-x
                       mouse-pos-y
