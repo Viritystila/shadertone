@@ -202,6 +202,9 @@
 
 (defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
 
+(defn getWindowState [] (s/getWindowState))
+
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))

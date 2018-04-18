@@ -190,6 +190,8 @@
     (let [  oa  (:dataArray  @the-window-state)
             na  (assoc oa idx val)]
         (swap! the-window-state assoc :dataArray na)))
+        
+(defn getWindowState [] (let [ws the-window-state] ws))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Queue functions
 ;Cam
@@ -401,7 +403,12 @@
                                             gFv)
                                         (reset! (nth (:blueHistogram @the-window-state) video-id) 
                                             bFv)    
-                                    
+                                        
+                                        ;(println "rhistogram" (nth (.get rhistogram 0 0) 0))
+                                        ;(org.opencv.core.Core/divide 2.0 rhistogram rhistogram )
+                                        ;(println "rhistogram per 2" (nth (.get rhistogram 0 0) 0))
+
+                                        
                                         ;(println rFv)
                                         ;(println "@(nth (:redHistogram      @the-window-state) video-id)" @(nth (:redHistogram      @the-window-state) video-id))
                                         ))
