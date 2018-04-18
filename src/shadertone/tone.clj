@@ -200,6 +200,8 @@
 
 (defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse video-id)))
 
+(defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))
