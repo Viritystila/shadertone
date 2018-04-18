@@ -7,10 +7,12 @@
   (:import [org.opencv.core Mat Core CvType]
     [org.opencv.videoio Videoio VideoCapture]
     [org.opencv.video Video]
+    [org.opencv.utils.Converters]
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
            (java.util Calendar)
+           (java.util List)
            (javax.imageio ImageIO)
            (java.lang.reflect Field)
            (org.lwjgl BufferUtils)
@@ -100,6 +102,10 @@
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
+   ;Video analysis
+   :redHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :greenHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :blueHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    ;Data Array
    :dataArray               (vec (make-array Float/TYPE 256))
    :i-dataArray-loc         0
@@ -180,16 +186,10 @@
  
 (defn- set-nil [coll pos] (assoc coll pos nil))
 
-(defn set-dataArray-item [idx val](let [oa (:dataArray  @the-window-state)
-                                        na (assoc oa idx val)
-]
-(swap! the-window-state assoc :dataArray na)
-;(println "(:dataArray  @the-window-state)" (:dataArray  @the-window-state)) 
-
-;(swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
-
-)
-)
+(defn set-dataArray-item [idx val]
+    (let [  oa  (:dataArray  @the-window-state)
+            na  (assoc oa idx val)]
+        (swap! the-window-state assoc :dataArray na)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Queue functions
 ;Cam
@@ -343,7 +343,77 @@
   (new org.opencv.core.Mat long_0 ))
 ([]
   (new org.opencv.core.Mat )))
+  
+(defn oc-calc-hist [mat video-id](let [ ;gray (.clone mat)
+                                        ;_ (org.opencv.imgproc.Imgproc/cvtColor mat gray org.opencv.imgproc.Imgproc/COLOR_RGB2GRAY)
+                                        height              (.height mat)
+                                        width               (.width mat)
+                                        pxls                (* height width)
+                                        matList             (java.util.Arrays/asList (object-array [mat]))
+                                        rhistogram          (oc-new-mat)
+                                        ghistogram          (oc-new-mat)
+                                        bhistogram          (oc-new-mat)
+                                        ranges (new org.opencv.core.MatOfFloat (float-array [0.0 255.0]))
+                                        histSize  (new org.opencv.core.MatOfInt (int-array [256]))
+                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [0])) (new org.opencv.core.Mat) rhistogram histSize ranges)
+                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [1])) (new org.opencv.core.Mat) ghistogram histSize ranges)
+                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [2])) (new org.opencv.core.Mat) bhistogram histSize ranges)
+                                        ;redHistogram    @(nth (:redHistogram      @the-window-state) video-id)
+                                        ;greenHistogram  (:greenHistogram    @the-window-state)
+                                        ;blueHistogram   (:blueHistogram     @the-window-state)
+                                        ;rFv (java.util.Arrays/asList (new org.opencv.core.MatOfFloat (float-array [0.0 255.0])))
+                                        ;_ (org.opencv.utils.Converters/Mat_to_vector_float rhistogram)
+                                        rFv (java.util.ArrayList. (range 256))
+                                        gFv (java.util.ArrayList. (range 256))
+                                        bFv (java.util.ArrayList. (range 256))
+                                        ]
+                                        ;:redHistogram
+                                        ;:greenHistogram
+                                        ;:blueHistogram
+                                        ;(doseq [ idx (range 1 256)] 
+                                            ;(swap! the-window-state assoc :redHistogram (assoc redHistogram idx (nth (.get bhistogram idx 0)0 )))
+                                            ;(println "redHistogram" redHistogram )
+                                            ;(println "(.get bhistogram idx 0)" idx "ss" (nth (.get bhistogram idx 0)0))
+                                            
+                                            ;(org.opencv.utils.Converters/Mat_to_vector_float rhistogram)
+                                            
+                                            ;(reset! (nth (:redHistogram @the-window-state) video-id) 
+                                            ;    (assoc @(nth (:redHistogram      @the-window-state) video-id) idx (nth (.get rhistogram idx 0) 0 )))
+                                            
+                                            ;(reset! (nth (:greenHistogram @the-window-state) video-id) 
+                                            ;    (assoc @(nth (:greenHistogram      @the-window-state) video-id) idx (nth (.get ghistogram idx 0) 0)))
+                                            
+                                            ;(reset! (nth (:blueHistogram @the-window-state) video-id) 
+                                            ;    (assoc @(nth (:blueHistogram      @the-window-state) video-id) idx (nth (.get bhistogram idx 0) 0)))
+                                            
+                                            ;(println (nth (.get rhistogram i 0) 0) (nth (.get ghistogram i 0) ;0)        (nth (.get bhistogram i 0) 0))
+                                        ;)
+                                        ;(reset! (nth (:redHistogram @the-window-state) video-id) redHistogram)
+                                        ;(println "bhistogram" (nth (.get bhistogram 0 0)0 ))
+                                        ;(println "bhistogram" (.col bhistogram 0))
+                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col rhistogram 0) rFv)
+                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col ghistogram 0) gFv)
+                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col bhistogram 0) bFv)
+                                        
+                                        (reset! (nth (:redHistogram @the-window-state) video-id) 
+                                            rFv)
+                                        (reset! (nth (:greenHistogram @the-window-state) video-id) 
+                                            gFv)
+                                        (reset! (nth (:blueHistogram @the-window-state) video-id) 
+                                            bFv)    
+                                    
+                                        ;(println rFv)
+                                        ;(println "@(nth (:redHistogram      @the-window-state) video-id)" @(nth (:redHistogram      @the-window-state) video-id))
+                                        ))
 ;;;;;;;;;;;;;;;;;;;;;;;;
+;oa  (:dataArray  @the-window-state)
+;            na  (assoc oa idx val)]
+;        (swap! the-window-state assoc :dataArray na)))
+;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id)))
+;(def al (java.util.ArrayList. (range 6)))
+;def conv  (org.opencv.utils.Converters/Mat_to_vector_char (.col mm 0 ) al))
+
+
 
 
 (defn- buffer-swizzle-0123-1230
@@ -1020,6 +1090,7 @@
     [locals video-id capture-video]
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-video image)
+            _                   (oc-calc-hist image video-id)
             maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
             bufferLength        (get-video-queue-length video-id)
             bwb                 @(nth (:backwards-buffer-video @locals) video-id)
