@@ -102,10 +102,19 @@
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
+   
    ;Video analysis
-   :redHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :greenHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :blueHistogram            [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :applyAnalysis-video     [(atom [true]) (atom [true]) (atom [true]) (atom [true]) (atom [true])]
+   :redHistogram-video      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :greenHistogram-video    [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   
+   ;Camera Analysis
+   :applyAnalysis-camera    [(atom [true]) (atom [true]) (atom [true]) (atom [true]) (atom [true])]
+   :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+   :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
+   
    ;Data Array
    :dataArray               (vec (make-array Float/TYPE 256))
    :i-dataArray-loc         0
@@ -346,79 +355,38 @@
 ([]
   (new org.opencv.core.Mat )))
   
-(defn oc-calc-hist [mat video-id](let [ ;gray (.clone mat)
-                                        ;_ (org.opencv.imgproc.Imgproc/cvtColor mat gray org.opencv.imgproc.Imgproc/COLOR_RGB2GRAY)
-                                        height              (.height mat)
-                                        width               (.width mat)
-                                        pxls                (* height width)
-                                        matList             (java.util.Arrays/asList (object-array [mat]))
-                                        rhistogram          (oc-new-mat)
-                                        ghistogram          (oc-new-mat)
-                                        bhistogram          (oc-new-mat)
-                                        ranges (new org.opencv.core.MatOfFloat (float-array [0.0 255.0]))
-                                        histSize  (new org.opencv.core.MatOfInt (int-array [256]))
-                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [0])) (new org.opencv.core.Mat) rhistogram histSize ranges)
-                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [1])) (new org.opencv.core.Mat) ghistogram histSize ranges)
-                                        _ (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [2])) (new org.opencv.core.Mat) bhistogram histSize ranges)
-                                        ;redHistogram    @(nth (:redHistogram      @the-window-state) video-id)
-                                        ;greenHistogram  (:greenHistogram    @the-window-state)
-                                        ;blueHistogram   (:blueHistogram     @the-window-state)
-                                        ;rFv (java.util.Arrays/asList (new org.opencv.core.MatOfFloat (float-array [0.0 255.0])))
-                                        ;_ (org.opencv.utils.Converters/Mat_to_vector_float rhistogram)
-                                        rFv (java.util.ArrayList. (range 256))
-                                        gFv (java.util.ArrayList. (range 256))
-                                        bFv (java.util.ArrayList. (range 256))
-                                        ]
-                                        ;:redHistogram
-                                        ;:greenHistogram
-                                        ;:blueHistogram
-                                        ;(doseq [ idx (range 1 256)] 
-                                            ;(swap! the-window-state assoc :redHistogram (assoc redHistogram idx (nth (.get bhistogram idx 0)0 )))
-                                            ;(println "redHistogram" redHistogram )
-                                            ;(println "(.get bhistogram idx 0)" idx "ss" (nth (.get bhistogram idx 0)0))
-                                            
-                                            ;(org.opencv.utils.Converters/Mat_to_vector_float rhistogram)
-                                            
-                                            ;(reset! (nth (:redHistogram @the-window-state) video-id) 
-                                            ;    (assoc @(nth (:redHistogram      @the-window-state) video-id) idx (nth (.get rhistogram idx 0) 0 )))
-                                            
-                                            ;(reset! (nth (:greenHistogram @the-window-state) video-id) 
-                                            ;    (assoc @(nth (:greenHistogram      @the-window-state) video-id) idx (nth (.get ghistogram idx 0) 0)))
-                                            
-                                            ;(reset! (nth (:blueHistogram @the-window-state) video-id) 
-                                            ;    (assoc @(nth (:blueHistogram      @the-window-state) video-id) idx (nth (.get bhistogram idx 0) 0)))
-                                            
-                                            ;(println (nth (.get rhistogram i 0) 0) (nth (.get ghistogram i 0) ;0)        (nth (.get bhistogram i 0) 0))
-                                        ;)
-                                        ;(reset! (nth (:redHistogram @the-window-state) video-id) redHistogram)
-                                        ;(println "bhistogram" (nth (.get bhistogram 0 0)0 ))
-                                        ;(println "bhistogram" (.col bhistogram 0))
-                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col rhistogram 0) rFv)
-                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col ghistogram 0) gFv)
-                                        (org.opencv.utils.Converters/Mat_to_vector_float (.col bhistogram 0) bFv)
-                                        
-                                        (reset! (nth (:redHistogram @the-window-state) video-id) 
-                                            rFv)
-                                        (reset! (nth (:greenHistogram @the-window-state) video-id) 
-                                            gFv)
-                                        (reset! (nth (:blueHistogram @the-window-state) video-id) 
-                                            bFv)    
-                                        
-                                        ;(println "rhistogram" (nth (.get rhistogram 0 0) 0))
-                                        ;(org.opencv.core.Core/divide 2.0 rhistogram rhistogram )
-                                        ;(println "rhistogram per 2" (nth (.get rhistogram 0 0) 0))
-
-                                        
-                                        ;(println rFv)
-                                        ;(println "@(nth (:redHistogram      @the-window-state) video-id)" @(nth (:redHistogram      @the-window-state) video-id))
-                                        ))
-;;;;;;;;;;;;;;;;;;;;;;;;
-;oa  (:dataArray  @the-window-state)
-;            na  (assoc oa idx val)]
-;        (swap! the-window-state assoc :dataArray na)))
-;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id)))
-;(def al (java.util.ArrayList. (range 6)))
-;def conv  (org.opencv.utils.Converters/Mat_to_vector_char (.col mm 0 ) al))
+(defn oc-calc-hist [mat id isVideo]
+    (let [  height   (.height mat)
+            width               (.width mat)
+            pxls                (* height width)
+            matList             (java.util.Arrays/asList (object-array [mat]))
+            rhistogram          (oc-new-mat)
+            ghistogram          (oc-new-mat)
+            bhistogram          (oc-new-mat)
+            ranges              (new org.opencv.core.MatOfFloat (float-array [0.0 255.0]))
+            histSize            (new org.opencv.core.MatOfInt (int-array [256]))
+            _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [0])) (new     org.opencv.core.Mat) rhistogram histSize ranges)
+            _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [1])) (new org.opencv.core.Mat) ghistogram histSize ranges)
+            _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [2])) (new org.opencv.core.Mat) bhistogram histSize ranges)
+            rFv                 (java.util.ArrayList. (range 256))
+            gFv                 (java.util.ArrayList. (range 256))
+            bFv                 (java.util.ArrayList. (range 256))]
+            (org.opencv.utils.Converters/Mat_to_vector_float (.col rhistogram 0) rFv)
+            (org.opencv.utils.Converters/Mat_to_vector_float (.col ghistogram 0) gFv)
+            (org.opencv.utils.Converters/Mat_to_vector_float (.col bhistogram 0) bFv)
+            
+            (if isVideo 
+                (do
+                (reset! (nth (:redHistogram-video @the-window-state) id) rFv)
+                (reset! (nth (:greenHistogram-video @the-window-state) id) gFv)
+                (reset! (nth (:blueHistogram-video @the-window-state) id) bFv))
+                
+                (do
+                (reset! (nth (:redHistogram-cam @the-window-state) id) rFv)
+                (reset! (nth (:greenHistogram-cam @the-window-state) id) gFv)
+                (reset! (nth (:blueHistogram-cam @the-window-state) id) bFv))
+            )
+            ))
 
 
 
@@ -1097,38 +1065,26 @@
     [locals video-id capture-video]
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-video image)
-            _                   (oc-calc-hist image video-id)
+            _                   (oc-calc-hist image video-id, true)
             maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
             bufferLength        (get-video-queue-length video-id)
             bwb                 @(nth (:backwards-buffer-video @locals) video-id)
             bwbl                (count bwb)
             fbwb                @(nth (:forwards-buffer-video @locals) video-id)
             fbwbl               (count fbwb)
-            image                  (if (> fbwbl 1) (do (first @(nth (:forwards-buffer-video @locals) video-id))
-                                    ;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop-last @(nth (:forwards-buffer-video @locals) video-id)))
-                                    ) image) 
-            
-            _ (if (> fbwbl 0) 
-                (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) nil)
-            ;_ (drop 1 @(nth (:forwards-buffer-video @locals) video-id))
-            ;_ (println (count @(nth (:forwards-buffer-video @locals) video-id)))
-            ;_ (if (> (count @(nth (:forwards-buffer-video @locals) video-id)) 1) (reset! (nth (:forwards-buffer-video @locals) video-id) (drop-last @(nth (:forw+ards-buffer-video @locals) video-id))) nil)
-            ;_ (println "sss" (nth (:forwards-buffer-video @locals) video-id))
-            ;_ (println "sss" (nth (:backwards-buffer-video @locals) video-id))
-
-            ]
-            (if (<= bufferLength maxBufferLength ) (do (queue-video-image video-id image)) nil)
-            
+            image               (if (> fbwbl 1) 
+                                    (do (first @(nth (:forwards-buffer-video @locals) video-id))) 
+                                    image) 
+            _                   (if (> fbwbl 0)   
+                                    (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) 
+                                    nil)]
+            (if (<= bufferLength maxBufferLength ) 
+                (do (queue-video-image video-id image)) 
+                nil)
             (if (<= bwbl maxBufferLength) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )))
- 
-;(if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:forwards-buffer-video @locals) video-id)) 0)) 
-            ;(do
-            ;(queue-video-image video-id (first @(nth (:forwards-buffer-video @locals) video-id)))
-            ;(reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:fowards-buffer-video @locals) video-id)))) nil )
-             
- 
+  
 (defn init-video-buffer 
    [locals video-id] 
    (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
