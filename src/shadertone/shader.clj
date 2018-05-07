@@ -104,13 +104,13 @@
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
    
    ;Video analysis
-   :applyAnalysis-video     [(atom [true]) (atom [true]) (atom [true]) (atom [true]) (atom [true])]
+   :applyAnalysis-video     [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
    :redHistogram-video      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :greenHistogram-video    [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    
    ;Camera Analysis
-   :applyAnalysis-camera    [(atom [true]) (atom [true]) (atom [true]) (atom [true]) (atom [true])]
+   :applyAnalysis-camera     [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
    :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
@@ -1060,12 +1060,23 @@
             (oc-set-capture-property :fps capture-video_i  fpstbs)
             (println "new fps " fpstbs )))
  
+ 
+(defn apply-analysis [mat locals id isVideo] 
+    (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
+            applies         (vec @(nth (applyKeyword @locals) id))
+            ]
+            ;(println applies)
+            (doseq [key applies] (case key 
+                                        :histogram  (oc-calc-hist mat id true))))) 
+ 
+ 
  ;:backwards-buffer-video
 (defn- buffer-video-texture 
     [locals video-id capture-video]
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-video image)
-            _                   (oc-calc-hist image video-id, true)
+            _                   (apply-analysis image locals video-id true)
+            ;_                   (oc-calc-hist image video-id true)
             maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
             bufferLength        (get-video-queue-length video-id)
             bwb                 @(nth (:backwards-buffer-video @locals) video-id)

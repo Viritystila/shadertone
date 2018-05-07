@@ -204,6 +204,25 @@
 
 (defn getWindowState [] (s/getWindowState))
 
+(defn get-video-histogram [video-id color] (let [ws   (getWindowState)]
+                                                (case color 
+                                                        :red (nth (:redHistogram-video @ws) video-id)
+                                                        :green (nth (:greenHistogram-video @ws) video-id)
+                                                        :blue (nth (:blueHistogram-video @ws) video-id)
+                                                        )))
+
+(defn get-cam-histogram [cam-id color] (let [ws   (getWindowState)]
+                                                (case color 
+                                                        :red (nth (:redHistogram-cam @ws) cam-id)
+                                                        :green (nth (:greenHistogram-cam @ws) cam-id)
+                                                        :blue (nth (:blueHistogram-cam @ws) cam-id)
+                                                        )))
+
+;(def ws (t/getWindowState))
+
+;(def rh (nth (:redHistogram @ws) 2))
+
+;(def bh (nth (:blueHistogram @ws) 2))
 
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
