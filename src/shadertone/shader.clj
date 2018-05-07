@@ -110,13 +110,13 @@
    :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    
    ;Camera Analysis
-   :applyAnalysis-camera     [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
+   :applyAnalysis-cam       [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
    :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
    
    ;Data Array
-   :dataArray               (vec (make-array Float/TYPE 256))
+   :dataArray               (vec (make-array Float/TYPE 64))
    :i-dataArray-loc         0
    ;Other
    :tex-id-fftwave          0
@@ -285,8 +285,7 @@
                                               :hue
                                               (.set capture org.opencv.videoio.Videoio/CAP_PROP_HUE   val)          
                                               
-:default (throw (Exception. "Unknown Property.")))
-)
+                                                :default (throw (Exception. "Unknown Property."))))
 
 (defn oc-get-capture-property [dispatch capture](case dispatch
                                               :pos-msec
@@ -328,8 +327,7 @@
                                               :hue
                                               (.get capture org.opencv.videoio.Videoio/CAP_PROP_HUE)          
                                               
-:default (throw (Exception. "Unknown Property.")))
-)
+                                            :default (throw (Exception. "Unknown Property."))))
 
 (defn oc-mat-to-bytebuffer [mat] (let [height      (.height mat)
                                        width       (.width mat)
@@ -389,6 +387,16 @@
             ))
 
 
+;Analysis related functions
+(defn apply-analysis [mat locals id isVideo] 
+    (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
+            applies         (vec @(nth (applyKeyword @locals) id))
+            ]
+            ;(println applies)
+            (doseq [key applies] (case key 
+                                        :histogram  (oc-calc-hist mat id true))))) 
+ 
+ 
 
 
 (defn- buffer-swizzle-0123-1230
@@ -870,6 +878,7 @@
     [locals cam-id capture-cam]
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-cam image)
+            _                   (apply-analysis image locals cam-id false)
             maxBufferLength     @(nth (:buffer-length-cam @locals) cam-id)
             bufferLength        (get-cam-queue-length cam-id)]
             (if (< bufferLength maxBufferLength ) (queue-cam-image cam-id image) nil)))
@@ -1061,15 +1070,7 @@
             (println "new fps " fpstbs )))
  
  
-(defn apply-analysis [mat locals id isVideo] 
-    (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
-            applies         (vec @(nth (applyKeyword @locals) id))
-            ]
-            ;(println applies)
-            (doseq [key applies] (case key 
-                                        :histogram  (oc-calc-hist mat id true))))) 
- 
- 
+
  ;:backwards-buffer-video
 (defn- buffer-video-texture 
     [locals video-id capture-video]
@@ -1500,7 +1501,7 @@
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
     (GL20/glUniform1  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
-    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer (-> (BufferUtils/createFloatBuffer 256)
+    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer (-> (BufferUtils/createFloatBuffer 64)
                                 (.put (float-array
                                    (:dataArray @locals)))
                                     (.flip)))
@@ -1555,22 +1556,22 @@
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
         ;)
     ;cams
-    ;(dotimes [i (count text-id-cam)]
-    ;    (when (nth text-id-cam i)
-    ;    (if (= nil @(nth (:frame-set-cam @locals) i))
-    ;        (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
-    ;        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)) 
-    ;        nil )))
+    (dotimes [i (count text-id-cam)]
+        (when (nth text-id-cam i)
+        (if (= nil @(nth (:frame-set-cam @locals) i))
+            (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
+            (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)) 
+            nil )))
     ;videos
     ;(doseq [i text-id-video]
-    ;(dotimes [i (count text-id-video)]
-    ;    (when (nth text-id-video i)
-    ;        ;(println "(nth (:frame-set-video @the-window-state) video-id) " @(nth text-id-video i))
-    ;        (if (= nil @(nth (:frame-set-video @locals) i))
-    ;            (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
-    ;                ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    ;                )
-    ;        nil )))
+    (dotimes [i (count text-id-video)]
+        (when (nth text-id-video i)
+            ;(println "(nth (:frame-set-video @the-window-state) video-id) " @(nth text-id-video i))
+            (if (= nil @(nth (:frame-set-video @locals) i))
+                (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
+                    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+                    )
+            nil )))
         
         
     (except-gl-errors "@ draw prior to post-draw")
