@@ -394,7 +394,7 @@
             ]
             ;(println applies)
             (doseq [key applies] (case key 
-                                        :histogram  (oc-calc-hist mat id true))))) 
+                                        :histogram  (oc-calc-hist mat id isVideo))))) 
  
  
 
