@@ -354,9 +354,10 @@
   (new org.opencv.core.Mat )))
   
 (defn oc-calc-hist [mat id isVideo]
-    (let [  height   (.height mat)
+    (let [  height              (.height mat)
             width               (.width mat)
-            pxls                (* height width)
+            pxls                (* height width 1.0)
+            pxls                (if (= pxls 0) 1 pxls)
             matList             (java.util.Arrays/asList (object-array [mat]))
             rhistogram          (oc-new-mat)
             ghistogram          (oc-new-mat)
@@ -372,17 +373,16 @@
             (org.opencv.utils.Converters/Mat_to_vector_float (.col rhistogram 0) rFv)
             (org.opencv.utils.Converters/Mat_to_vector_float (.col ghistogram 0) gFv)
             (org.opencv.utils.Converters/Mat_to_vector_float (.col bhistogram 0) bFv)
-            
             (if isVideo 
                 (do
-                (reset! (nth (:redHistogram-video @the-window-state) id) rFv)
-                (reset! (nth (:greenHistogram-video @the-window-state) id) gFv)
-                (reset! (nth (:blueHistogram-video @the-window-state) id) bFv))
+                (reset! (nth (:redHistogram-video @the-window-state) id)    (map (partial * (/ 1 pxls) ) rFv))
+                (reset! (nth (:greenHistogram-video @the-window-state) id)  (map (partial * (/ 1 pxls) ) gFv))
+                (reset! (nth (:blueHistogram-video @the-window-state) id)   (map (partial * (/ 1 pxls) ) bFv)))
                 
                 (do
-                (reset! (nth (:redHistogram-cam @the-window-state) id) rFv)
-                (reset! (nth (:greenHistogram-cam @the-window-state) id) gFv)
-                (reset! (nth (:blueHistogram-cam @the-window-state) id) bFv))
+                (reset! (nth (:redHistogram-cam @the-window-state) id)      (map (partial * (/ 1 pxls) ) rFv))
+                (reset! (nth (:greenHistogram-cam @the-window-state) id)    (map (partial * (/ 1 pxls) ) gFv))
+                (reset! (nth (:blueHistogram-cam @the-window-state) id)     (map (partial * (/ 1 pxls) ) bFv)))
             )
             ))
 
@@ -392,9 +392,12 @@
     (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
             applies         (vec @(nth (applyKeyword @locals) id))
             ]
-            ;(println applies)
-            (doseq [key applies] (case key 
-                                        :histogram  (oc-calc-hist mat id isVideo))))) 
+            ;(println mat)
+            (if (>= (.channels mat) 3)
+                (doseq [key applies] (case key 
+                                        :histogram  (oc-calc-hist mat id isVideo))))
+                nil                        
+                                        )) 
  
  
 
