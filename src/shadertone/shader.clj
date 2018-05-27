@@ -104,13 +104,13 @@
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
    
    ;Video analysis
-   :applyAnalysis-video     [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
+   :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :redHistogram-video      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :greenHistogram-video    [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    
    ;Camera Analysis
-   :applyAnalysis-cam       [(atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram]) (atom [:histogram])]
+   :applyAnalysis-cam       [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
@@ -398,7 +398,25 @@
                                         :histogram  (oc-calc-hist mat id isVideo))))
                 nil                        
                                         )) 
- 
+(defn toggle-analysis [id isVideo method]     
+    (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
+            applies         (vec @(nth (applyKeyword @the-window-state) id))
+            ]
+            (case method
+                :histogram
+                    (do 
+                    (reset! (nth (applyKeyword @the-window-state) id) 
+                            (if (and true (=  -1 (.indexOf applies :histogram)))
+                                (conj applies :histogram)
+                                (vec ( remove #{:histogram} applies)))))
+                :histogramAAA
+                    (do 
+                    (reset! (nth (applyKeyword @the-window-state) id) 
+                            (if (and true (=  -1 (.indexOf applies :histogramAAA)))
+                                (conj applies :histogramAAA)
+                                (vec (remove #{:histogramAAA} applies)))))
+            )
+            ))
  
 
 

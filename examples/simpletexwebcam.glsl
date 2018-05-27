@@ -8,7 +8,7 @@ void main(void) {
   uv.y=1.0-uv.y;
   vec2 uv2 = (gl_FragCoord.xy / iResolution.xy);
   	vec2 p = gl_FragCoord.xy / iResolution.x;//normalized coords with some cheat
-  uv2.y=1.0-uv2.y*iDataArray[1];
+  uv2.y=1.0-uv2.y; //*iDataArray[1]*255;
  //*iDataArray[1]
   float prop = iResolution.x / iResolution.y;//screen proroption
   vec2 m = vec2(0.5, 0.5 / prop);//center coords

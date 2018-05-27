@@ -218,6 +218,7 @@
                                                         :blue (nth (:blueHistogram-cam @ws) cam-id)
                                                         )))
 
+(defn toggle-analysis [video-id isVideo method] (if (= true (integer? video-id)) (s/toggle-analysis video-id isVideo method)))
 ;(def ws (t/getWindowState))
 
 ;(def rh (nth (:redHistogram @ws) 2))
