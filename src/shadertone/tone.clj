@@ -76,28 +76,28 @@
 ;;   32768 0.743    1.3   0.7
 ;;
 ;; http://www.physik.uni-wuerzburg.de/~praktiku/Anleitung/Fremde/ANO14.pdf
-;(defsynth bus-freqs->buf
-;  [in-bus 0 scope-buf 1 fft-buf-size WAVE-BUF-SIZE-2X rate 2]
-;  (let [phase     (- 1 (* rate (reciprocal fft-buf-size)))
-;        fft-buf   (local-buf fft-buf-size 1)
-;        ;; drop DC & nyquist samples
-;        n-samples (* 0.5 (- (buf-samples:ir fft-buf) 2))
-;        signal    (in in-bus 1)
-;        ;; found 0.5 window gave less periodic noise
-;        freqs     (fft fft-buf signal 0.5 HANN)
-;        ;; indexer = 2, 4, 6, ..., N-4, N-2
-;        indexer   (+ n-samples 2
-;                     (* (lf-saw (/ rate (buf-dur:ir fft-buf)) phase) ;; what are limits to this rate?
-;                        n-samples))
-;        indexer   (round indexer 2) ;; always point to the real sample
-;        ;; convert real,imag pairs to magnitude
-;        s0        (buf-rd 1 fft-buf indexer 1 1)
-;        s1        (buf-rd 1 fft-buf (+ 1 indexer) 1 1) ; kibit keep
-;        lin-mag   (sqrt (+ (* s0 s0) (* s1 s1)))]
-;    (record-buf lin-mag scope-buf)))
+(defsynth bus-freqs->buf
+  [in-bus 0 scope-buf 1 fft-buf-size WAVE-BUF-SIZE-2X rate 2]
+  (let [phase     (- 1 (* rate (reciprocal fft-buf-size)))
+        fft-buf   (local-buf fft-buf-size 1)
+        ;; drop DC & nyquist samples
+        n-samples (* 0.5 (- (buf-samples:ir fft-buf) 2))
+        signal    (in in-bus 1)
+        ;; found 0.5 window gave less periodic noise
+        freqs     (fft fft-buf signal 0.5 HANN)
+        ;; indexer = 2, 4, 6, ..., N-4, N-2
+        indexer   (+ n-samples 2
+                     (* (lf-saw (/ rate (buf-dur:ir fft-buf)) phase) ;; what are limits to this rate?
+                        n-samples))
+        indexer   (round indexer 2) ;; always point to the real sample
+        ;; convert real,imag pairs to magnitude
+        s0        (buf-rd 1 fft-buf indexer 1 1)
+        s1        (buf-rd 1 fft-buf (+ 1 indexer) 1 1) ; kibit keep
+        lin-mag   (sqrt (+ (* s0 s0) (* s1 s1)))]
+    (record-buf lin-mag scope-buf)))
 
-;(defonce fft-bus-synth
-;  (bus-freqs->buf [:after (foundation-monitor-group)] 0 fft-buf))
+(defonce fft-bus-synth
+  (bus-freqs->buf [:after (foundation-monitor-group)] 0 fft-buf))
 
 ;; user-fn for shader display of waveform and fft
 (defn tone-fftwave-fn
