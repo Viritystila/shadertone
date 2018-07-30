@@ -3,21 +3,16 @@
   :url "http://github.com/overtone/shadertone"
   :license {:name "MIT License"
            :url "https://github.com/overtone/shadertone/blob/master/LICENSE"}
-  :injections [;(nu.pattern.OpenCV/loadShared)
-                (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
-  :dependencies [;; 1.6.0 causes error with *warn-on-reflection*.  1.7.0-RC1 works
-                 [org.clojure/clojure "1.9.0"]
+  :injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
+  :repositories [["Viritystila" "https://github.com/Viritystila/OpenCV/raw/master"]]
+  :dependencies [[org.clojure/clojure "1.9.0"]
                  [hello_lwjgl/lwjgl   "2.9.1"]
                  [overtone            "0.10.3"]
                  [watchtower          "0.1.1"]
-                 ;[org.openpnp/opencv "3.2.0-1"]
-                 ;[vision  "1.0.0-SNAPSHOT"]
-                [org.opencv/opencv "3.4.0"]
-                [org.opencv/opencv-native "3.4.0"]
+                 [opencv/opencv "3.4.0-linux"]
+                 [opencv/opencv-native "3.4.0-linux"]
                  ]
 
   :main ^{:skip-aot true} shadertone.core
-  ;; add per WARNING: JVM argument TieredStopAtLevel=1 is active...
-  ;:jvm-opts ["-Djna.library.path=resources/lib/"]
-  :jvm-opts ["-XX:-UseLoopPredicate"]
+  :jvm-opts ^:replace [] 
   )
