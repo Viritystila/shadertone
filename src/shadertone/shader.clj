@@ -121,6 +121,10 @@
    ;Other
    :tex-id-fftwave          0
    :i-fftwave-loc           [0]
+   :tex-id-previous-frame   0
+   :buffer-previous-frame   (ref clojure.lang.PersistentQueue/EMPTY)
+   :buffer-length-previous  10
+   :i-previous-frame-loc    1
    :i-channel-res-loc       0
    :i-date-loc              0
    :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
@@ -600,7 +604,7 @@
   [locals filename]
   (let [{:keys [tex-types]} @locals
         ;;file-str (slurp filename)
-        file-str (str "#version 120\n"
+        file-str (str "#version 130\n"
                       "uniform vec3      iResolution;\n"
                       "uniform float     iGlobalTime;\n"
                       "uniform float     iChannelTime[4];\n"
@@ -623,6 +627,7 @@
                       "uniform vec4      iDate;\n"
                       "uniform sampler2D iFftWave; \n"
                       "uniform float iDataArray[256]; \n"
+                      "uniform sampler2DArray iPreviousFrames[10]; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -787,7 +792,7 @@
             
             i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
 
-
+            i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrames")
             _ (except-gl-errors "@ end of let init-shaders")
             ]
         (swap! locals
@@ -803,6 +808,7 @@
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                :i-fftwave-loc [i-fftwave-loc]
                :i-dataArray-loc i-dataArray-loc
+               :i-previous-frame-loc i-previous-frame-loc
                :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                :i-channel-res-loc i-channel-res-loc
@@ -1414,6 +1420,10 @@
                 i-date-loc          (GL20/glGetUniformLocation new-pgm-id "iDate")
                 i-fftwave-loc       (GL20/glGetUniformLocation new-pgm-id "iFftWave")
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
+                
+                            
+                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrames")
+
 ]
                 
             (GL20/glUseProgram new-pgm-id)
@@ -1437,6 +1447,7 @@
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                    :i-fftwave-loc [i-fftwave-loc] 
+                   :i-previous-frame-loc i-previous-frame-loc
                    :i-dataArray-loc i-dataArray-loc
                    :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
