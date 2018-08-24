@@ -18,7 +18,7 @@
            (org.lwjgl BufferUtils)
            (org.lwjgl.input Mouse)
            (org.lwjgl.opengl ContextAttribs Display DisplayMode
-                             GL11 GL12 GL13 GL15 GL20
+                             GL11 GL12 GL13 GL15 GL20 GL30
                              PixelFormat SharedDrawable)))
 ;; ======================================================================
 ;; State Variables
@@ -121,10 +121,12 @@
    ;Other
    :tex-id-fftwave          0
    :i-fftwave-loc           [0]
-   :tex-id-previous-frame   0
-   :buffer-previous-frame   (ref clojure.lang.PersistentQueue/EMPTY)
-   :buffer-length-previous  10
-   :i-previous-frame-loc    1
+   
+   :tex-id-previous-frame  0
+   :i-previous-frame-loc  [0]
+   
+   :buffer-frames  (ref clojure.lang.PersistentQueue/EMPTY)
+   :buffer-length-frames  10
    :i-channel-res-loc       0
    :i-date-loc              0
    :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
@@ -208,8 +210,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Queue functions
 ;Cam
-
-
 (defn queue-cam-image [cam-id image] (dosync (alter (nth (:buffer-section-cam  @the-window-state) cam-id) conj image)))
 
 (defn dequeue-cam-image [cam-id] (let [v (peek @(nth (:buffer-section-cam  @the-window-state) cam-id))] 
@@ -230,6 +230,17 @@
 (defn clear-video-queue [video-id] (while (not (empty? @(nth (:buffer-section-video  @the-window-state) video-id))) (dequeue-video-image video-id)))
 
 (defn get-video-queue-length [video-id] (count @(nth (:buffer-section-video  @the-window-state) video-id)))
+
+;Previous frames
+(defn queue-frame [image] (dosync (alter (:buffer-frames  @the-window-state) conj image)))
+
+(defn dequeue-frame [] (let [v (peek (:buffer-frames  @the-window-state))] 
+                                        (dosync (alter (:buffer-frames  @the-window-state) pop)
+                                        v)))
+                                        
+(defn previous-queue [] (while (not (empty? (:buffer-frames  @the-window-state))) (dequeue-frame)))
+
+(defn get-frame-queue-length [] (count (:buffer-frames  @the-window-state)))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -627,7 +638,7 @@
                       "uniform vec4      iDate;\n"
                       "uniform sampler2D iFftWave; \n"
                       "uniform float iDataArray[256]; \n"
-                      "uniform sampler2DArray iPreviousFrames[10]; \n"
+                      "uniform sampler2D iPreviousFrame; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -643,7 +654,7 @@
   [tex-filename]
   (cond
    (cubemap-filename? tex-filename) :cubemap
-   (= :previous-frame tex-filename) :previous-frame
+   (= :previous-frames tex-filename) :previous-frame
    :default :twod))
 
 (defn- init-window
@@ -792,7 +803,7 @@
             
             i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
 
-            i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrames")
+            i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
             _ (except-gl-errors "@ end of let init-shaders")
             ]
         (swap! locals
@@ -808,7 +819,7 @@
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                :i-fftwave-loc [i-fftwave-loc]
                :i-dataArray-loc i-dataArray-loc
-               :i-previous-frame-loc i-previous-frame-loc
+               :i-previous-frame-loc [i-previous-frame-loc]
                :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                :i-channel-res-loc i-channel-res-loc
@@ -898,6 +909,36 @@
     (swap! locals assoc
            :tex-ids tex-ids)))
 
+           
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Previous frame functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;           
+(defn- buffer-frame
+    [locals frame]
+    (let [  ;_                   (apply-analysis image locals cam-id false)
+            maxBufferLength     (:buffer-length-frames @locals)
+            bufferLength        (get-frame-queue-length)]
+            (if (< bufferLength maxBufferLength ) (queue-frame frame) nil)))
+
+ (defn- init-frame-tex 
+    [locals]    
+    (let [  target              (GL11/GL_TEXTURE_2D)
+            tex-id              (GL11/glGenTextures)
+            height              (:width @locals)
+            width               (:height @locals)
+            mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+            ;image-bytes         (.channels mat)
+            ;nbytes              (* height width image-bytes)
+            internal-format      (oc-tex-internal-format mat)
+            format               (oc-tex-format mat)            
+            ;buffer              (oc-mat-to-bytebuffer mat)
+            ]
+            (swap! locals assoc :tex-id-previous-frame tex-id)    
+            (GL11/glBindTexture target tex-id)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))            
 ;;;;;;;;;;;;;;;;;;
 ;;Camera functions
 ;;;;;;;;;;;;;;;;;;
@@ -1356,6 +1397,8 @@
     (init-videos locals)
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
+    ;(swap! locals assoc :tex-id-previous-frame (GL11/glGenTextures))
+    (init-frame-tex locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1422,7 +1465,7 @@
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
                 
                             
-                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrames")
+                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
 
 ]
                 
@@ -1447,7 +1490,7 @@
                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                    :i-fftwave-loc [i-fftwave-loc] 
-                   :i-previous-frame-loc i-previous-frame-loc
+                   :i-previous-frame-loc [i-previous-frame-loc]
                    :i-dataArray-loc i-dataArray-loc
                    :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
@@ -1481,10 +1524,10 @@
                 mouse-pos-x mouse-pos-y
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
-                i-channel-res-loc i-dataArray-loc
+                i-channel-res-loc i-dataArray-loc i-previous-frame-loc
                 channel-time-buffer channel-res-buffer
                 old-pgm-id old-fs-id
-                tex-ids cams text-id-cam videos text-id-video tex-types
+                tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
@@ -1519,11 +1562,24 @@
         (cond
          (= :cubemap (nth tex-types i))
          (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP (nth tex-ids i))
-         (= :previous-frame (nth tex-types i))
-         (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i))
+         ;(= :previous-frame (nth tex-types i))
+         ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i))
          :default
          (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i)))))
-
+    
+    ;Activate previous frame texture
+    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(println "i-previous-frame-loc " i-previous-frame-loc)
+    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    ;(GL11/glBindTexture GL30/GL_TEXTURE_2D_ARRAY tex-id-previous-frame)
+    ;(try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+    ;        ^Integer width  ^Integer height 0
+    ;        ^Integer format
+    ;        GL11/GL_UNSIGNED_BYTE
+    ;         ^ByteBuffer buffer))
+    ;
+    
     (except-gl-errors "@ draw after activate textures")
     
     (loop-get-cam-textures locals cams)
@@ -1542,7 +1598,7 @@
                       mouse-pos-y
                       mouse-ori-x
                       mouse-ori-y)
-
+    ;(println "i-video-loc" i-video-loc)
     (GL20/glUniform1i (nth i-channel-loc 0) 1)
     (GL20/glUniform1i (nth i-channel-loc 1) 2)
     (GL20/glUniform1i (nth i-channel-loc 2) 3)
@@ -1558,7 +1614,7 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-
+    (GL20/glUniform1i (nth i-previous-frame-loc 0) 16)
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
@@ -1589,6 +1645,11 @@
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
         ;)
+        
+     ;Previous frame   
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA8 0 0 width height 0)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
     ;cams
     (dotimes [i (count text-id-cam)]
         (when (nth text-id-cam i)
@@ -1613,17 +1674,32 @@
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
     
+    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+
+    (GL20/glUseProgram 0)
+
     
     (except-gl-errors "@ draw after post-draw")
-    (GL20/glUseProgram 0)
     ;; copy the rendered image
-    (dotimes [i (count tex-ids)]
-      (when (= :previous-frame (nth tex-types i))
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i))
-        (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA8 0 0 width height 0)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
+    ;(dotimes [i (count tex-ids)]
+      ;(when (= :previous-frame (nth tex-types i))
+     ; (when (= 1 1)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+
+
     (except-gl-errors "@ draw after copy")
 
+    
     ;; read a pixel value
     (when pixel-read-enable
       (GL11/glReadPixels ^Integer pixel-read-pos-x ^Integer pixel-read-pos-y

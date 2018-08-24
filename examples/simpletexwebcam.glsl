@@ -52,6 +52,7 @@ void main(void) {
   vec4 v4= texture2D(iVideo3, uv4);
   vec4 v5= texture2D(iVideo4, uv4);
  
+  vec4 bf1=texture2D(iPreviousFrame, uv4);
   
   vec4 c = mix(v2,v1,c3.r);  // alpha blend between two textures
   vec4 cf = mix(c1,c2,sin(c3.r));  // alpha blend between two textures
@@ -62,6 +63,6 @@ void main(void) {
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
   vec4 cf6 = mix(cf3,c1d,0.1); 
 
-  gl_FragColor = c;
+  gl_FragColor = v1;
   
 }
