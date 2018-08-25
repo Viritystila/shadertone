@@ -231,16 +231,16 @@
 
 (defn get-video-queue-length [video-id] (count @(nth (:buffer-section-video  @the-window-state) video-id)))
 
-;Previous frames
+;Frames
 (defn queue-frame [image] (dosync (alter (:buffer-frames  @the-window-state) conj image)))
 
-(defn dequeue-frame [] (let [v (peek (:buffer-frames  @the-window-state))] 
+(defn dequeue-frame [] (let [v (peek @(:buffer-frames  @the-window-state))] 
                                         (dosync (alter (:buffer-frames  @the-window-state) pop)
                                         v)))
                                         
-(defn previous-queue [] (while (not (empty? (:buffer-frames  @the-window-state))) (dequeue-frame)))
+(defn previous-queue [] (while (not (empty? @(:buffer-frames  @the-window-state))) (dequeue-frame)))
 
-(defn get-frame-queue-length [] (count (:buffer-frames  @the-window-state)))
+(defn get-frame-queue-length [] (count @(:buffer-frames  @the-window-state)))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -1568,8 +1568,8 @@
          (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i)))))
     
     ;Activate previous frame texture
-    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     ;(println "i-previous-frame-loc " i-previous-frame-loc)
     ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     ;(GL11/glBindTexture GL30/GL_TEXTURE_2D_ARRAY tex-id-previous-frame)
@@ -1614,7 +1614,7 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-    (GL20/glUniform1i (nth i-previous-frame-loc 0) 16)
+    ;(GL20/glUniform1i (nth i-previous-frame-loc 0) 16)
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
@@ -1674,10 +1674,10 @@
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
     
-    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
-    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
 
     (GL20/glUseProgram 0)
 
@@ -1691,11 +1691,24 @@
     ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
     ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+    
+    (let [
+        mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+        buffer_mat              (oc-mat-to-bytebuffer mat)
+        ]
+
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+        
+    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
 
+    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE  buffer_mat)
+    ;(print buffer_mat)
+    (buffer-frame locals buffer_mat)
+    )
 
     (except-gl-errors "@ draw after copy")
 

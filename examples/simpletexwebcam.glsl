@@ -30,6 +30,10 @@ void main(void) {
     vec2 uv4 = (gl_FragCoord.xy / iResolution.xy);
     uv4.y=1.0-uv4.y;
   
+    vec2 uv5 = (gl_FragCoord.xy / iResolution.xy);
+    //uv.y=1.0-uv.y; 
+  
+  
   uv.x = uv.x + 5.5*sin(0.15*iGlobalTime);
   uv.y = uv.y + 2.5*cos(1.03*iGlobalTime);
   vec4 c1 = texture2D(iChannel0, uv);
@@ -52,9 +56,9 @@ void main(void) {
   vec4 v4= texture2D(iVideo3, uv4);
   vec4 v5= texture2D(iVideo4, uv4);
  
-  vec4 bf1=texture2D(iPreviousFrame, uv4);
+  vec4 bf1=texture2D(iPreviousFrame, uv5);
   
-  vec4 c = mix(v2,v1,c3.r);  // alpha blend between two textures
+  vec4 c = mix(v2,bf1,v2.r);  // alpha blend between two textures
   vec4 cf = mix(c1,c2,sin(c3.r));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c1b,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c,cf1,0.5-sin(c1.w)*iOvertoneVolume);  // alpha blend between two textures
@@ -63,6 +67,6 @@ void main(void) {
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
   vec4 cf6 = mix(cf3,c1d,0.1); 
 
-  gl_FragColor = v1;
+  gl_FragColor = c;
   
 }
