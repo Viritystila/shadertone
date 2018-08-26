@@ -122,11 +122,16 @@
    :tex-id-fftwave          0
    :i-fftwave-loc           [0]
    
-   :tex-id-previous-frame  0
-   :i-previous-frame-loc  [0]
+   :tex-id-previous-frame   0
+   :i-previous-frame-loc    [0]
    
-   :buffer-frames  (ref clojure.lang.PersistentQueue/EMPTY)
-   :buffer-length-frames  10
+   :save-frames            false
+   :buffer-frames           (ref clojure.lang.PersistentQueue/EMPTY)
+   :buffer-length-frames    10
+   :buffer-writer           (atom nil)
+   :bytebuffer-frame        (atom nil)
+   
+   
    :i-channel-res-loc       0
    :i-date-loc              0
    :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
@@ -246,6 +251,14 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
+(defn oc-write-to-file [filename](let [ fourcc (org.opencv.videoio.VideoWriter/fourcc \m \j \p \g )
+                                        fps (:display-sync-hz @the-window-state)
+                                        height              (:width @the-window-state)
+                                        width               (:height @the-window-state) ;:buffer-writer
+                                        mat                 @(:bytebuffer-frame @the-window-state)
+                                        vw (new org.opencv.videoio.VideoWriter filename fps fourcc (.size mat))]))
+
+
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
                                                     vco (.open vc cam-id)]
                                                     ;(while (= false (.read vc)) (.open vc cam-id))
@@ -379,7 +392,7 @@
             bhistogram          (oc-new-mat)
             ranges              (new org.opencv.core.MatOfFloat (float-array [0.0 255.0]))
             histSize            (new org.opencv.core.MatOfInt (int-array [256]))
-            _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [0])) (new     org.opencv.core.Mat) rhistogram histSize ranges)
+            _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [0])) (new org.opencv.core.Mat) rhistogram histSize ranges)
             _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [1])) (new org.opencv.core.Mat) ghistogram histSize ranges)
             _                   (org.opencv.imgproc.Imgproc/calcHist matList (new org.opencv.core.MatOfInt (int-array [2])) (new org.opencv.core.Mat) bhistogram histSize ranges)
             rFv                 (java.util.ArrayList. (range 256))
@@ -912,7 +925,8 @@
            
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Previous frame functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;           
+;;;;;;;;;;;;;;;;;;;;;;;;;;        :bytebuffer-frame 
+       
 (defn- buffer-frame
     [locals frame]
     (let [  ;_                   (apply-analysis image locals cam-id false)
@@ -920,7 +934,9 @@
             bufferLength        (get-frame-queue-length)]
             (if (< bufferLength maxBufferLength ) (queue-frame frame) nil)))
 
- (defn- init-frame-tex 
+
+            
+(defn- init-frame-tex 
     [locals]    
     (let [  target              (GL11/GL_TEXTURE_2D)
             tex-id              (GL11/glGenTextures)
@@ -931,9 +947,10 @@
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
-            ;buffer              (oc-mat-to-bytebuffer mat)
+            buffer              (oc-mat-to-bytebuffer mat)
             ]
-            (swap! locals assoc :tex-id-previous-frame tex-id)    
+            (swap! locals assoc :tex-id-previous-frame tex-id)  
+            (swap! locals assoc :bytebuffer-frame  buffer)
             (GL11/glBindTexture target tex-id)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -1531,7 +1548,8 @@
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
-                pixel-read-data]} @locals
+                pixel-read-data
+                save-frames]} @locals
         cur-time    (/ (- last-time start-time) 1000.0)
         _           (.put ^FloatBuffer channel-time-buffer 0 (float cur-time))
         _           (.put ^FloatBuffer channel-time-buffer 1 (float cur-time))
@@ -1704,11 +1722,14 @@
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-
-    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE  buffer_mat)
-    ;(print buffer_mat)
-    (buffer-frame locals buffer_mat)
-    )
+    
+    (if save-frames
+        (do
+        (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE  buffer_mat)
+        (buffer-frame locals buffer_mat)
+        )
+        nil
+    ))
 
     (except-gl-errors "@ draw after copy")
 
