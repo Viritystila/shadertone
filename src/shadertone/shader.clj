@@ -130,6 +130,7 @@
    :buffer-length-frames    10
    :buffer-writer           (atom nil)
    :bytebuffer-frame        (atom nil)
+   :save-buffer-filename    "./tmp.avi"
    
    
    :i-channel-res-loc       0
@@ -251,12 +252,17 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
-(defn oc-write-to-file [filename](let [ fourcc (org.opencv.videoio.VideoWriter/fourcc \m \j \p \g )
-                                        fps (:display-sync-hz @the-window-state)
-                                        height              (:width @the-window-state)
-                                        width               (:height @the-window-state) ;:buffer-writer
-                                        mat                 @(:bytebuffer-frame @the-window-state)
-                                        vw (new org.opencv.videoio.VideoWriter filename fps fourcc (.size mat))]))
+(defn oc-initialize-write-to-file [](let[   filename    (:save-buffer-filename @the-window-state)
+                                            fourcc      (org.opencv.videoio.VideoWriter/fourcc \M \J \P \G )
+                                            fps         (:display-sync-hz @the-window-state)
+                                            height      (:width @the-window-state)
+                                            width       (:height @the-window-state) ;:buffer-writer
+                                            mat         @(:bytebuffer-frame @the-window-state)
+                                            ;_           (println "AAAAAAAAA" fourcc)
+                                            vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
+                                            ;_           (.write vw mat) 
+                                            _           (reset! (:buffer-writer @the-window-state) vw)
+]))
 
 
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
@@ -940,17 +946,18 @@
     [locals]    
     (let [  target              (GL11/GL_TEXTURE_2D)
             tex-id              (GL11/glGenTextures)
-            height              (:width @locals)
-            width               (:height @locals)
-            mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+            width               (:width @locals)
+            height              (:height @locals)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
             ;image-bytes         (.channels mat)
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)
+            _                   (reset! (:bytebuffer-frame @locals) mat)
             ]
             (swap! locals assoc :tex-id-previous-frame tex-id)  
-            (swap! locals assoc :bytebuffer-frame  buffer)
+            ;(swap! locals assoc :bytebuffer-frame  buffer)
             (GL11/glBindTexture target tex-id)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -1003,7 +1010,7 @@
             tex-id              (GL11/glGenTextures)
             height              1
             width               1
-            mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+            mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC3)
             ;image-bytes         (.channels mat)
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
@@ -1226,7 +1233,7 @@
             tex-id              (GL11/glGenTextures)
             height              1
             width               1
-            mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
             image-bytes         (.channels mat)
             nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
@@ -1416,6 +1423,7 @@
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
     ;(swap! locals assoc :tex-id-previous-frame (GL11/glGenTextures))
     (init-frame-tex locals)
+    (oc-initialize-write-to-file)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1711,8 +1719,18 @@
     ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
     
     (let [
-        mat                 (org.opencv.core.Mat/zeros width height org.opencv.core.CvType/CV_8UC3)
+        
+        mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+        wh                  (.width mat)
+        hh                  (.height mat)
+        ;_                   (println "asdasdas" (.size mat))
+        ;        _                   (println "asdaaaaaaaaaasdas" (.size @(:bytebuffer-frame @locals)))
+        ;daa                (byte-array (* 1080 1920 3))
+        ;data (byte-array (.remaining bb))
+        ;(byte-array (.remaining bb))
         buffer_mat              (oc-mat-to-bytebuffer mat)
+         ;               data (byte-array (* (.height mat) (.width mat) (.channels mat)))
+
         ]
 
     ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
@@ -1722,14 +1740,32 @@
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    
-    (if save-frames
+
+    ;(if save-frames
+    (if true
         (do
-        (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE  buffer_mat)
-        (buffer-frame locals buffer_mat)
+        ;(println "tex-id-previous-frame" tex-id-previous-frame)
+        ;(GL11/glReadBuffer(GL11/GL_FRONT));
+        ;(GL11/glReadPixels 0 0 wh hh GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE buffer_mat);
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+        (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  buffer_mat)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+
+        ;(buffer-frame locals buffer_mat)
+        ;(println "asas" buffer_mat)
+        (let [  data (byte-array (.remaining buffer_mat))
+                _  (.get buffer_mat data)
+               ;_ (println (vec data))
+
+                _  (.put mat 0 0 data)]
+                ;_ (println (.put mat 0 0 data))
+                (.write @(:buffer-writer @locals) mat)
+)
         )
         nil
-    ))
+    )
+
+    )
 
     (except-gl-errors "@ draw after copy")
 
