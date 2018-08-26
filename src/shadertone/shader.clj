@@ -1721,6 +1721,8 @@
     (let [
         
         mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+        mat_flip            mat
+
         wh                  (.width mat)
         hh                  (.height mat)
         ;_                   (println "asdasdas" (.size mat))
@@ -1759,7 +1761,8 @@
 
                 _  (.put mat 0 0 data)]
                 ;_ (println (.put mat 0 0 data))
-                (.write @(:buffer-writer @locals) mat)
+                (org.opencv.core.Core/flip mat mat_flip 0)
+                (.write @(:buffer-writer @locals) mat_flip)
 )
         )
         nil
