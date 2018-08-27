@@ -125,12 +125,13 @@
    :tex-id-previous-frame   0
    :i-previous-frame-loc    [0]
    
-   :save-frames            false
+   :save-frames            (atom false)
    :buffer-frames           (ref clojure.lang.PersistentQueue/EMPTY)
    :buffer-length-frames    10
    :buffer-writer           (atom nil)
    :bytebuffer-frame        (atom nil)
-   :save-buffer-filename    "./tmp.avi"
+   :saveFPS                 (atom 25)
+   :save-buffer-filename    (atom "./tmp.avi")
    
    
    :i-channel-res-loc       0
@@ -252,17 +253,15 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
-(defn oc-initialize-write-to-file [](let[   filename    (:save-buffer-filename @the-window-state)
+(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \M \J \P \G )
-                                            fps         (:display-sync-hz @the-window-state)
+                                            fps         @(:saveFPS @the-window-state)
                                             height      (:width @the-window-state)
                                             width       (:height @the-window-state) ;:buffer-writer
                                             mat         @(:bytebuffer-frame @the-window-state)
-                                            ;_           (println "AAAAAAAAA" fourcc)
                                             vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
-                                            ;_           (.write vw mat) 
-                                            _           (reset! (:buffer-writer @the-window-state) vw)
-]))
+                                            _           (println "vw " vw)
+                                            _           (reset! (:buffer-writer @the-window-state) vw)]))
 
 
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
@@ -948,13 +947,13 @@
             tex-id              (GL11/glGenTextures)
             width               (:width @locals)
             height              (:height @locals)
-            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
             ;image-bytes         (.channels mat)
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)
-            _                   (reset! (:bytebuffer-frame @locals) mat)
+            _                   (reset! (:bytebuffer-frame @locals) buffer)
             ]
             (swap! locals assoc :tex-id-previous-frame tex-id)  
             ;(swap! locals assoc :bytebuffer-frame  buffer)
@@ -1308,7 +1307,7 @@
                         (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (drop-last (seq fbwb)) (first @(nth (:backwards-buffer-video @locals) video-id)))))
                     (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
             ) nil )
-            
+ 
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                   (println "start video loop " video-id)
@@ -1423,7 +1422,7 @@
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
     ;(swap! locals assoc :tex-id-previous-frame (GL11/glGenTextures))
     (init-frame-tex locals)
-    (oc-initialize-write-to-file)
+    ;(oc-initialize-write-to-file)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1550,7 +1549,7 @@
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
                 i-channel-res-loc i-dataArray-loc i-previous-frame-loc
-                channel-time-buffer channel-res-buffer
+                channel-time-buffer channel-res-buffer bytebuffer-frame  
                 old-pgm-id old-fs-id
                 tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame
                 user-fn
@@ -1592,19 +1591,6 @@
          ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i))
          :default
          (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i)))))
-    
-    ;Activate previous frame texture
-    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(println "i-previous-frame-loc " i-previous-frame-loc)
-    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-    ;(GL11/glBindTexture GL30/GL_TEXTURE_2D_ARRAY tex-id-previous-frame)
-    ;(try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-    ;        ^Integer width  ^Integer height 0
-    ;        ^Integer format
-    ;        GL11/GL_UNSIGNED_BYTE
-    ;         ^ByteBuffer buffer))
-    ;
     
     (except-gl-errors "@ draw after activate textures")
     
@@ -1699,77 +1685,34 @@
 
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
-    
-    ;(GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
 
     (GL20/glUseProgram 0)
-
-    
     (except-gl-errors "@ draw after post-draw")
-    ;; copy the rendered image
-    ;(dotimes [i (count tex-ids)]
-      ;(when (= :previous-frame (nth tex-types i))
-     ; (when (= 1 1)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    
-    (let [
-        
-        mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
-        mat_flip            mat
-
-        wh                  (.width mat)
-        hh                  (.height mat)
-        ;_                   (println "asdasdas" (.size mat))
-        ;        _                   (println "asdaaaaaaaaaasdas" (.size @(:bytebuffer-frame @locals)))
-        ;daa                (byte-array (* 1080 1920 3))
-        ;data (byte-array (.remaining bb))
-        ;(byte-array (.remaining bb))
-        buffer_mat              (oc-mat-to-bytebuffer mat)
-         ;               data (byte-array (* (.height mat) (.width mat) (.channels mat)))
-
-        ]
-
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-        
+    ;Copying the previous imgae to its own texture and saving the video to a file
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    ;(let [  mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+    ;        buffer_mat              (oc-mat-to-bytebuffer mat)]
+            (if @save-frames
+                (do
+                    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+                    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  @bytebuffer-frame)
+                    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+                    ))
+    ;                ;(buffer-frame locals buffer_mat)
+    ;                ;(let [  ;data (byte-array (.remaining buffer_mat))
+    ;                        ;_  (.get buffer_mat data)
+    ;                        ;_  (.put mat 0 0 data)]
+    ;                        ;(org.opencv.core.Core/flip mat mat_flip 0)
+    ;                        ;(.write @(:buffer-writer @locals) mat_flip)
+    ;            ;)
+    ;            
+    ;            )
+    ;    nil))
 
-    ;(if save-frames
-    (if true
-        (do
-        ;(println "tex-id-previous-frame" tex-id-previous-frame)
-        ;(GL11/glReadBuffer(GL11/GL_FRONT));
-        ;(GL11/glReadPixels 0 0 wh hh GL11/GL_RGB8 GL11/GL_UNSIGNED_BYTE buffer_mat);
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-        (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  buffer_mat)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-
-        ;(buffer-frame locals buffer_mat)
-        ;(println "asas" buffer_mat)
-        (let [  data (byte-array (.remaining buffer_mat))
-                _  (.get buffer_mat data)
-               ;_ (println (vec data))
-
-                _  (.put mat 0 0 data)]
-                ;_ (println (.put mat 0 0 data))
-                (org.opencv.core.Core/flip mat mat_flip 0)
-                (.write @(:buffer-writer @locals) mat_flip)
-)
-        )
-        nil
-    )
-
-    )
-
+    ;;@(:bytebuffer-frame @the-window-state)
     (except-gl-errors "@ draw after copy")
 
     
@@ -1782,6 +1725,48 @@
       (except-gl-errors "@ draw after pixel read")
       (reset! pixel-value (get-pixel-value ^ByteBuffer pixel-read-data)))))
 
+   
+
+                                                            ; filename    (:save-buffer-filename @the-window-state)
+                                                            ;oc-initialize-write-to-file
+;(reset! (:buffer-writer @the-window-state) vw)
+                                                            
+(defn- process-frame [frame]     
+            (let [  width       (:width @the-window-state)
+                    height      (:height @the-window-state)
+                    mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+                    mat_flip    mat
+                    data        (byte-array (.remaining frame))
+                    _           (.get frame data)
+                    _           (org.opencv.core.Core/flip mat mat_flip 0)]
+                    mat_flip)) 
+ 
+(defn- start-save-loop []
+            (do 
+                (while  @(:save-frames @the-window-state)  (do (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame)))))
+                ))
+ 
+(defn toggle-recording
+[filename fps] (let [   save    (:save-frames @the-window-state)
+                        _       (println "save " @save)
+                        writer  (:buffer-writer @the-window-state)
+                        _       (println "writer" @writer)]                         
+                        (if (= false @save) 
+                            (do 
+                                (println "Start recording")
+                                (reset! (:saveFPS @the-window-state) fps)
+                                (reset! (:save-buffer-filename @the-window-state) filename)
+                                (reset! (:save-frames @the-window-state) true )
+                                (oc-initialize-write-to-file)
+                                ;(future start-save-loop)
+                                )
+                            (do (println "Stop recording")
+                                (reset! (:save-frames @the-window-state) false )
+                                (.release @writer)) 
+                                )))   
+      
+      
+      
 (defn- update-and-draw
   [locals]
   (let [{:keys [width height last-time pgm-id
@@ -1855,7 +1840,7 @@
   [locals mode shader-filename shader-str-atom tex-filenames cams videos title true-fullscreen? user-fn display-sync-hz]
   (init-window locals mode title shader-filename shader-str-atom tex-filenames cams videos true-fullscreen? user-fn display-sync-hz)
   (init-gl locals)
-  (def sharedD (new SharedDrawable (Display/getDrawable)))
+  ;(def sharedD (new SharedDrawable (Display/getDrawable)))
   ;(println "sharedD" (. sharedD isCurrent))
   (while (and (= :yes (:active @locals))
               (not (Display/isCloseRequested)))
