@@ -256,11 +256,11 @@
 (defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \M \J \P \G )
                                             fps         @(:saveFPS @the-window-state)
-                                            height      (:width @the-window-state)
-                                            width       (:height @the-window-state) ;:buffer-writer
-                                            mat         @(:bytebuffer-frame @the-window-state)
+                                            height      (:height @the-window-state)
+                                            width       (:width @the-window-state) ;:buffer-writer
+                                            mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
                                             vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
-                                            _           (println "vw " vw)
+                                           ; _           (println "vw " vw)
                                             _           (reset! (:buffer-writer @the-window-state) vw)]))
 
 
@@ -936,8 +936,28 @@
     [locals frame]
     (let [  ;_                   (apply-analysis image locals cam-id false)
             maxBufferLength     (:buffer-length-frames @locals)
-            bufferLength        (get-frame-queue-length)]
-            (if (< bufferLength maxBufferLength ) (queue-frame frame) nil)))
+            bufferLength        (get-frame-queue-length)
+            ;_                   (println "bufferl length " bufferLength)
+            ;_                   (println "maxBufferLength " maxBufferLength)
+              ;                ;(buffer-frame locals buffer_mat)
+               ;           _                   (.rewind frame)
+
+            ;rmn                 (.remaining frame)
+            ;_                   (println "rmn " rmn) 
+            ;            _                   (println "frame " frame) 
+            data                (byte-array (.remaining frame))
+            _                   (.get frame data)
+            _                   (.flip frame)
+
+    ;                ;(let [  ;data (byte-array (.remaining buffer_mat))
+    ;                        ;_  (.get buffer_mat data)
+    ;                        ;_  (.put mat 0 0 data)]
+    ;                        ;(org.opencv.core.Core/flip mat mat_flip 0)
+    ;                        ;(.write @(:buffer-writer @locals) mat_flip)  
+            ]
+            (if (< bufferLength maxBufferLength ) (queue-frame data) nil)
+            
+            ))
 
 
             
@@ -1691,16 +1711,21 @@
     ;Copying the previous imgae to its own texture and saving the video to a file
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB8 0 0 width height 0)
+    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
     ;(let [  mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
     ;        buffer_mat              (oc-mat-to-bytebuffer mat)]
             (if @save-frames
                 (do
+                    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-                    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  @bytebuffer-frame)
+                    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-                    ))
+                    ;(println (.remaining @bytebuffer-frame))
+                    (buffer-frame locals @bytebuffer-frame)
+                    )
+                    nil
+                    )
     ;                ;(buffer-frame locals buffer_mat)
     ;                ;(let [  ;data (byte-array (.remaining buffer_mat))
     ;                        ;_  (.get buffer_mat data)
@@ -1725,26 +1750,29 @@
       (except-gl-errors "@ draw after pixel read")
       (reset! pixel-value (get-pixel-value ^ByteBuffer pixel-read-data)))))
 
-   
-
-                                                            ; filename    (:save-buffer-filename @the-window-state)
-                                                            ;oc-initialize-write-to-file
-;(reset! (:buffer-writer @the-window-state) vw)
-                                                            
+                                                         
 (defn- process-frame [frame]     
-            (let [  width       (:width @the-window-state)
+            (let [  ;_           (Thread/sleep (/ 1 60))
+                    width       (:width @the-window-state)
                     height      (:height @the-window-state)
                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
                     mat_flip    mat
-                    data        (byte-array (.remaining frame))
-                    _           (.get frame data)
-                    _           (org.opencv.core.Core/flip mat mat_flip 0)]
-                    mat_flip)) 
+                    ;remaining   (if (= nil frame) 0 (.remaining frame))
+                    ;data        (byte-array (.remaining frame))
+                    ;_           (if (> remaining 4) (.get frame data))
+                    _           ( while ( and (= frame nil) @(:save-frames @the-window-state)) (Thread/sleep (/ 1 60))) 
+                    _           (if (= frame nil) nil (.put mat 0 0 frame))
+                    _           (org.opencv.core.Core/flip mat mat_flip 0)
+                    
+                    ]
+                    mat_flip
+                    )) 
  
 (defn- start-save-loop []
+            (let [wrtr @(:buffer-writer @the-window-state)]
             (do 
-                (while  @(:save-frames @the-window-state)  (do (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame)))))
-                ))
+                (while  @(:save-frames @the-window-state)  (do (.write wrtr (process-frame (dequeue-frame))))) ;process-frame (dequeue-frame) (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame)))
+                )))
  
 (defn toggle-recording
 [filename fps] (let [   save    (:save-frames @the-window-state)
@@ -1756,15 +1784,15 @@
                                 (println "Start recording")
                                 (reset! (:saveFPS @the-window-state) fps)
                                 (reset! (:save-buffer-filename @the-window-state) filename)
-                                (reset! (:save-frames @the-window-state) true )
                                 (oc-initialize-write-to-file)
-                                ;(future start-save-loop)
+                                (reset! (:save-frames @the-window-state) true )
+                                (future (start-save-loop))
                                 )
                             (do (println "Stop recording")
                                 (reset! (:save-frames @the-window-state) false )
+                                (Thread/sleep 100)
                                 (.release @writer)) 
                                 )))   
-      
       
       
 (defn- update-and-draw
@@ -1816,12 +1844,14 @@
     (println " Cams tbd" (:cams @the-window-state))
     (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i)(clear-cam-queue i))
     (swap! locals assoc :cams (vec (replicate no-cams nil)))
-    
+    ;Stop and release video release-cam-textures
     (println " Videos tbd" (:videos @the-window-state))
     (doseq [i (:video-no-id @the-window-state)]
         (if (= @i nil) (println "no video")  (do (release-video-textures @i))))
     (swap! locals assoc :videos (vec (replicate no-videos nil)))
-    ;Stop and release video release-cam-textures
+    
+    ;stop recording
+    (if @(:save-frames @locals) (toggle-recording "./null.avi" 25))
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id (:tex-id-fftwave @locals)))
