@@ -1760,7 +1760,7 @@
                     ;remaining   (if (= nil frame) 0 (.remaining frame))
                     ;data        (byte-array (.remaining frame))
                     ;_           (if (> remaining 4) (.get frame data))
-                    _           ( while ( and (= frame nil) @(:save-frames @the-window-state)) (Thread/sleep (/ 1 60))) 
+                    _           ( while ( and (= frame nil) @(:save-frames @the-window-state)) (Thread/sleep (/ 1000 60))) 
                     _           (if (= frame nil) nil (.put mat 0 0 frame))
                     _           (org.opencv.core.Core/flip mat mat_flip 0)
                     
@@ -1771,19 +1771,21 @@
 (defn- start-save-loop []
             (let [wrtr @(:buffer-writer @the-window-state)]
             (do 
-                (while  @(:save-frames @the-window-state)  (do (.write wrtr (process-frame (dequeue-frame))))) ;process-frame (dequeue-frame) (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame)))
+                (while  @(:save-frames @the-window-state)  (do (.write wrtr (process-frame (dequeue-frame))))) ;process-frame (dequeue-frame) (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame))) (.write wrtr 
                 )))
  
-(defn toggle-recording
-[filename fps] (let [   save    (:save-frames @the-window-state)
-                        _       (println "save " @save)
+
+(defn record-settings [filename fps]    (reset! (:saveFPS @the-window-state) fps)
+                                        (reset! (:save-buffer-filename @the-window-state) filename))
+ 
+(defn toggle-recording [] (let [   save    (:save-frames @the-window-state)
                         writer  (:buffer-writer @the-window-state)
-                        _       (println "writer" @writer)]                         
+                        ]                         
                         (if (= false @save) 
                             (do 
                                 (println "Start recording")
-                                (reset! (:saveFPS @the-window-state) fps)
-                                (reset! (:save-buffer-filename @the-window-state) filename)
+                                ;(reset! (:saveFPS @the-window-state) fps)
+                                ;(reset! (:save-buffer-filename @the-window-state) filename)
                                 (oc-initialize-write-to-file)
                                 (reset! (:save-frames @the-window-state) true )
                                 (future (start-save-loop))
@@ -1851,7 +1853,10 @@
     (swap! locals assoc :videos (vec (replicate no-videos nil)))
     
     ;stop recording
-    (if @(:save-frames @locals) (toggle-recording "./null.avi" 25))
+    (if @(:save-frames @locals) (do (println "Stop recording")
+                                (reset! (:save-frames @locals) false )
+                                (Thread/sleep 100)
+                                (.release @(:buffer-writer @locals))))
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id (:tex-id-fftwave @locals)))
