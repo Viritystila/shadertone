@@ -31,6 +31,9 @@
    :display-sync-hz         60 
    :start-time              0
    :last-time               0
+   :drawnFrameCount         (atom 0)
+   :elapsedTime             (atom 0)
+   :actuaFPS                (atom 0)
    ;; mouse
    :mouse-clicked           false
    :mouse-pos-x             0
@@ -936,28 +939,11 @@
     [locals frame]
     (let [  ;_                   (apply-analysis image locals cam-id false)
             maxBufferLength     (:buffer-length-frames @locals)
-            bufferLength        (get-frame-queue-length)
-            ;_                   (println "bufferl length " bufferLength)
-            ;_                   (println "maxBufferLength " maxBufferLength)
-              ;                ;(buffer-frame locals buffer_mat)
-               ;           _                   (.rewind frame)
-
-            ;rmn                 (.remaining frame)
-            ;_                   (println "rmn " rmn) 
-            ;            _                   (println "frame " frame) 
+            bufferLength        (get-frame-queue-length) 
             data                (byte-array (.remaining frame))
             _                   (.get frame data)
-            _                   (.flip frame)
-
-    ;                ;(let [  ;data (byte-array (.remaining buffer_mat))
-    ;                        ;_  (.get buffer_mat data)
-    ;                        ;_  (.put mat 0 0 data)]
-    ;                        ;(org.opencv.core.Core/flip mat mat_flip 0)
-    ;                        ;(.write @(:buffer-writer @locals) mat_flip)  
-            ]
-            (if (< bufferLength maxBufferLength ) (queue-frame data) nil)
-            
-            ))
+            _                   (.flip frame)]
+            (if (< bufferLength maxBufferLength ) (queue-frame data) nil)))
 
 
             
@@ -968,15 +954,12 @@
             width               (:width @locals)
             height              (:height @locals)
             mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
-            ;image-bytes         (.channels mat)
-            ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)
             _                   (reset! (:bytebuffer-frame @locals) buffer)
             ]
             (swap! locals assoc :tex-id-previous-frame tex-id)  
-            ;(swap! locals assoc :bytebuffer-frame  buffer)
             (GL11/glBindTexture target tex-id)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -1006,10 +989,8 @@
             internal-format      (oc-tex-internal-format image)
             format               (oc-tex-format image)
             nbytes               (* image-bytes width height)
-            ;bff                  (BufferUtils/createByteBuffer nbytes)
             buffer               (oc-mat-to-bytebuffer image)
             _                    (buffer-cam-texture locals cam-id capture-cam_i)
-            ;_ (reset! (nth (:buffer-cam @locals) cam-id) image)
             _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
             _ (reset! (nth (:format-cam @locals) cam-id) format)
             _ (reset! (nth (:width-cam @locals) cam-id) width)
@@ -1029,7 +1010,7 @@
             tex-id              (GL11/glGenTextures)
             height              1
             width               1
-            mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC3)
+            mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC4)
             ;image-bytes         (.channels mat)
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
@@ -1252,7 +1233,7 @@
             tex-id              (GL11/glGenTextures)
             height              1
             width               1
-            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
             image-bytes         (.channels mat)
             nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
@@ -1676,12 +1657,7 @@
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
         (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP 0)
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
-        ;)
-        
-     ;Previous frame   
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    ;(GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA8 0 0 width height 0)
-    ;(GL11/glBindTexture GL11/GL_TEXTURE_2D 0)))
+
     ;cams
     (dotimes [i (count text-id-cam)]
         (when (nth text-id-cam i)
@@ -1708,36 +1684,22 @@
 
     (GL20/glUseProgram 0)
     (except-gl-errors "@ draw after post-draw")
-    ;Copying the previous imgae to its own texture and saving the video to a file
+    ;Copying the previous image to its own texture and saving the video to a file
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    ;(let [  mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
-    ;        buffer_mat              (oc-mat-to-bytebuffer mat)]
-            (if @save-frames
-                (do
-                    (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
-                    (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-                    (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
-                    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-                    ;(println (.remaining @bytebuffer-frame))
-                    (buffer-frame locals @bytebuffer-frame)
-                    )
-                    nil
-                    )
-    ;                ;(buffer-frame locals buffer_mat)
-    ;                ;(let [  ;data (byte-array (.remaining buffer_mat))
-    ;                        ;_  (.get buffer_mat data)
-    ;                        ;_  (.put mat 0 0 data)]
-    ;                        ;(org.opencv.core.Core/flip mat mat_flip 0)
-    ;                        ;(.write @(:buffer-writer @locals) mat_flip)
-    ;            ;)
-    ;            
-    ;            )
-    ;    nil))
-
-    ;;@(:bytebuffer-frame @the-window-state)
+    (if @save-frames
+        (do
+            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
+            (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
+            (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
+            (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+            (buffer-frame locals @bytebuffer-frame)
+            )
+          nil
+          )
+                    
     (except-gl-errors "@ draw after copy")
 
     
@@ -1752,19 +1714,13 @@
 
                                                          
 (defn- process-frame [frame]     
-            (let [  ;_           (Thread/sleep (/ 1 60))
-                    width       (:width @the-window-state)
+            (let [  width       (:width @the-window-state)
                     height      (:height @the-window-state)
                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
                     mat_flip    mat
-                    ;remaining   (if (= nil frame) 0 (.remaining frame))
-                    ;data        (byte-array (.remaining frame))
-                    ;_           (if (> remaining 4) (.get frame data))
-                    _           ( while ( and (= frame nil) @(:save-frames @the-window-state)) (Thread/sleep (/ 1000 60))) 
+                    _           ( while ( and (= (get-frame-queue-length) 0) @(:save-frames @the-window-state))  (Thread/sleep 10))
                     _           (if (= frame nil) nil (.put mat 0 0 frame))
-                    _           (org.opencv.core.Core/flip mat mat_flip 0)
-                    
-                    ]
+                    _           (org.opencv.core.Core/flip mat mat_flip 0)]
                     mat_flip
                     )) 
  
@@ -1784,8 +1740,6 @@
                         (if (= false @save) 
                             (do 
                                 (println "Start recording")
-                                ;(reset! (:saveFPS @the-window-state) fps)
-                                ;(reset! (:save-buffer-filename @the-window-state) filename)
                                 (oc-initialize-write-to-file)
                                 (reset! (:save-frames @the-window-state) true )
                                 (future (start-save-loop))
