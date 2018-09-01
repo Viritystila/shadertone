@@ -3,6 +3,11 @@
   shadertone.shader
   (:require [watchtower.core :as watcher]
             [clojure.java.io :as io]
+            [while-let.core :as while-let]
+            [clojure.core.async
+             :as async
+             :refer [>! <! >!! <!! go go-loop chan buffer sliding-buffer dropping-buffer close! thread
+                     alts! alts!! timeout]]
             clojure.string)
   (:import [org.opencv.core Mat Core CvType]
     [org.opencv.videoio Videoio VideoCapture]
@@ -128,9 +133,10 @@
    :tex-id-previous-frame   0
    :i-previous-frame-loc    [0]
    
-   :save-frames            (atom false)
+   :save-frames             (atom false)
    :buffer-frames           (ref clojure.lang.PersistentQueue/EMPTY)
    :buffer-length-frames    10
+   :buffer-channel          (atom nil) ;(async/chan (async/sliding-buffer 10))
    :buffer-writer           (atom nil)
    :bytebuffer-frame        (atom nil)
    :saveFPS                 (atom 25)
@@ -939,11 +945,17 @@
     [locals frame]
     (let [  ;_                   (apply-analysis image locals cam-id false)
             maxBufferLength     (:buffer-length-frames @locals)
+            buff-channel        (:buffer-channel @locals) 
             bufferLength        (get-frame-queue-length) 
             data                (byte-array (.remaining frame))
             _                   (.get frame data)
             _                   (.flip frame)]
-            (if (< bufferLength maxBufferLength ) (queue-frame data) nil)))
+            ;(if (< bufferLength maxBufferLength ) (queue-frame data) nil)
+            ;(println "input data: " data)
+            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))
+            )
+            
+            )
 
 
             
@@ -1550,7 +1562,7 @@
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
                 i-channel-res-loc i-dataArray-loc i-previous-frame-loc
-                channel-time-buffer channel-res-buffer bytebuffer-frame  
+                channel-time-buffer channel-res-buffer bytebuffer-frame  buffer-channel
                 old-pgm-id old-fs-id
                 tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame
                 user-fn
@@ -1695,7 +1707,13 @@
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-            (buffer-frame locals @bytebuffer-frame)
+            (buffer-frame locals @bytebuffer-frame) ;:buffer-channel
+            ;(println (async/go (async/<! @buffer-channel)))
+            ;(println "channel" @(:buffer-channel @locals))
+            ;(def ch (async/chan (async/sliding-buffer 10)))
+            ;(async/>!! ch 1)
+            ;(if (= nil @buffer-channel) nil  (async/>!! @buffer-channel buffer-frame) )
+            ;(async/>!! @(:buffer-channel @locals) 1) ;buffer-frame
             )
           nil
           )
@@ -1714,12 +1732,24 @@
 
                                                          
 (defn- process-frame [frame]     
-            (let [  width       (:width @the-window-state)
+            (let [  ;_           (println "Got a value in this loop 1:" frame)
+                    width       (:width @the-window-state)
+                    ;_           (println "Got a value in this loop 2:" frame)
                     height      (:height @the-window-state)
+                    ;_           (println "Got a value in this loop 3:" frame)
                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+                    ;_           (println "Got a value in this loop 4:" frame)
                     mat_flip    mat
-                    _           ( while ( and (= (get-frame-queue-length) 0) @(:save-frames @the-window-state))  (Thread/sleep 10))
+                    ;                    _           (println "Got a value in this loop 5:" frame)
+
+                    ;_           (println "Got a value in this loop:" frame)
+
+                    ;_           ( while ( and (= (get-frame-queue-length) 0) @(:save-frames @the-window-state))  (Thread/sleep 10))
+                    ;                    _           (println "Got a value in this loop 6:" frame)
+
                     _           (if (= frame nil) nil (.put mat 0 0 frame))
+                   ;                     _           (println "Got a value in this loop 7:" mat)
+
                     _           (org.opencv.core.Core/flip mat mat_flip 0)]
                     mat_flip
                     )) 
@@ -1729,24 +1759,57 @@
             (do 
                 (while  @(:save-frames @the-window-state)  (do (.write wrtr (process-frame (dequeue-frame))))) ;process-frame (dequeue-frame) (.write @(:buffer-writer @the-window-state) (process-frame (dequeue-frame))) (.write wrtr 
                 )))
- 
 
+
+(defn- start-save-loop-go [];(println "start loop") 
+                            ;(go-loop []
+                            ;    (let [  wrtr @(:buffer-writer @the-window-state)
+                            ;            frame (<! @(:buffer-channel @the-window-state))]
+                            ;        (.write wrtr (process-frame frame))
+                            ;        ;(println "Got a value in this loop:" frame)
+                            ;        )
+                            ;    (recur)))
+                            
+                            (async/go (while-let/while-let [frame (<! @(:buffer-channel @the-window-state))]
+                                                            ;(println "frame" frame)
+                                                            ;wrtr @(:buffer-writer @the-window-state)
+                                                            (.write @(:buffer-writer @the-window-state) (process-frame frame))
+                            )))
+                            
+                            
+ 
+(defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false))
+ 
+ 
 (defn record-settings [filename fps]    (reset! (:saveFPS @the-window-state) fps)
                                         (reset! (:save-buffer-filename @the-window-state) filename))
  
-(defn toggle-recording [] (let [   save    (:save-frames @the-window-state)
-                        writer  (:buffer-writer @the-window-state)
+(defn toggle-recording [] (let [    save    (:save-frames @the-window-state)
+                                    writer  (:buffer-writer @the-window-state)
+                                    _       (reset! (:buffer-channel @the-window-state) (async/chan (async/sliding-buffer 10)))
+
+                        ;bff (async/chan (async/sliding-buffer 10))
+                        bff @(:buffer-channel @the-window-state)
                         ]                         
                         (if (= false @save) 
                             (do 
                                 (println "Start recording")
                                 (oc-initialize-write-to-file)
                                 (reset! (:save-frames @the-window-state) true )
-                                (future (start-save-loop))
+                                ;(println "frame111" @(:buffer-channel @the-window-state))
+                                ;(if (= nil @(:buffer-channel @the-window-state)) nil  (async/<! @(:buffer-channel @the-window-state)) )
+                                ;(println "put " (async/go (async/>!! @(:buffer-channel @the-window-state) "lol")))
+                                                                ;(Thread/sleep 100)
+
+                                ;(println "get " (async/go (async/<! @(:buffer-channel @the-window-state))))
+
+                                (start-save-loop-go)
+                                ;(future (start-save-loop))
                                 )
                             (do (println "Stop recording")
                                 (reset! (:save-frames @the-window-state) false )
                                 (Thread/sleep 100)
+                                (stop-save-loop)
                                 (.release @writer)) 
                                 )))   
       
@@ -1810,6 +1873,7 @@
     (if @(:save-frames @locals) (do (println "Stop recording")
                                 (reset! (:save-frames @locals) false )
                                 (Thread/sleep 100)
+                                (stop-save-loop)
                                 (.release @(:buffer-writer @locals))))
     ;; Delete any user state
     (when user-fn
