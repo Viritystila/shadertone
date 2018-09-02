@@ -6,6 +6,7 @@
   :injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
   :repositories [["Viritystila" "https://github.com/Viritystila/OpenCV/raw/master"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/core.async "0.4.474"]
                  [while-let "0.2.0"]
                  [hello_lwjgl/lwjgl   "2.9.1"]

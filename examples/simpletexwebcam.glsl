@@ -58,7 +58,7 @@ void main(void) {
  
   vec4 bf1=texture2D(iPreviousFrame, uv5);
   
-  vec4 c = mix(v2,bf1,v2.r);  // alpha blend between two textures
+  vec4 c = mix(v2,bf1,c2.r);  // alpha blend between two textures
   vec4 cf = mix(c1,c2,sin(c3.r));  // alpha blend between two textures
   vec4 cf1 = mix(cf,c1b,1.5-sin(c1.w));  // alpha blend between two textures
   vec4 cf2 = mix(c,cf1,0.5-sin(c1.w)*iOvertoneVolume);  // alpha blend between two textures
