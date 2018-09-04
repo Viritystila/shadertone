@@ -71,7 +71,7 @@
    :capture-buffer-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :buffer-section-cam      [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
                              (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
-   :buffer-channel-cam      (atom nil)
+   :buffer-channel-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :frame-set-cam           [(atom false) (atom false) (atom false) (atom false) (atom false)]  
    
    :buffer-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -93,7 +93,7 @@
    :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :buffer-section-video    [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
                              (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
-   :buffer-channel-video    (atom nil)
+   :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
@@ -111,7 +111,7 @@
    :frame-start-video       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
    :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse
+   :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
    :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
    
    ;Video analysis
@@ -253,13 +253,16 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
-(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
+(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state) ;"appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv " "appsrc ! videoconvert ! avenc_h264 ! matroskamux ! filesink location=test.mp4"
                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \M \J \P \G )
                                             fps         @(:saveFPS @the-window-state)
                                             height      (:height @the-window-state)
                                             width       (:width @the-window-state) ;:buffer-writer
-                                            mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
-                                            vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
+                                            mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+                                            ;vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
+                                            vw          (new org.opencv.videoio.VideoWriter)
+                                            _           (.open vw  "appsrc ! video/x-raw,format=BGR, width=1920, height=1080  ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+
                                            ; _           (println "vw " vw)
                                             _           (reset! (:buffer-writer @the-window-state) vw)]))
 
@@ -944,7 +947,7 @@
             tex-id              (GL11/glGenTextures)
             width               (:width @locals)
             height              (:height @locals)
-            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
             internal-format      (oc-tex-internal-format mat)
             format               (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)
@@ -963,7 +966,7 @@
                     height      (:height @the-window-state)
                     ;fps         @(:saveFPS @the-window-state)
                     ;_                                               (Thread/sleep (* 100000 (/ 1 fps)))
-                    mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC4)
+                    mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
                     mat_flip    mat
                     _           (if (= frame nil) nil (.put mat 0 0 frame))
                     _           (org.opencv.core.Core/flip mat mat_flip 0)]
@@ -977,12 +980,7 @@
 
 (defn- start-save-loop-go [](async/go (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<! @(:buffer-channel @the-window-state))]
                                                                     (process-frame frame)
-                                                            ;(.write @(:buffer-writer @the-window-state) (process-frame frame))
-                                                             ;(Thread/sleep 10000)
-                                                            (.write wrtr (process-frame frame))
-
-                                                            )
-                                                            )))
+                                                            (.write wrtr (process-frame frame))))))
                             
                             
  
@@ -1021,7 +1019,9 @@
             imageP              (oc-query-frame capture-cam image)
             _                   (apply-analysis image locals cam-id false)
             maxBufferLength     @(nth (:buffer-length-cam @locals) cam-id)
-            bufferLength        (get-cam-queue-length cam-id)]
+            bufferLength        (get-cam-queue-length cam-id)
+            cam-buffer          @(nth (:buffer-channel-video @locals) cam-id)]
+            (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
             (if (< bufferLength maxBufferLength ) (queue-cam-image cam-id image) nil)))
      
 
@@ -1148,9 +1148,12 @@
 
 (defn- init-cams
 [locals]
-(let [cam_idxs        (:cams @locals)]
+(let [  cam_idxs        (:cams @locals)
+        bfl (:buffer-length-cam @locals)]
     (doseq [cam-id (range no-cams)]
-        (init-cam-tex locals cam-id ) 
+        (init-cam-tex locals cam-id)
+        (println "TODO: the channel creating needs to chekc if a channels exists already")
+        (reset! (nth (:buffer-channel-video @locals) cam-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-cam @locals) cam-id))))
     )
     (doseq [cam-id cam_idxs]
         (println "cam_id" cam-id)
@@ -1737,13 +1740,13 @@
     ;Copying the previous image to its own texture
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA 0 0 width height 0)
+    (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
     (if @save-frames
         (do ; download it
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
-            (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
+            (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
             ; and save it to a video to a file
             (buffer-frame locals @bytebuffer-frame))

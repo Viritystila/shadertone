@@ -1,4 +1,9 @@
 
+# or on linux
+mkdir -p native/linux/x86_64
+cp ./lib/libopencv_java340.so native/linux/x86_64/
+jar -cMf opencv-native-linux.jar native
+
 mvn install:install-file -DgroupId=opencv -DartifactId=opencv -Dversion=3.4.0-linux -Dfile=opencv-340.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=~/Viritystila/OpenCV/  -DcreateChecksum=true
 
 mvn install:install-file -DgroupId=opencv -DartifactId=opencv-native -Dversion=3.4.0-linux -Dfile=opencv-native-linux.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=~/Viritystila/OpenCV/  -DcreateChecksum=true
