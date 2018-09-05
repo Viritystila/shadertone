@@ -14,6 +14,7 @@
     [org.opencv.videoio Videoio VideoCapture]
     [org.opencv.video Video]
     [org.opencv.utils.Converters]
+    [org.opencv.imgproc Imgproc]
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
@@ -254,17 +255,24 @@
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
 (defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state) ;"appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv " "appsrc ! videoconvert ! avenc_h264 ! matroskamux ! filesink location=test.mp4"
-                                            fourcc      (org.opencv.videoio.VideoWriter/fourcc \M \J \P \G )
+                                            fourcc      (org.opencv.videoio.VideoWriter/fourcc \D \I \V \X ) ; \M \J \P \G )
                                             fps         @(:saveFPS @the-window-state)
                                             height      (:height @the-window-state)
                                             width       (:width @the-window-state) ;:buffer-writer
                                             mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-                                            ;vw          (new org.opencv.videoio.VideoWriter filename  fourcc fps (.size mat))
-                                            vw          (new org.opencv.videoio.VideoWriter)
-                                            _           (.open vw  "appsrc ! video/x-raw,format=BGR, width=1920, height=1080  ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+                                            vw          (new org.opencv.videoio.VideoWriter filename fourcc fps (.size mat))
+                                            ;vw          (new org.opencv.videoio.VideoWriter)
+                                            ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+                                             ;_           (.open vw  "appsrc ! jpegenc ! filesink location=asasas.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 1, (.size mat) true)
+                                            ; _           (.open vw  "appsrc ! tee ! videoconvert ! video/x-raw,format=YUY2 ! v4l2sink device=/dev/video1", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
 
-                                           ; _           (println "vw " vw)
-                                            _           (reset! (:buffer-writer @the-window-state) vw)]))
+                                            ;_           (.open vw  "appsrc is-live=true block=true ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1  ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+                                            ;_           (.open vw  "appsrc is-live=true block=true ! video/x-raw,format=BGR, width=1920, height=1080,framerate=60/1  ! jpegenc ! fakesink", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 60, (.size mat) true)
+                                            ;            (.open vw  "appsrc is-live=true do-timestamp=true ! video/x-raw,format=BGR!  tee ! queue ! videoconvert ! video/x-raw,format=YUY2! v4l2sink device=/dev/video1", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+                                           ; _           (println "vw " vw) v4l2sink device=/dev/video1
+                                            _           (reset! (:buffer-writer @the-window-state) vw)
+                                            
+                                            ]))
 
 
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
@@ -970,7 +978,9 @@
                     mat_flip    mat
                     _           (if (= frame nil) nil (.put mat 0 0 frame))
                     _           (org.opencv.core.Core/flip mat mat_flip 0)]
-                    mat_flip
+                    (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
+
+                    mat
                     )) 
              
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -1057,7 +1067,7 @@
             tex-id              (GL11/glGenTextures)
             height              1
             width               1
-            mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC4)
+            mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC3)
             ;image-bytes         (.channels mat)
             ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
@@ -1087,7 +1097,7 @@
             tex-id              @(nth (:text-id-cam @locals) cam-id)
             tex-image-target    ^Integer (+ 0 target)
             nbytes              (* width height image-bytes)
-            buffer              (oc-mat-to-bytebuffer image)]
+            buffer              (oc-mat-to-bytebuffer image)]           
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
             (GL11/glBindTexture target tex-id)
             (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -1749,7 +1759,8 @@
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
             ; and save it to a video to a file
-            (buffer-frame locals @bytebuffer-frame))
+            (buffer-frame locals @bytebuffer-frame)
+            )
           nil
           )
                     
