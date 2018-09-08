@@ -945,7 +945,9 @@
             data                (byte-array (.remaining frame))
             _                   (.get frame data)
             _                   (.flip frame)]
-            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))))
+            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))
+            
+            ))
 
 
             
@@ -976,8 +978,9 @@
                     ;_                                               (Thread/sleep (* 100000 (/ 1 fps)))
                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
                     mat_flip    mat
-                    _           (if (= frame nil) nil (.put mat 0 0 frame))
-                    _           (org.opencv.core.Core/flip mat mat_flip 0)]
+                    _           (.put mat 0 0 frame)
+                    _           (org.opencv.core.Core/flip mat mat_flip 0)
+                    ]
                     (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
 
                     mat
@@ -988,12 +991,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;             
  
 
-(defn- start-save-loop-go [](async/go (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<! @(:buffer-channel @the-window-state))]
-                                                                    (process-frame frame)
-                                                            (.write wrtr (process-frame frame))))))
+(defn- start-save-loop-go [](async/thread (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
+                                                                    ;(process-frame frame)
+                                                            (.write wrtr (process-frame frame))
+                                                            ))))
                             
-                            
- 
+                             
 (defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false)
                         (async/close! @(:buffer-channel @the-window-state)))
  
@@ -1030,9 +1033,10 @@
             _                   (apply-analysis image locals cam-id false)
             maxBufferLength     @(nth (:buffer-length-cam @locals) cam-id)
             bufferLength        (get-cam-queue-length cam-id)
-            cam-buffer          @(nth (:buffer-channel-video @locals) cam-id)]
+            cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
             (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
-            (if (< bufferLength maxBufferLength ) (queue-cam-image cam-id image) nil)))
+            ;(if (< bufferLength maxBufferLength ) (queue-cam-image cam-id image) nil)
+            ))
      
 
 (defn init-cam-buffer 
@@ -1118,7 +1122,30 @@
                 (reset! (nth (:frame-set-cam @locals) cam-id) true)
                 (buffer-cam-texture locals cam-id capture-cam_i)
                 (reset! (nth (:frame-set-cam @locals) cam-id) nil))(oc-release capture-cam_i)(println "cam loop stopped" cam-id)))))   
- 
+
+                
+(defn- start-cam-loop-thread [locals cam-id]
+    (let [  _                   (println "start cam loop " cam-id)
+            running-cam_i       @(nth (:running-cam @locals) cam-id)
+            capture-cam_i       @(nth (:capture-cam @locals) cam-id)
+            ]
+        (if (= true running-cam_i) 
+            (do (async/thread  (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
+            
+                ;@(nth (:running-cam @locals) cam-id) ;(get (:running-cam @locals) cam-id)
+                (reset! (nth (:frame-set-cam @locals) cam-id) true)
+                (buffer-cam-texture locals cam-id capture-cam_i)
+                (reset! (nth (:frame-set-cam @locals) cam-id) nil)
+                )
+                (oc-release capture-cam_i)(println "cam loop stopped" cam-id)
+                )
+                ))))   
+                
+                
+;(defn- start-cam-loop-thred [](async/thread (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
+;                                                                    ;(process-frame frame)
+;                                                            (.write wrtr (process-frame frame))
+;                                                            ))))
 
 (defn- check-cam-idx 
     [locals cam-id]
@@ -1133,7 +1160,9 @@
                     (reset! (nth (:running-cam @locals) cam-id) true)
                     (init-cam-buffer locals cam-id)
                     (if (.isOpened @(nth (:capture-cam @locals) cam-id))
-                        (do (future (start-cam-loop locals cam-id)))
+                        ;(do (future (start-cam-loop locals cam-id)))
+                        (do (start-cam-loop-thread locals cam-id))
+
                         (do (reset! (nth (:running-cam @locals) cam-id) false)
                             (oc-release capture-cam_i)
                             (swap! locals assoc :cams (set-nil cams_tmp cam-id))
@@ -1144,7 +1173,9 @@
 (defn- get-cam-textures
     [locals cam-id]
     (let [  running-cam_i   @(nth (:running-cam @locals) cam-id)
-            image            (dequeue-cam-image cam-id)]
+            image            (async/<!! @(nth (:buffer-channel-cam @locals) cam-id))
+            ;image            (dequeue-cam-image cam-id)
+            ]
             (if (and (= true running-cam_i) (not (nil? image)))
                 (do (set-cam-opengl-texture locals cam-id image)) 
                 nil )))
@@ -1163,7 +1194,7 @@
     (doseq [cam-id (range no-cams)]
         (init-cam-tex locals cam-id)
         (println "TODO: the channel creating needs to chekc if a channels exists already")
-        (reset! (nth (:buffer-channel-video @locals) cam-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-cam @locals) cam-id))))
+        (reset! (nth (:buffer-channel-cam @locals) cam-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-cam @locals) cam-id))))
     )
     (doseq [cam-id cam_idxs]
         (println "cam_id" cam-id)
