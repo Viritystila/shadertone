@@ -15,6 +15,7 @@
     [org.opencv.video Video]
     [org.opencv.utils.Converters]
     [org.opencv.imgproc Imgproc]
+    [org.opencv.imgcodecs Imgcodecs]
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
@@ -86,6 +87,7 @@
    :buffer-length-cam       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
 
    ;Video feeds
+   :video-elapsed-times     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :i-video-loc             [0 0 0 0 0]
    :running-video           [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :video-no-id             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
@@ -97,7 +99,6 @@
    :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :ff-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :bf-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-
   
    :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
@@ -117,7 +118,7 @@
    :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-   :buffer-length-video     [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
+   :buffer-length-video     [(atom 50) (atom 50) (atom 50) (atom 50) (atom 50)]
    
    ;Video analysis
    :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
@@ -132,11 +133,17 @@
    :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
    
    ;Data Array
-   :dataArray               (vec (make-array Float/TYPE 64))
+   :dataArray               (vec (make-array Float/TYPE 256))
    :i-dataArray-loc         0
+   :dataArrayBuffer            (-> (BufferUtils/createFloatBuffer 256)
+                                (.put (float-array
+                                   (vec (make-array Float/TYPE 256))))
+                                    (.flip))
    ;Other
    :tex-id-fftwave          0
    :i-fftwave-loc           [0]
+   
+
    
    :tex-id-previous-frame   0
    :i-previous-frame-loc    [0]
@@ -164,6 +171,7 @@
                                     0.0 0.0 0.0]))
                                     (.flip))
    ;; textures
+   :buffer-tex-channel      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :tex-filenames           []
    :tex-no-id               [nil nil nil nil nil]
    :tex-ids                 []
@@ -180,6 +188,8 @@
                                 (.put (byte-array (map byte [0 0 0])))
                                 (.flip))
 })
+
+;(org.opencv.imgcodecs.Imgcodecs/imread "./readme_header.jpg")
 
 ;; GLOBAL STATE ATOMS
 ;; Tried to get rid of this atom, but LWJGL is limited to only
@@ -382,12 +392,10 @@
                                        channels    (.channels mat)
                                        size        (* height width channels)
                                        data        (byte-array size)
-                                       _           (.get mat 0 0 data)
-                                       
-] ^ByteBuffer (-> (BufferUtils/createByteBuffer size)
+                                       _           (.get mat 0 0 data)] 
+                                       ^ByteBuffer (-> (BufferUtils/createByteBuffer size)
                                               (.put data)
                                               (.flip))))
-
 
 (defn oc-new-mat
 ([int_0 int_1 int_2 org_opencv_core_scalar_3 ]
@@ -430,12 +438,11 @@
                 (do
                 (reset! (nth (:redHistogram-cam @the-window-state) id)      (map (partial * (/ 1 pxls) ) rFv))
                 (reset! (nth (:greenHistogram-cam @the-window-state) id)    (map (partial * (/ 1 pxls) ) gFv))
-                (reset! (nth (:blueHistogram-cam @the-window-state) id)     (map (partial * (/ 1 pxls) ) bFv)))
-            )
-            ))
+                (reset! (nth (:blueHistogram-cam @the-window-state) id)     (map (partial * (/ 1 pxls) ) bFv))))))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Analysis related functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn apply-analysis [mat locals id isVideo] 
     (let [  applyKeyword    (if isVideo (keyword 'applyAnalysis-video) (keyword 'applyAnalysis-cam))
             applies         (vec @(nth (applyKeyword @locals) id))
@@ -462,12 +469,8 @@
                     (reset! (nth (applyKeyword @the-window-state) id) 
                             (if (and true (=  -1 (.indexOf applies :histogramAAA)))
                                 (conj applies :histogramAAA)
-                                (vec (remove #{:histogramAAA} applies)))))
-            )
-            ))
+                                (vec (remove #{:histogramAAA} applies))))))))
  
-
-
 (defn- buffer-swizzle-0123-1230
   "given a ARGB pixel array, swizzle it to be RGBA.  Or, ABGR to BGRA"
   ^bytes [^bytes data] ;; Wow!  That ^bytes changes this from 10s for a 256x256 tex to instantaneous.
@@ -1423,9 +1426,9 @@
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                     (buffer-video-texture locals video-id capture-video_i)
                                     (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
-                                (reset! (nth (:frame-set-video @locals) video-id) true)
-                                (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                                (reset! (nth (:frame-set-video @locals) video-id) nil)
+                                ;(reset! (nth (:frame-set-video @locals) video-id) true)
+                                ;(Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                               ; (reset! (nth (:frame-set-video @locals) video-id) nil)
                                 )                        
                         (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
                         (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
@@ -1477,14 +1480,34 @@
           
 (defn- get-video-textures
     [locals video-id]
-    (let [  running-video_i   @(nth (:running-video @locals) video-id)
-            image            (async/<!! @(nth (:buffer-channel-video @locals) video-id))
-            ;image            (dequeue-video-image video-id)
+    (let [  running-video_i     @(nth (:running-video @locals) video-id)
+            capture-video_i     @(nth (:capture-video @locals) video-id)
+            cur-fps             @(nth (:fps-video @locals) video-id) ;(oc-get-capture-property :fps capture-video_i )
+            frame-duration      (* 1E9 (/ 1 cur-fps))
+            cur-time            (System/nanoTime)
+            elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
+            image               (async/<!! @(nth (:buffer-channel-video @locals) video-id))
             ]
+            ;(if (> elapsed-time frame-duration) (do (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) ))
+            
+            ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )) nil)
+            ;(println (- cur-time frame-duration))
+            
             (if (and (= true running-video_i) (not (nil? image)))
-                (do (set-video-opengl-texture locals video-id image)) 
+                (do 
+                
+                            (if (> elapsed-time frame-duration) (do  
+                                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) 
+                                (reset! (nth (:frame-set-video @locals) video-id) nil)
+                                (set-video-opengl-texture locals video-id image) (reset! (nth (:frame-set-video @locals) video-id) true)
+  ))
+
+                ;(set-video-opengl-texture locals video-id image)
+                
+                ) 
                     nil )))
-                                            
+ ;                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
+                                           
 (defn- loop-get-video-textures 
     [locals videos]
     (let [noid (:video-no-id @locals)]
@@ -1497,9 +1520,10 @@
     (let [  video_idxs        (:videos @locals)]
             (doseq [video-id (range no-videos)]
                 (init-video-tex locals video-id )
-                (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-video @locals) video-id)))))
+                (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/buffer @(nth (:buffer-length-video @locals) video-id)))))
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
+                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
                 (check-video-idx locals video-id))))    
        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
@@ -1648,7 +1672,7 @@
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
                 i-channel-res-loc i-dataArray-loc i-previous-frame-loc
-                channel-time-buffer channel-res-buffer bytebuffer-frame  buffer-channel
+                channel-time-buffer channel-res-buffer bytebuffer-frame  buffer-channel dataArrayBuffer dataArray
                 old-pgm-id old-fs-id
                 tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame
                 user-fn
@@ -1661,6 +1685,8 @@
         _           (.put ^FloatBuffer channel-time-buffer 1 (float cur-time))
         _           (.put ^FloatBuffer channel-time-buffer 2 (float cur-time))
         _           (.put ^FloatBuffer channel-time-buffer 3 (float cur-time))
+        _          (.flip (.put ^FloatBuffer dataArrayBuffer  (float-array dataArray)))
+        
         cur-date    (Calendar/getInstance)
         cur-year    (.get cur-date Calendar/YEAR)         ;; four digit year
         cur-month   (.get cur-date Calendar/MONTH)        ;; month 0-11
@@ -1733,11 +1759,8 @@
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
-    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer (-> (BufferUtils/createFloatBuffer 64)
-                                (.put (float-array
-                                   (:dataArray @locals)))
-                                    (.flip)))
-   
+    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
+   ;dataArrayBuffer
     
     ;; get vertex array ready
     (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
