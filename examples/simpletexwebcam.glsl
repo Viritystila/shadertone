@@ -65,8 +65,8 @@ void main(void) {
   vec4 cf3 = mix(cf2,c1d,0.01-sin(c1.w));  // alpha blend between two textures
   vec4 cf4 = mix(v1,cf3,iOvertoneVolume);  // alpha blend between two textures
   vec4 cf5 = mix(cf3,c2,sin(cf4.r)); 
-  vec4 cf6 = mix(cf3,c1d,0.1); 
+  vec4 cf6 = mix(c,c2,0.1); 
 
-  gl_FragColor = c;
+  gl_FragColor = cf6;
   
 }

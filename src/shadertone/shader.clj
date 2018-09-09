@@ -35,7 +35,7 @@
    :width                   0
    :height                  0
    :title                   ""
-   :display-sync-hz         30 
+   :display-sync-hz         60 
    :start-time              0
    :last-time               0
    :drawnFrameCount         (atom 0)
@@ -83,7 +83,7 @@
    :fps-cam                 [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
    :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :buffer-length-cam       [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
+   :buffer-length-cam       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
 
    ;Video feeds
    :i-video-loc             [0 0 0 0 0]
@@ -95,6 +95,10 @@
    :buffer-section-video    [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
                              (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
    :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :ff-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+   :bf-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+
+  
    :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
    :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
@@ -113,7 +117,7 @@
    :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-   :buffer-length-video     [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
+   :buffer-length-video     [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
    
    ;Video analysis
    :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
@@ -1116,7 +1120,8 @@
     (let [  _                   (println "start cam loop " cam-id)
             running-cam_i       @(nth (:running-cam @locals) cam-id)
             capture-cam_i       @(nth (:capture-cam @locals) cam-id)
-            ]
+            cur-fps             (oc-get-capture-property :fps capture-cam_i)
+            startTime           (atom (System/nanoTime))]
         (if (= true running-cam_i) 
             (do (while  @(nth (:running-cam @locals) cam-id) ;(get (:running-cam @locals) cam-id)
                 (reset! (nth (:frame-set-cam @locals) cam-id) true)
@@ -1130,23 +1135,14 @@
             capture-cam_i       @(nth (:capture-cam @locals) cam-id)
             ]
         (if (= true running-cam_i) 
-            (do (async/thread  (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
-            
-                ;@(nth (:running-cam @locals) cam-id) ;(get (:running-cam @locals) cam-id)
+            (do (async/thread  
+                (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
                 (reset! (nth (:frame-set-cam @locals) cam-id) true)
                 (buffer-cam-texture locals cam-id capture-cam_i)
-                (reset! (nth (:frame-set-cam @locals) cam-id) nil)
-                )
-                (oc-release capture-cam_i)(println "cam loop stopped" cam-id)
-                )
-                ))))   
+                (reset! (nth (:frame-set-cam @locals) cam-id) nil))
+                (oc-release capture-cam_i)(println "cam loop stopped" cam-id))))))   
                 
-                
-;(defn- start-cam-loop-thred [](async/thread (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
-;                                                                    ;(process-frame frame)
-;                                                            (.write wrtr (process-frame frame))
-;                                                            ))))
-
+      
 (defn- check-cam-idx 
     [locals cam-id]
     (let [  _                   (println "init cam" cam-id )
@@ -1193,7 +1189,7 @@
         bfl (:buffer-length-cam @locals)]
     (doseq [cam-id (range no-cams)]
         (init-cam-tex locals cam-id)
-        (println "TODO: the channel creating needs to chekc if a channels exists already")
+        ;(println "TODO: the channel creating needs to chekc if a channels exists already")
         (reset! (nth (:buffer-channel-cam @locals) cam-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-cam @locals) cam-id))))
     )
     (doseq [cam-id cam_idxs]
@@ -1272,10 +1268,14 @@
                                     image) 
             _                   (if (> fbwbl 0)   
                                     (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) 
-                                    nil)]
-            (if (<= bufferLength maxBufferLength ) 
-                (do (queue-video-image video-id image)) 
-                nil)
+                                    nil)
+            video-buffer          @(nth (:buffer-channel-video @locals) video-id)]
+            ;(if (<= bufferLength maxBufferLength ) 
+            ;    (do (queue-video-image video-id image)) 
+            ;    nil)
+            
+            (if (= nil video-buffer) nil  (async/>!! video-buffer image))
+            
             (if (<= bwbl maxBufferLength) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )))
@@ -1400,6 +1400,8 @@
                     (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
             ) nil )
  
+;(async/thread  (while-let/while-let [running @(nth (:running-cam @locals) cam-id)] 
+ 
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                   (println "start video loop " video-id)
@@ -1413,7 +1415,9 @@
             startTime           (atom (System/nanoTime))
             playmode            (nth (:play-mode-video @locals) video-id)]
             (if (= true running-video_i) 
-                (do (while  @(nth (:running-video @locals) video-id)
+                (do ;(while  @(nth (:running-video @locals) video-id)
+                    (async/thread 
+                    (while-let/while-let [running @(nth (:running-video @locals) video-id)]
                     (reset! startTime (System/nanoTime))
                     (cond 
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
@@ -1435,7 +1439,7 @@
                             (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
                             (reset! (nth (:frame-set-video @locals) video-id) nil)
                             )))
-                    (oc-release capture-video_i)
+                    (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
     
     
@@ -1474,7 +1478,9 @@
 (defn- get-video-textures
     [locals video-id]
     (let [  running-video_i   @(nth (:running-video @locals) video-id)
-            image            (dequeue-video-image video-id)]
+            image            (async/<!! @(nth (:buffer-channel-video @locals) video-id))
+            ;image            (dequeue-video-image video-id)
+            ]
             (if (and (= true running-video_i) (not (nil? image)))
                 (do (set-video-opengl-texture locals video-id image)) 
                     nil )))
@@ -1490,7 +1496,8 @@
     [locals]
     (let [  video_idxs        (:videos @locals)]
             (doseq [video-id (range no-videos)]
-                (init-video-tex locals video-id ))
+                (init-video-tex locals video-id )
+                (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/dropping-buffer @(nth (:buffer-length-video @locals) video-id)))))
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
                 (check-video-idx locals video-id))))    
