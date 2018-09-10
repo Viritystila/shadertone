@@ -88,6 +88,7 @@
 
    ;Video feeds
    :video-elapsed-times     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+   :video-buf-elapsed-times [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
    :i-video-loc             [0 0 0 0 0]
    :running-video           [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :video-no-id             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
@@ -118,7 +119,7 @@
    :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-   :buffer-length-video     [(atom 50) (atom 50) (atom 50) (atom 50) (atom 50)]
+   :buffer-length-video     [(atom 5) (atom 5) (atom 5) (atom 5) (atom 5)]
    
    ;Video analysis
    :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
@@ -1277,7 +1278,7 @@
             ;    (do (queue-video-image video-id image)) 
             ;    nil)
             
-            (if (= nil video-buffer) nil  (async/>!! video-buffer image))
+            (if (= nil video-buffer) nil  (async/offer! video-buffer image))
             
             (if (<= bwbl maxBufferLength) 
                 (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
@@ -1413,8 +1414,12 @@
             running-video_i     @(nth (:running-video @locals) video-id)
             frame-count         (oc-get-capture-property :frame-count capture-video_i )
             cur-frame           (atom 0)
-            cur-fps             (oc-get-capture-property :fps capture-video_i )
+            cur-fps             @(nth (:fps-video @locals) video-id); (oc-get-capture-property :fps capture-video_i ) ;@(nth (:fps-video @locals) video-id)  ; 
             locKey              (keyword (str "frame-ctr-"video-id))
+            frame-duration      (* 1E9 (/ 1 cur-fps))
+            cur-time            (atom (System/nanoTime))
+            elapsed-time        (- @cur-time @(nth (:video-buf-elapsed-times @locals) video-id))   
+            passingTime         (atom (System/nanoTime))   
             startTime           (atom (System/nanoTime))
             playmode            (nth (:play-mode-video @locals) video-id)]
             (if (= true running-video_i) 
@@ -1422,12 +1427,29 @@
                     (async/thread 
                     (while-let/while-let [running @(nth (:running-video @locals) video-id)]
                     (reset! startTime (System/nanoTime))
+                    (reset! cur-time (System/nanoTime))
+
                     (cond 
                         (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
+                                    
+                                    ;(if (> elapsed-time frame-duration)  nil nil)
+                                    
+                                    ;(do (if (> (- @cur-time @passingTime ) (* 1E9 (/ 1 @(nth (:fps-video @locals) video-id))))  
+                                    ;        (do (buffer-video-texture locals video-id capture-video_i) 
+                                    ;            ;(println (- @cur-time @(nth (:video-buf-elapsed-times @locals) video-id)))
+                                    ;            (reset! passingTime  (System/nanoTime) ))
+                                    ;            ;(Thread/sleep (sleepTime @startTime (System/nanoTime) 60))
+                                    ;            ;(Thread/sleep (/ 1000 60))
+                                    ;            ;(Thread/sleep (/ 100 @(nth (:fps-video @locals) video-id)))
+                                    ;            )
+                                    ;    ;(buffer-video-texture locals video-id capture-video_i)
+                                    ;    ;(println "as: " @(nth (:video-buf-elapsed-times @locals) video-id))
+                                    ;    )
                                     (buffer-video-texture locals video-id capture-video_i)
-                                    (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))
+                                    (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))
                                 ;(reset! (nth (:frame-set-video @locals) video-id) true)
-                                ;(Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                                ; (min (sleepTime @startTime (System/nanoTime) 60)
+                                (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
                                ; (reset! (nth (:frame-set-video @locals) video-id) nil)
                                 )                        
                         (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
@@ -1444,6 +1466,9 @@
                             )))
                     (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
+   
+ ;:video-buf-elapsed-times  
+ ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )   
     
     
 (defn- check-video-idx 
@@ -1486,21 +1511,23 @@
             frame-duration      (* 1E9 (/ 1 cur-fps))
             cur-time            (System/nanoTime)
             elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
-            image               (async/<!! @(nth (:buffer-channel-video @locals) video-id))
+            image               (async/poll! @(nth (:buffer-channel-video @locals) video-id))
             ]
             ;(if (> elapsed-time frame-duration) (do (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) ))
             
             ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )) nil)
             ;(println (- cur-time frame-duration))
-            
+            ;(reset! (nth (:frame-set-video @locals) video-id) nil)
             (if (and (= true running-video_i) (not (nil? image)))
                 (do 
                 
-                            (if (> elapsed-time frame-duration) (do  
+                            ;(if (> elapsed-time frame-duration) (do  
+                                
+                                (set-video-opengl-texture locals video-id image) 
+                                (reset! (nth (:frame-set-video @locals) video-id) true)
                                 (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) 
-                                (reset! (nth (:frame-set-video @locals) video-id) nil)
-                                (set-video-opengl-texture locals video-id image) (reset! (nth (:frame-set-video @locals) video-id) true)
-  ))
+ 
+  ;))
 
                 ;(set-video-opengl-texture locals video-id image)
                 
@@ -1524,6 +1551,8 @@
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
                 (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
+                (reset! (nth (:video-buf-elapsed-times @locals) video-id)  (System/nanoTime) )
+
                 (check-video-idx locals video-id))))    
        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
@@ -1651,14 +1680,6 @@
         gf (/ (float (int (bit-and 0xFF (.get rgb-bytes 1)))) 255.0)
         bf (/ (float (int (bit-and 0xFF (.get rgb-bytes 2)))) 255.0)]
     [rf gf bf]))
-
-    
-;(defn create-float-buffer-from-values [values]
-;  (let [float-buffer (BufferUtils/createFloatBuffer (count values))]
-;    (.put float-buffer (float-array values))
-;    (.rewind float-buffer)
-;    float-buffer))
-      
                       
 (defn- draw
   [locals]
