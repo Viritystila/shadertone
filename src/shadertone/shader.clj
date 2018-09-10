@@ -1261,18 +1261,18 @@
             imageP              (oc-query-frame capture-video image)
             _                   (apply-analysis image locals video-id true)
             ;_                   (oc-calc-hist image video-id true)
-            maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
-            bufferLength        (get-video-queue-length video-id)
-            bwb                 @(nth (:backwards-buffer-video @locals) video-id)
-            bwbl                (count bwb)
-            fbwb                @(nth (:forwards-buffer-video @locals) video-id)
-            fbwbl               (count fbwb)
-            image               (if (> fbwbl 1) 
-                                    (do (first @(nth (:forwards-buffer-video @locals) video-id))) 
-                                    image) 
-            _                   (if (> fbwbl 0)   
-                                    (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) 
-                                    nil)
+            ;maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
+            ;bufferLength        (get-video-queue-length video-id)
+            ;bwb                 @(nth (:backwards-buffer-video @locals) video-id)
+            ;bwbl                (count bwb)
+            ;fbwb                @(nth (:forwards-buffer-video @locals) video-id)
+            ;fbwbl               (count fbwb)
+            ;image               (if (> fbwbl 1) 
+            ;                        (do (first @(nth (:forwards-buffer-video @locals) video-id))) 
+            ;                        image) 
+            ;_                   (if (> fbwbl 0)   
+            ;                        (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) 
+            ;                        nil)
             video-buffer          @(nth (:buffer-channel-video @locals) video-id)]
             ;(if (<= bufferLength maxBufferLength ) 
             ;    (do (queue-video-image video-id image)) 
@@ -1280,9 +1280,11 @@
             
             (if (= nil video-buffer) nil  (async/offer! video-buffer image))
             
-            (if (<= bwbl maxBufferLength) 
-                (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
-                (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )))
+            ;(if (<= bwbl maxBufferLength) 
+            ;    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
+            ;    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )
+                
+                ))
   
 (defn init-video-buffer 
    [locals video-id] 
@@ -1524,7 +1526,7 @@
                             ;(if (> elapsed-time frame-duration) (do  
                                 
                                 (set-video-opengl-texture locals video-id image) 
-                                (reset! (nth (:frame-set-video @locals) video-id) true)
+                                ;(reset! (nth (:frame-set-video @locals) video-id) true)
                                 (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) 
  
   ;))
