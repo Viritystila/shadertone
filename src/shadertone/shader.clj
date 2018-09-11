@@ -241,64 +241,29 @@
         (swap! the-window-state assoc :dataArray na)))
         
 (defn getWindowState [] (let [ws the-window-state] ws))
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;Queue functions
-;Cam
-(defn queue-cam-image [cam-id image] (dosync (alter (nth (:buffer-section-cam  @the-window-state) cam-id) conj image)))
-
-(defn dequeue-cam-image [cam-id] (let [v (peek @(nth (:buffer-section-cam  @the-window-state) cam-id))] 
-                                        (dosync (alter (nth (:buffer-section-cam  @the-window-state) cam-id) pop)
-                                        v)))
-
-(defn clear-cam-queue [cam-id] (while (not (empty? @(nth (:buffer-section-cam  @the-window-state) cam-id))) (dequeue-cam-image cam-id)))
-
-(defn get-cam-queue-length [cam-id] (count @(nth (:buffer-section-cam  @the-window-state) cam-id)))
-
-;Video
-(defn queue-video-image [video-id image] (dosync (alter (nth (:buffer-section-video  @the-window-state) video-id) conj image)))
-
-(defn dequeue-video-image [video-id] (let [v (peek @(nth (:buffer-section-video  @the-window-state) video-id))] 
-                                        (dosync (alter (nth (:buffer-section-video  @the-window-state) video-id) pop)
-                                        v)))
-
-(defn clear-video-queue [video-id] (while (not (empty? @(nth (:buffer-section-video  @the-window-state) video-id))) (dequeue-video-image video-id)))
-
-(defn get-video-queue-length [video-id] (count @(nth (:buffer-section-video  @the-window-state) video-id)))
-
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
-(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state) ;"appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv " "appsrc ! videoconvert ! avenc_h264 ! matroskamux ! filesink location=test.mp4"
+(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \D \I \V \X ) ; \M \J \P \G )
                                             fps         @(:saveFPS @the-window-state)
                                             height      (:height @the-window-state)
                                             width       (:width @the-window-state) ;:buffer-writer
                                             mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
                                             vw          (new org.opencv.videoio.VideoWriter filename fourcc fps (.size mat))
-                                            ;vw          (new org.opencv.videoio.VideoWriter)
+                                            ;vw          (new org.opencv.videoio.VideoWriter) ;Gstreamer example
                                             ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-                                             ;_           (.open vw  "appsrc ! jpegenc ! filesink location=asasas.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 1, (.size mat) true)
-                                            ; _           (.open vw  "appsrc ! tee ! videoconvert ! video/x-raw,format=YUY2 ! v4l2sink device=/dev/video1", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-
-                                            ;_           (.open vw  "appsrc is-live=true block=true ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1  ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-                                            ;_           (.open vw  "appsrc is-live=true block=true ! video/x-raw,format=BGR, width=1920, height=1080,framerate=60/1  ! jpegenc ! fakesink", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 60, (.size mat) true)
-                                            ;            (.open vw  "appsrc is-live=true do-timestamp=true ! video/x-raw,format=BGR!  tee ! queue ! videoconvert ! video/x-raw,format=YUY2! v4l2sink device=/dev/video1", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-                                           ; _           (println "vw " vw) v4l2sink device=/dev/video1
-                                            _           (reset! (:buffer-writer @the-window-state) vw)
-                                            
-                                            ]))
+                                            _           (reset! (:buffer-writer @the-window-state) vw)]))
 
 
 (defn oc-capture-from-cam [cam-id] (let [           vc (new org.opencv.videoio.VideoCapture) 
                                                     vco (.open vc cam-id)]
-                                                    ;(while (= false (.read vc)) (.open vc cam-id))
                                                     vc))
 
 (defn oc-capture-from-video [video-filename] (let [ vc (new org.opencv.videoio.VideoCapture) 
                                                     vco (try (.open vc video-filename) (catch Exception e (str "caught exception: " (.getMessage e))))]
                                                     vc))
-
 
 (defn oc-release [capture] (if (= nil capture) (println "nil camera") (.release capture)))
 
@@ -472,6 +437,10 @@
                                 (conj applies :histogramAAA)
                                 (vec (remove #{:histogramAAA} applies))))))))
  
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Old single testure handling functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- buffer-swizzle-0123-1230
   "given a ARGB pixel array, swizzle it to be RGBA.  Or, ABGR to BGRA"
   ^bytes [^bytes data] ;; Wow!  That ^bytes changes this from 10s for a 256x256 tex to instantaneous.
@@ -515,14 +484,7 @@
                       (if (or (= image-type BufferedImage/TYPE_4BYTE_ABGR)
                               (= image-type BufferedImage/TYPE_INT_ARGB))
                         4
-                        0)) ;; unhandled image type--what to do?
-        ;; _           (println "image-type"
-        ;;                          (cond
-        ;;                           (= image-type BufferedImage/TYPE_3BYTE_BGR)  "TYPE_3BYTE_BGR"
-        ;;                           (= image-type BufferedImage/TYPE_INT_RGB)    "TYPE_INT_RGB"
-        ;;                           (= image-type BufferedImage/TYPE_4BYTE_ABGR) "TYPE_4BYTE_ABGR"
-        ;;                           (= image-type BufferedImage/TYPE_INT_ARGB)   "TYPE_INT_ARGB"
-        ;;                           :else image-type))
+                        0))
         _           (assert (pos? image-bytes))] ;; die on unhandled image
     image-bytes))
 
@@ -953,9 +915,7 @@
             data                (byte-array (.remaining frame))
             _                   (.get frame data)
             _                   (.flip frame)]
-            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))
-            
-            ))
+            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))))
 
 
             
@@ -982,27 +942,21 @@
 (defn- process-frame [frame]     
             (let [  width       (:width @the-window-state)
                     height      (:height @the-window-state)
-                    ;fps         @(:saveFPS @the-window-state)
-                    ;_                                               (Thread/sleep (* 100000 (/ 1 fps)))
                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
                     mat_flip    mat
                     _           (.put mat 0 0 frame)
                     _           (org.opencv.core.Core/flip mat mat_flip 0)
                     ]
                     (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
-
-                    mat
-                    )) 
+                    mat)) 
              
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;Save video functions
-;;;;;;;;;;;;;;;;;;;;;;             
- 
-
-(defn- start-save-loop-go [](async/thread (let [wrtr @(:buffer-writer @the-window-state)] (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
-                                                                    ;(process-frame frame)
-                                                            (.write wrtr (process-frame frame))
-                                                            ))))
+;;;;;;;;;;;;;;;;;;;;;;            
+(defn- start-save-loop-go [](async/thread 
+                                    (let [wrtr @(:buffer-writer @the-window-state)] 
+                                        (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
+                                         (.write wrtr (process-frame frame))))))
                             
                              
 (defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false)
@@ -1015,8 +969,7 @@
 (defn toggle-recording [] (let [    save    (:save-frames @the-window-state)
                                     writer  (:buffer-writer @the-window-state)
                                     bfl     (:buffer-length-frames @the-window-state)
-                                    _       (reset! (:buffer-channel @the-window-state) (async/chan (async/dropping-buffer bfl)))
-                        ]                         
+                                    _       (reset! (:buffer-channel @the-window-state) (async/chan (async/dropping-buffer bfl)))]                         
                             (if (= false @save) 
                                 (do 
                                     (println "Start recording")
@@ -1039,11 +992,8 @@
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-cam image)
             _                   (apply-analysis image locals cam-id false)
-            maxBufferLength     @(nth (:buffer-length-cam @locals) cam-id)
-            bufferLength        (get-cam-queue-length cam-id)
             cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
             (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
-            ;(if (< bufferLength maxBufferLength ) (queue-cam-image cam-id image) nil)
             ))
      
 
@@ -1080,12 +1030,8 @@
             height              1
             width               1
             mat                 (org.opencv.core.Mat/zeros height width org.opencv.core.CvType/CV_8UC3)
-            ;image-bytes         (.channels mat)
-            ;nbytes              (* height width image-bytes)
             internal-format      (oc-tex-internal-format mat)
-            format               (oc-tex-format mat)            
-            ;buffer              (oc-mat-to-bytebuffer mat)
-            ]
+            format               (oc-tex-format mat)]
             (reset! (nth (:target-cam @locals) cam-id) target)
             (reset! (nth (:text-id-cam @locals) cam-id) tex-id)
             (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
@@ -1160,7 +1106,6 @@
                     (reset! (nth (:running-cam @locals) cam-id) true)
                     (init-cam-buffer locals cam-id)
                     (if (.isOpened @(nth (:capture-cam @locals) cam-id))
-                        ;(do (future (start-cam-loop locals cam-id)))
                         (do (start-cam-loop-thread locals cam-id))
 
                         (do (reset! (nth (:running-cam @locals) cam-id) false)
@@ -1173,9 +1118,7 @@
 (defn- get-cam-textures
     [locals cam-id]
     (let [  running-cam_i   @(nth (:running-cam @locals) cam-id)
-            image            (async/<!! @(nth (:buffer-channel-cam @locals) cam-id))
-            ;image            (dequeue-cam-image cam-id)
-            ]
+            image            (async/<!! @(nth (:buffer-channel-cam @locals) cam-id))]
             (if (and (= true running-cam_i) (not (nil? image)))
                 (do (set-cam-opengl-texture locals cam-id image)) 
                 nil )))
@@ -1225,7 +1168,6 @@
             frame               (if (< frame frame-count)  frame frame-count)
             frame               (if (> frame 1) frame 1)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
-            ;(clear-video-queue video-id)
             (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
             (reset! (nth (:play-mode-video @the-window-state) video-id) :goto)))
                             
@@ -1248,7 +1190,6 @@
             fps (oc-get-capture-property :fps capture-video_i )
             fpstbs (if (< 0 new-fps) new-fps 1)
             _ (reset! ( nth (:fps-video @the-window-state) video-id) fpstbs)]
-            (clear-video-queue video-id)
             (oc-set-capture-property :fps capture-video_i  fpstbs)
             (println "new fps " fpstbs )))
  
@@ -1260,31 +1201,8 @@
     (let [  image               (oc-new-mat)
             imageP              (oc-query-frame capture-video image)
             _                   (apply-analysis image locals video-id true)
-            ;_                   (oc-calc-hist image video-id true)
-            ;maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
-            ;bufferLength        (get-video-queue-length video-id)
-            ;bwb                 @(nth (:backwards-buffer-video @locals) video-id)
-            ;bwbl                (count bwb)
-            ;fbwb                @(nth (:forwards-buffer-video @locals) video-id)
-            ;fbwbl               (count fbwb)
-            ;image               (if (> fbwbl 1) 
-            ;                        (do (first @(nth (:forwards-buffer-video @locals) video-id))) 
-            ;                        image) 
-            ;_                   (if (> fbwbl 0)   
-            ;                        (reset! (nth (:forwards-buffer-video @locals) video-id) (drop 1 @(nth (:forwards-buffer-video @locals) video-id))) 
-            ;                        nil)
             video-buffer          @(nth (:buffer-channel-video @locals) video-id)]
-            ;(if (<= bufferLength maxBufferLength ) 
-            ;    (do (queue-video-image video-id image)) 
-            ;    nil)
-            
-            (if (= nil video-buffer) nil  (async/offer! video-buffer image))
-            
-            ;(if (<= bwbl maxBufferLength) 
-            ;    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (seq bwb) image)) 
-            ;    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj (drop-last (seq bwb)) image)) )
-                
-                ))
+                (if (= nil video-buffer) nil  (async/offer! video-buffer image))))
   
 (defn init-video-buffer 
    [locals video-id] 
@@ -1315,7 +1233,6 @@
     [video-id]
     (let[tmpvideos          (:videos @the-window-state)
         tmp-video-ids       (:video-no-id @the-window-state)]
-        (clear-video-queue video-id)
         (reset! (nth (:running-video @the-window-state) video-id) false)
         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
@@ -1355,7 +1272,6 @@
    (let[   target              @(nth (:target-video @locals) video-id)
            internal-format     @(nth (:internal-format-video @locals) video-id)
            format              @(nth (:format-video @locals) video-id)
-           ;imageqqq            (dequeue-video-image 0)
            height              (.height image)
            width               (.width image)          
            image-bytes         (.channels image)
@@ -1379,34 +1295,33 @@
             image)
             )
            
-(defn- buffer-reverse-video-texture [locals video-id capture-video] 
-    (let    [   maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
-                bufferLength        (get-video-queue-length video-id)
-                bwb     @(nth (:backwards-buffer-video @locals) video-id)
-                bwbl    (count bwb)
-                fbwb     @(nth (:forwards-buffer-video @locals) video-id)
-                fbwbl    (count fbwb)
-                len     (/ maxBufferLength 2)]
-            (if (< (count @(nth (:backwards-buffer-video @locals) video-id)) len)
-                (do 
-                    (oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 2 len)))
-                    (doseq [x (range len)] 
-                        (let [  bwb     @(nth (:backwards-buffer-video @locals) video-id)
-                                img (bfff-video video-id locals capture-video)
-                                newSeq  (conj @(nth (:backwards-buffer-video @locals) video-id) img)]
-               
-                    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))))
-                )
-                nil)
-            (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 0)) 
-                (do (queue-video-image video-id (first @(nth (:backwards-buffer-video @locals) video-id)))
-                    (if (<= fbwbl maxBufferLength) 
-                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (seq fbwb) (first @(nth (:backwards-buffer-video @locals) video-id)))) 
-                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (drop-last (seq fbwb)) (first @(nth (:backwards-buffer-video @locals) video-id)))))
-                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
-            ) nil )
+;(defn- buffer-reverse-video-texture [locals video-id capture-video] 
+;    (let    [   maxBufferLength     @(nth (:buffer-length-video @locals) video-id)
+;                bufferLength        (get-video-queue-length video-id)
+;                bwb     @(nth (:backwards-buffer-video @locals) video-id)
+;                bwbl    (count bwb)
+;                fbwb     @(nth (:forwards-buffer-video @locals) video-id)
+;                fbwbl    (count fbwb)
+;                len     (/ maxBufferLength 2)]
+;            (if (< (count @(nth (:backwards-buffer-video @locals) video-id)) len)
+;                (do 
+;                    (oc-set-capture-property :pos-frames capture-video (- (int (oc-get-capture-property :pos-frames capture-video)) (* 2 len)))
+;                    (doseq [x (range len)] 
+;                        (let [  bwb     @(nth (:backwards-buffer-video @locals) video-id)
+;                                img (bfff-video video-id locals capture-video)
+;                                newSeq  (conj @(nth (:backwards-buffer-video @locals) video-id) img)]
+;               
+;                    (reset! (nth (:backwards-buffer-video @locals) video-id) (conj @(nth (:backwards-buffer-video @locals) video-id) img))))
+;                )
+;                nil)
+;            (do (if (and (<= bufferLength maxBufferLength ) (> (count @(nth (:backwards-buffer-video @locals) video-id)) 0)) 
+;                (do (queue-video-image video-id (first @(nth (:backwards-buffer-video @locals) video-id)))
+;                    (if (<= fbwbl maxBufferLength) 
+;                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (seq fbwb) (first @(nth (:backwards-buffer-video @locals) video-id)))) 
+;                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (drop-last (seq fbwb)) (first @(nth (:backwards-buffer-video @locals) video-id)))))
+;                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
+;            ) nil )
  
-;(async/thread  (while-let/while-let [running @(nth (:running-cam @locals) cam-id)] 
  
 (defn- start-video-loop 
     [locals video-id]
@@ -1414,65 +1329,34 @@
             capture-video_i     @(nth (:capture-video @locals) video-id)
             _                   (println "capture-video_i " capture-video_i)
             running-video_i     @(nth (:running-video @locals) video-id)
-            frame-count         (oc-get-capture-property :frame-count capture-video_i )
-            cur-frame           (atom 0)
-            cur-fps             @(nth (:fps-video @locals) video-id); (oc-get-capture-property :fps capture-video_i ) ;@(nth (:fps-video @locals) video-id)  ; 
-            locKey              (keyword (str "frame-ctr-"video-id))
-            frame-duration      (* 1E9 (/ 1 cur-fps))
-            cur-time            (atom (System/nanoTime))
-            elapsed-time        (- @cur-time @(nth (:video-buf-elapsed-times @locals) video-id))   
-            passingTime         (atom (System/nanoTime))   
+            cur-fps             @(nth (:fps-video @locals) video-id)
             startTime           (atom (System/nanoTime))
             playmode            (nth (:play-mode-video @locals) video-id)]
             (if (= true running-video_i) 
-                (do ;(while  @(nth (:running-video @locals) video-id)
-                    (async/thread 
-                    (while-let/while-let [running @(nth (:running-video @locals) video-id)]
-                    (reset! startTime (System/nanoTime))
-                    (reset! cur-time (System/nanoTime))
-
-                    (cond 
-                        (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
-                                    
-                                    ;(if (> elapsed-time frame-duration)  nil nil)
-                                    
-                                    ;(do (if (> (- @cur-time @passingTime ) (* 1E9 (/ 1 @(nth (:fps-video @locals) video-id))))  
-                                    ;        (do (buffer-video-texture locals video-id capture-video_i) 
-                                    ;            ;(println (- @cur-time @(nth (:video-buf-elapsed-times @locals) video-id)))
-                                    ;            (reset! passingTime  (System/nanoTime) ))
-                                    ;            ;(Thread/sleep (sleepTime @startTime (System/nanoTime) 60))
-                                    ;            ;(Thread/sleep (/ 1000 60))
-                                    ;            ;(Thread/sleep (/ 100 @(nth (:fps-video @locals) video-id)))
-                                    ;            )
-                                    ;    ;(buffer-video-texture locals video-id capture-video_i)
-                                    ;    ;(println "as: " @(nth (:video-buf-elapsed-times @locals) video-id))
-                                    ;    )
-                                    (buffer-video-texture locals video-id capture-video_i)
-                                    (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))
-                                ;(reset! (nth (:frame-set-video @locals) video-id) true)
-                                ; (min (sleepTime @startTime (System/nanoTime) 60)
-                                (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                               ; (reset! (nth (:frame-set-video @locals) video-id) nil)
-                                )                        
-                        (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
-                        (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
-                                    (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
-                                    (buffer-video-texture locals video-id capture-video_i))
-                                (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
-                        (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
-                                (do (buffer-reverse-video-texture locals video-id capture-video_i))
-                                (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
-                            (reset! (nth (:frame-set-video @locals) video-id) true)
-                            (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
-                            (reset! (nth (:frame-set-video @locals) video-id) nil)
-                            )))
+                (do (async/thread 
+                        (while-let/while-let [running @(nth (:running-video @locals) video-id)]
+                        (reset! startTime (System/nanoTime))
+                        (cond 
+                            (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
+                                                    (buffer-video-texture locals video-id capture-video_i)
+                                                    (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))
+                                                (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
+                            (= :pause @playmode) (do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
+                            (= :goto @playmode)(do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
+                                                    (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
+                                                        (buffer-video-texture locals video-id capture-video_i))
+                                                    (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
+                            ;(= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
+                            ;                        (do (buffer-reverse-video-texture locals video-id capture-video_i))
+                            ;                        (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
+                            ;                        (reset! (nth (:frame-set-video @locals) video-id) true)
+                            ;                        (Thread/sleep (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                            ;                        (reset! (nth (:frame-set-video @locals) video-id) nil))
+                                                    
+                                                    ))
                     (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
-   
- ;:video-buf-elapsed-times  
- ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )   
-    
-    
+       
 (defn- check-video-idx 
    [locals video-id]
    (let [   _                   (println "init video" video-id )
@@ -1502,7 +1386,6 @@
             (swap! the-window-state assoc :videos (assoc tmpvideo video-id video-filename))
             (reset! (nth (:video-no-id @the-window-state) video-id) video-id)
             (check-video-idx the-window-state video-id)))
-            ;:frame-set-video
  
           
 (defn- get-video-textures
@@ -1513,30 +1396,12 @@
             frame-duration      (* 1E9 (/ 1 cur-fps))
             cur-time            (System/nanoTime)
             elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
-            image               (async/poll! @(nth (:buffer-channel-video @locals) video-id))
-            ]
-            ;(if (> elapsed-time frame-duration) (do (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) ))
-            
-            ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )) nil)
-            ;(println (- cur-time frame-duration))
-            ;(reset! (nth (:frame-set-video @locals) video-id) nil)
+            image               (async/poll! @(nth (:buffer-channel-video @locals) video-id))]
             (if (and (= true running-video_i) (not (nil? image)))
-                (do 
-                
-                            ;(if (> elapsed-time frame-duration) (do  
-                                
-                                (set-video-opengl-texture locals video-id image) 
-                                ;(reset! (nth (:frame-set-video @locals) video-id) true)
-                                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) ) 
- 
-  ;))
-
-                ;(set-video-opengl-texture locals video-id image)
-                
-                ) 
-                    nil )))
- ;                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
-                                           
+                (do (set-video-opengl-texture locals video-id image) 
+                    (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime))) 
+                nil)))
+                             
 (defn- loop-get-video-textures 
     [locals videos]
     (let [noid (:video-no-id @locals)]
@@ -1558,8 +1423,8 @@
                 (check-video-idx locals video-id))))    
        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
-
-
+;;GL drawing stuf;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
       
 (defn- init-gl
   [locals]
@@ -1574,9 +1439,7 @@
     (init-videos locals)
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
-    ;(swap! locals assoc :tex-id-previous-frame (GL11/glGenTextures))
     (init-frame-tex locals)
-    ;(oc-initialize-write-to-file)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1643,10 +1506,7 @@
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
                 
                             
-                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
-
-]
-                
+                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")]
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
@@ -1719,8 +1579,6 @@
                        (.get cur-date Calendar/SECOND))]
 
     (except-gl-errors "@ draw before clear")
-    ;(println "FPS: " (/ @(:frameCount @locals) cur-time))
-     ;   (println "FPS: " @(:frameCount @locals))
 
     (reset! (:frameCount @locals) (+ @(:frameCount @locals) 1)) 
 
@@ -1730,17 +1588,12 @@
       (user-fn :pre-draw pgm-id (:tex-id-fftwave @locals)))
 
     ;; activate textures
-    ;(print "tex-ids" tex-ids)
     (dotimes [i (count tex-ids)]
       (when (nth tex-ids i)
-        ;(print "AAa" tex-ids)
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 (nth tex-ids i)))
-        ;(println "(nth tex-ids i) i" (nth tex-ids i))
         (cond
          (= :cubemap (nth tex-types i))
          (GL11/glBindTexture GL13/GL_TEXTURE_CUBE_MAP (nth tex-ids i))
-         ;(= :previous-frame (nth tex-types i))
-         ;(GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i))
          :default
          (GL11/glBindTexture GL11/GL_TEXTURE_2D (nth tex-ids i)))))
     
@@ -1753,9 +1606,6 @@
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
     (GL20/glUniform1  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
-                                
-                                 
-    ;(println "i-dataArray-loc" i-dataArray-loc)
 
     (GL20/glUniform4f i-mouse-loc
                       mouse-pos-x
@@ -1778,12 +1628,10 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-    ;(GL20/glUniform1i (nth i-previous-frame-loc 0) 16)
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
     (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
-   ;dataArrayBuffer
     
     ;; get vertex array ready
     (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
@@ -1816,13 +1664,10 @@
     ;videos
     (dotimes [i (count text-id-video)]
         (when (nth text-id-video i)
-            ;(println "(nth (:frame-set-video @the-window-state) video-id) " @(nth text-id-video i))
             (if (= nil @(nth (:frame-set-video @locals) i))
                 (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
-                    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-                    )
-            nil )))
-        
+                    (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
+                nil)))
         
     (except-gl-errors "@ draw prior to post-draw")
 
@@ -1843,13 +1688,10 @@
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
             ; and save it to a video to a file
-            (buffer-frame locals @bytebuffer-frame)
-            )
-          nil
-          )
+            (buffer-frame locals @bytebuffer-frame))
+          nil)
                     
     (except-gl-errors "@ draw after copy")
-
     
     ;; read a pixel value
     (when pixel-read-enable
@@ -1859,8 +1701,6 @@
                         ^ByteBuffer pixel-read-data)
       (except-gl-errors "@ draw after pixel read")
       (reset! pixel-value (get-pixel-value ^ByteBuffer pixel-read-data)))))
-
-      
       
 (defn- update-and-draw
   [locals]
@@ -1902,10 +1742,7 @@
         (GL11/glClear GL11/GL_COLOR_BUFFER_BIT)
         (except-gl-errors "@ bad-draw glClear ")
         (if @reload-shader
-          (try-reload-shader locals))))
-          
-          ;(println "elapsedTime per frame: "(/ (- (System/nanoTime) starttime) 1e9))
-          ))
+          (try-reload-shader locals))))))
 
           
 (defn- destroy-gl
@@ -1913,7 +1750,7 @@
   (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals]
      ;;Stop and release cams
     (println " Cams tbd" (:cams @the-window-state))
-    (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i)(clear-cam-queue i))
+    (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
     (swap! locals assoc :cams (vec (replicate no-cams nil)))
     ;Stop and release video release-cam-textures
     (println " Videos tbd" (:videos @the-window-state))
@@ -1940,8 +1777,6 @@
   [locals mode shader-filename shader-str-atom tex-filenames cams videos title true-fullscreen? user-fn display-sync-hz]
   (init-window locals mode title shader-filename shader-str-atom tex-filenames cams videos true-fullscreen? user-fn display-sync-hz)
   (init-gl locals)
-  ;(def sharedD (new SharedDrawable (Display/getDrawable)))
-  ;(println "sharedD" (. sharedD isCurrent))
   (reset! (:frameCount @locals) 0) 
 
   (while (and (= :yes (:active @locals))
