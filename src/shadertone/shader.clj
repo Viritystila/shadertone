@@ -71,8 +71,7 @@
    :capture-cam             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    
    :capture-buffer-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :buffer-section-cam      [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
-                             (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
+
    :buffer-channel-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :frame-set-cam           [(atom false) (atom false) (atom false) (atom false) (atom false)]  
    
@@ -95,8 +94,7 @@
    :capture-video           [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
 
    :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :buffer-section-video    [(ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)
-                             (ref clojure.lang.PersistentQueue/EMPTY) (ref clojure.lang.PersistentQueue/EMPTY)]
+
    :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :ff-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
    :bf-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
