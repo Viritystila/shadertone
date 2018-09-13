@@ -1329,11 +1329,12 @@
             cur-fps                 @(nth (:fps-video @locals) video-id)
             startTime               (atom (System/nanoTime))
             playmode                (nth (:play-mode-video @locals) video-id)
-            maxBufferLength         (* 10 @(nth (:buffer-length-video @locals) video-id))
-            len                     (/ maxBufferLength 2)
+            maxBufferLength         (* 20 @(nth (:buffer-length-video @locals) video-id))
+            len                     ( int (/ maxBufferLength 2))
             reverse_buffer_list     (atom '())
             forward_buffer_list     (atom '())
             buffering               (atom false)
+            backward_channel        (async/chan (async/buffer maxBufferLength))
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)]
             (if (= true running-video_i) 
                 (do (async/thread 
@@ -1372,6 +1373,10 @@
                                                                                                                     (swap! reverse_buffer_list next)
                                                                                                                     ;(println "popped" (peek @reverse_buffer_vector))
                                                                     ))
+                                                                    
+                                                                    (if (= (count @reverse_buffer_list) len ) 
+                                                                        (println "midway" )
+                                                                    )
                                                                     
                                                                     ;(println "asasd " (count @reverse_buffer_vector )) 
                                                                     ;(swap! reverse_buffer_vector pop)
