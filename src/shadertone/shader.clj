@@ -1319,9 +1319,10 @@
 ;                        (reset! (nth (:forwards-buffer-video @locals) video-id) (conj (drop-last (seq fbwb)) (first @(nth (:backwards-buffer-video @locals) video-id)))))
 ;                    (reset! (nth (:backwards-buffer-video @locals) video-id) (drop 1 @(nth (:backwards-buffer-video @locals) video-id)))) nil) ) 
 ;            ) nil )
+(defn onezeroswicth [value] (if (= value 0) 1 0))
 
-(defn returnBuffer [bufs idx] (nth bufs @idx))
-(defn switchBuffer [actBuf] (swap! actBuf (comp @actBuf)))
+(defn returnBuffer [bufs idx] (nth bufs idx))
+(defn switchBuffer [actBuf] (reset! actBuf (onezeroswicth @actBuf)))
 
 (defn- start-video-loop 
     [locals video-id]
@@ -1349,7 +1350,9 @@
            
             buffers                 [(atom '()) (atom '())]
             buffer_on               [(atom true) (atom false)]
-            active_buffer_idx       (atom 0)]
+            active_buffer_idx       (atom 0)
+            startFrame              (atom 0)
+            endFrame                (atom 0)]
             (if (= true running-video_i) 
                 (do (async/thread 
                         (while-let/while-let [running @(nth (:running-video @locals) video-id)]
@@ -1357,11 +1360,11 @@
                         (cond 
                             (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                                     
-                                                    (if (< (count @(returnBuffer buffers active_buffer_idx)) maxBufferLength)
-                                                        (do (swap! (returnBuffer buffers active_buffer_idx) conj  (buffer-video-texture locals video-id capture-video_i)))
-                                                        (do (swap! (returnBuffer buffers active_buffer_idx) drop-last)
+                                                    (if (< (count @(returnBuffer buffers @active_buffer_idx)) maxBufferLength)
+                                                        (do (swap! (returnBuffer buffers @active_buffer_idx) conj  (buffer-video-texture locals video-id capture-video_i)))
+                                                        (do (swap! (returnBuffer buffers @active_buffer_idx) drop-last)
                                                             ;(println "midway " (oc-get-capture-property :pos-frames capture-video_i) )
-                                                            (swap! (returnBuffer buffers active_buffer_idx) conj   (buffer-video-texture locals video-id capture-video_i))))                                                 
+                                                            (swap! (returnBuffer buffers @active_buffer_idx) conj   (buffer-video-texture locals video-id capture-video_i))))                                                 
                                                     (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))
                                                     (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
                             (= :pause @playmode)(do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
@@ -1384,21 +1387,52 @@
                                                              ;)
                                                              
                                                              (do 
-                                                                    ;(println "midway " (count @reverse_buffer_list))
-                                                                    (if (< 1 (count @(returnBuffer buffers active_buffer_idx))) 
-                                                                            (do (async/offer! video-buffer (first @(returnBuffer buffers active_buffer_idx))
+                                                                    ;(println "@active_buffer_idx: " @active_buffer_idx)
+                                                                    (if (< 0 (count @(returnBuffer buffers @active_buffer_idx))) 
+                                                                            (do 
+                                                                                ;(reset! startFrame (oc-get-capture-property :pos-frames capture-video_i))
+                                                                                    
+                                                                                    
+                                                                                ;(reset! endFrame (oc-get-capture-property :pos-frames capture-video_i))
+                                                                                    
                                                                             
-                                                                                (if (= (count @(returnBuffer buffers active_buffer_idx)) len )
-                                                                                ( doseq [x (range len)] 
-                                                                                    (swap! (returnBuffer buffers active_buffer_idx) conj  (buffer-video-texture locals video-id capture-video_i))
+                                                                            
+                                                                            
+                                                                                (async/offer! video-buffer (first @(returnBuffer buffers @active_buffer_idx)))
+                                                                                ;(println "(count @(returnBuffer buffers @active_buffer_idx)) " (count @(returnBuffer buffers @active_buffer_idx)))
+                                                                                ;(println "buffer 0 length  before switch" (count @(returnBuffer buffers 0)))
+                                                                                ;(println "buffer 1 length before switch" (count @(returnBuffer buffers 1)))
+                                                                                (if (= (count @(returnBuffer buffers @active_buffer_idx)) len )
+                                                                                    
+                                                                                    (do
+                                                                                    (oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) len ))
+
+                                                                                    (reset! (returnBuffer buffers (onezeroswicth @active_buffer_idx)) '())
+                                                                                    
+                                                                                    
+                                                                                    (async/thread
+                                                                                    
+                                                                                    ;(oc-get-capture-property :pos-frames capture-video_i)
+                                                                                    ;(println "len " len)
+                                                                                    ;(println "sdsd " (Math/abs (- @startFrame (oc-get-capture-property :pos-frames capture-video_i))))
+                                                                                    ;(println "curframe " (oc-get-capture-property :pos-frames capture-video_i))
+                                                                                    ( doseq [x (range maxBufferLength)] ;(range (Math/abs (- @startFrame (oc-get-capture-property :pos-frames capture-video_i)))) ;maxBufferLength
+                                                                                        ;(println "(onezeroswicth @active_buffer_idx) " (onezeroswicth @active_buffer_idx))
+                                                                                        (swap! (returnBuffer buffers (onezeroswicth @active_buffer_idx) ) conj  (bfff-video locals video-id capture-video_i))
+                                                                                    )
+                                                                                    )
+                                                                                    )
                                                                                 )
-                                                                                   
+                                                                            
+                                                                            
+                                                                                    (swap! (returnBuffer buffers @active_buffer_idx) next)
+                                                                                )
                                                                                 
-                                                                                )
-                                                                            )
-                                                                            
-                                                                            (swap! (returnBuffer buffers active_buffer_idx) next))
-                                                                                (do (switchBuffer active_buffer_idx)
+                                                                                (do 
+                                                                                ;(println "buffer 0 length  before switch" (count @(returnBuffer buffers 0)))
+                                                                                ;(println "buffer 1 length before switch" (count @(returnBuffer buffers 1)))
+                                                                                (reset! (returnBuffer buffers @active_buffer_idx) '())
+                                                                                (switchBuffer active_buffer_idx)
                                                                             )
                                                                         ;(do 
                                                                         ;    (async/offer! video-buffer (first @(returnBuffer buffers active_buffer_idx)))
