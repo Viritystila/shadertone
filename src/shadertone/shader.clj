@@ -1405,7 +1405,7 @@
                                                                                 (if (= (count @(returnBuffer buffers @active_buffer_idx)) len )
                                                                                     
                                                                                     (do
-                                                                                    (oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) len ))
+                                                                                    (oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 2 maxBufferLength)  ))
 
                                                                                     (reset! (returnBuffer buffers (onezeroswicth @active_buffer_idx)) '())
                                                                                     
