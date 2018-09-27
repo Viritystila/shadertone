@@ -1322,7 +1322,11 @@
 (defn onezeroswicth [value] (if (= value 0) 1 0))
 
 (defn returnBuffer [bufs idx] (nth bufs idx))
+(defn returnBufferCounter [bufs idx] (nth bufs idx))
+
 (defn switchBuffer [actBuf] (reset! actBuf (onezeroswicth @actBuf)))
+;(defn switchBufferCounter [actBuf] (reset! actBuf (onezeroswicth @actBuf)))
+
 
 (defn- start-video-loop 
     [locals video-id]
@@ -1333,6 +1337,7 @@
             cur-fps                 @(nth (:fps-video @locals) video-id)
             startTime               (atom (System/nanoTime))
             playmode                (nth (:play-mode-video @locals) video-id)
+            minBufferLength         (* 1 @(nth (:buffer-length-video @locals) video-id))
             maxBufferLength         (* 20 @(nth (:buffer-length-video @locals) video-id))
             len                     ( int (/ maxBufferLength 2))
             reverse_buffer_list     (atom '())
@@ -1347,26 +1352,32 @@
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)
            
             buffers                 [(atom '()) (atom '())]
-            vec_buffers             [(atom (into [] (repeat maxBufferLength (oc-new-mat)))) (atom (into [] (repeat maxBufferLength (oc-new-mat))))]
-            vec_buffer_idxs         [(atom 0) (atom 0)]
+            vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
+            vec_buffer_idxs         [(atom 99) (atom 0)]
             bufferCtr               (atom 0)
             active_buffer_idx       (atom 0)
             currentFrame            (atom 0)            ;(into [] (repeat maxBufferLength (oc-new-mat)))
             frameCtr                (atom 0)                                ]           ;(org.opencv.core.Mat/zeros 1080 1920 org.opencv.core.CvType/CV_8UC3)
             (if (= true running-video_i) 
-                (do (async/thread 
+                (do (async/thread
+                        (doseq [x (range maxBufferLength)] 
+                            (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx ) x)))
                         (while-let/while-let [running @(nth (:running-video @locals) video-id)]
                         (reset! startTime (System/nanoTime))
                         (cond 
                             (= :play @playmode) (do (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                                         
-                                                        (do (if (< @bufferCtr maxBufferLength) (swap! bufferCtr inc) (reset! bufferCtr 0) )
-                                                            ;(println "buffer ctr" @bufferCtr)
-                                                            (if (< (count @(returnBuffer buffers @active_buffer_idx)) maxBufferLength)
-                                                                (do (swap! (returnBuffer buffers @active_buffer_idx) conj  (buffer-video-texture locals video-id capture-video_i)))
-                                                                (do (swap! (returnBuffer buffers @active_buffer_idx) drop-last)
-                                                                    (swap! frameCtr inc)
-                                                                    (swap! (returnBuffer buffers @active_buffer_idx) conj   (buffer-video-texture locals video-id capture-video_i)))))                                                 
+                                                        (do (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) )
+                                                            (if (= @(returnBufferCounter vec_buffer_idxs  @active_buffer_idx) len)   
+                                                                (async/go
+                                                                    (reset! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) -1)
+                                                                    ( doseq [x (range maxBufferLength)]
+                                                                        (swap! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) inc)
+                                                                        (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers (onezeroswicth @active_buffer_idx) ) x)))))
+                                                            (if (> @(returnBufferCounter vec_buffer_idxs  @active_buffer_idx) 0) (swap! (returnBufferCounter vec_buffer_idxs  @active_buffer_idx) dec) (do (reset! bufferCtr 0) (switchBuffer active_buffer_idx)))
+                                                            (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))
+                                                        )                                                 
+                                                        
                                                         (do (reset! frameCtr @(nth (:frame-start-video @locals) video-id))
                                                             (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))))
                                                     
@@ -1374,8 +1385,48 @@
                             (= :pause @playmode)(do (Thread/sleep ( / 1000 @(nth (:fps-video @locals) video-id))))
                             (= :goto @playmode) (do (if (not= (-  (int (oc-get-capture-property :pos-frames capture-video_i)) 1 ) @(nth (:frame-ctr-video @locals) video-id))
                                                     (do (oc-set-capture-property :pos-frames  capture-video_i  @(nth (:frame-ctr-video @locals) video-id))
-                                                        (buffer-video-texture locals video-id capture-video_i))
-                                                    (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))))
+                                                        ;(reset! bufferCtr 0)
+                                                        
+                                                        ;(async/thread
+                                                        ;    (reset! (returnBufferCounter vec_buffer_idxs  @active_buffer_idx) -1)
+                                                        ;    (doseq [x (range maxBufferLength)]
+                                                        ;        (swap! (returnBufferCounter vec_buffer_idxs  @active_buffer_idx) inc)
+                                                        ;        (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx) x ))
+                                                        ;                                                               
+                                                        ;    )
+                                                        ;    (reset! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) -1)
+                                                        ;    (doseq [x (range len)]
+                                                        ;        (swap! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) inc)
+                                                        ;        (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers (onezeroswicth @active_buffer_idx)) x ))
+                                                        ;    )
+                                                        ; 
+                                                        ;)
+                                                        
+                                                        
+                                                        
+                                                        
+                                                        (async/thread
+                                                            (reset! (returnBufferCounter vec_buffer_idxs  @active_buffer_idx) -1)
+                                                            (doseq [x (range maxBufferLength)]
+                                                                (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx) x ))))
+                                                                
+                                                        (doseq [x (range maxBufferLength)]
+                                                            (reset! startTime (System/nanoTime))
+                                                            (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) x))
+                                                            (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id)))
+                                                            (if (= x len) 
+                                                                (async/thread
+                                                                (reset! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) -1)
+                                                                (doseq [x (range maxBufferLength)]
+                                                                    (swap! (returnBufferCounter vec_buffer_idxs  (onezeroswicth @active_buffer_idx)) inc)
+                                                                    (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers (onezeroswicth @active_buffer_idx)) x ))))))
+                                                                       
+                                                        ;(do (reset! bufferCtr 0) (switchBuffer active_buffer_idx))
+                                                        
+                                                        ))
+                                                        
+                                                    (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id))
+                                                    )
                             (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
                                                              (do 
                                                                     (if (< 0 (count @(returnBuffer buffers @active_buffer_idx))) 
@@ -1388,7 +1439,6 @@
                                                                                             (reset! (returnBuffer buffers (onezeroswicth @active_buffer_idx)) '())
                                                                                             (async/thread
                                                                                                 ( doseq [x (range maxBufferLength)] 
-                                                                                                    ;(oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers (onezeroswicth @active_buffer_idx) ) x))
                                                                                                     (swap! (returnBuffer buffers (onezeroswicth @active_buffer_idx) ) conj  (bfff-video locals video-id capture-video_i))
                                                                                                 )
                                                                                             )
