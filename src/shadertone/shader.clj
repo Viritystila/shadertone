@@ -265,7 +265,8 @@
 
 (defn oc-release [capture] (if (= nil capture) (println "nil camera") (.release capture)))
 
-(defn oc-query-frame [capture buffer] (.read capture buffer))
+(defn oc-query-frame [capture buffer] (let [flag (.read capture buffer)]
+                                            (if (= flag true) nil (println "flag "flag) )))
 
 (defn oc-set-capture-property [dispatch capture val](case dispatch 
                                               :pos-msec
@@ -1150,7 +1151,7 @@
     (swap! the-window-state assoc :cams (assoc tmpcams cam-id cam-id))))
                                      
 ;;;;;;;;;;;;;;;;;
-;;Video functions
+;;Video functions :fixedRange
 ;;;;;;;;;;;;;;;;;
 
 (defn set-video-play [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :play))
@@ -1159,14 +1160,17 @@
 
 (defn set-video-reverse [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :reverse))
 
+(defn set-video-fixed [video-id](reset! (nth (:play-mode-video @the-window-state) video-id) :fixedRange))
+
 
 (defn set-video-frame 
     [video-id frame] 
     (let [  frame-count         @(nth (:frames-video @the-window-state) video-id)
-            frame               (if (< frame frame-count)  frame frame-count)
-            frame               (if (> frame 1) frame 1)
+            capture-video_i     @(nth (:capture-video @the-window-state) video-id)
+            pos                 (oc-get-capture-property :pos-frames capture-video_i)
+            frame               (if (< frame 0)  (- frame-count (+ pos  frame)) frame)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
-            (reset! (nth (:frame-ctr-video @the-window-state) video-id) frame)
+            (reset! (nth (:frame-ctr-video @the-window-state) video-id) (max (mod frame frame-count) 1 ))
             (reset! (nth (:play-mode-video @the-window-state) video-id) :goto)))
                             
              
@@ -1327,6 +1331,24 @@
 (defn switchBuffer [actBuf] (reset! actBuf (onezeroswicth @actBuf)))
 ;(defn switchBufferCounter [actBuf] (reset! actBuf (onezeroswicth @actBuf)))
 
+(defn set-video-frame-seek
+    [video-id pos frame] 
+    (let [  frame-count         @(nth (:frames-video @the-window-state) video-id)
+            capture-video_i     @(nth (:capture-video @the-window-state) video-id)
+            frame               (if (< frame 0)  (- frame-count (+ pos  frame)) frame)
+            frame-ctr-video     (:frame-ctr-video @the-window-state)]
+            
+            ;(reset! (nth (:frame-ctr-video @the-window-state) video-id) (max (mod frame frame-count) 1 ))
+            ;(reset! (nth (:play-mode-video @the-window-state) video-id) :goto)
+            (max (mod frame frame-count) 1 )
+            )
+            
+            )
+               
+(defn jumpFrame [capture-video  targetFrame  maxFrame] ( if (and (<  0 targetFrame) (<= targetFrame maxFrame)) 
+                                                                        (oc-set-capture-property :pos-frames capture-video  (max (mod targetFrame maxFrame) 0 ))
+                                                                        (oc-set-capture-property :pos-frames capture-video  (max (mod (- maxFrame (Math/abs targetFrame) maxFrame) 0 ))
+                                                                        ) ))   
 
 (defn- start-video-loop 
     [locals video-id]
@@ -1358,6 +1380,7 @@
                         (reset! startTime (System/nanoTime))
                         (cond 
                             (= :play @playmode) (do (do (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) )                                                          
+                                                        (if (= @previousMode @playmode) nil (do (reset! bufferCtr 0) ))
                                                         (if (and (or (= @bufferCtr 0) (= @bufferCtr len) ) (= @isBuffering false) )
                                                             (do (reset! isBuffering true)
                                                                 ;(println "@bufferCtr " @bufferCtr) 
@@ -1369,8 +1392,10 @@
                                                                             (do (reset! frameCtr @(nth (:frame-start-video @locals) video-id))
                                                                                 (Thread/sleep 100)
                                                                                 (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))))
-                                                                    (reset! isBuffering false)))))
+                                                                    (reset! isBuffering false))))
+                                                            (do (Thread/sleep 10)))
                                                             (swap! frameCtr inc)
+                                                            (reset! previousMode :play)
                                                             (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr)))
                                                     (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
                             (= :pause @playmode)(do (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))
@@ -1385,56 +1410,46 @@
                                                                 (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                                                     (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx ) (mod x maxBufferLength )))
                                                                     (do (reset! frameCtr @(nth (:frame-start-video @locals) video-id))
-                                                                                    (Thread/sleep 100)
+                                                                                    (Thread/sleep 200)
                                                                                     (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))))))
                                                     (reset! frameCtr (oc-get-capture-property :pos-frames capture-video_i ))    
+                                                    ;(reset! previousMode :goto)
                                                     (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id)))
                             (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
-                                                             (do 
-                                                                (do (if (< 0 @bufferCtr ) (swap! bufferCtr dec) (reset! bufferCtr (- maxBufferLength 1)) ) 
-                                                                    ;(println "cc " @bufferCtr)
-                                                                    ;(println "asd " @isBuffering)
+                                                             (do
+                                                                (if (= @previousMode @playmode) nil (do (reset! bufferCtr 1) ))
+                                                                (do (if (< 0 @bufferCtr ) (swap! bufferCtr dec) (reset! bufferCtr (- maxBufferLength 1))) 
                                                                     (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))
-                                                                    
                                                                     (if (and (or (= @bufferCtr 0) (= @bufferCtr len) ) (= @isBuffering false) )
-                                                                            
-                                                                        (do 
-                                                                            
-                                                                            (reset! isBuffering true)
+                                                                        (do (reset! isBuffering true)
                                                                             (let [startFrame  @bufferCtr]
                                                                             (async/thread
-                                                                                (oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) ))
-                                                                                (Thread/sleep 100)
+                                                                                ;(oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) ))
+                                                                                (jumpFrame capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) )  @(nth (:frame-stop-video @locals) video-id))
+                                                                                (Thread/sleep 200)
                                                                                 (doseq [x (range startFrame (+ startFrame len))]
                                                                                     (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))
                                                                                         (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx ) (mod (+ x 0) maxBufferLength )))
                                                                                         (do     (reset! frameCtr @(nth (:frame-stop-video @locals) video-id))
-                                                                                                (Thread/sleep 100)
-                                                                                                (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
-                                                                                    )
-                                                                                )
-                                                                              (reset! isBuffering false)  
-                                                                            )
-                                                                            )
-                                                                        )
-                                                                    )
-                                                                    (swap! frameCtr dec)
-
-                                                                
-                                                                )
+                                                                                                (Thread/sleep 200)
+                                                                                                (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))))
+                                                                              (reset! isBuffering false)))))
+                                                                    (swap! frameCtr dec))
                                                                     (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))) 
                                                              )
                                                              (do  (reset! frameCtr @(nth (:frame-stop-video @locals) video-id))
                                                                     (println "stop frame " @(nth (:frame-stop-video @locals) video-id))
                                                                     (do (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-stop-video @locals) video-id))))
-                                                            ) 
+                                                            )
+                                                            (reset! previousMode :reverse)
                                                         )
-                             (= :fixedRange @playmode)(do (println "Not implemented") )                           
-                                                        
-                                                        
-                                                    ))
+                             (= :fixedRange @playmode)(do   
+                                                            (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))
+                                                            (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))))
                     (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
+       
+   
        
 (defn- check-video-idx 
    [locals video-id]
