@@ -266,7 +266,7 @@
 (defn oc-release [capture] (if (= nil capture) (println "nil camera") (.release capture)))
 
 (defn oc-query-frame [capture buffer] (let [flag (.read capture buffer)]
-                                            (if (= flag true) nil (println "flag "flag) )))
+                                            (if (= flag true) nil (Thread/sleep 100))))
 
 (defn oc-set-capture-property [dispatch capture val](case dispatch 
                                               :pos-msec
@@ -1380,7 +1380,7 @@
                         (reset! startTime (System/nanoTime))
                         (cond 
                             (= :play @playmode) (do (do (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) )                                                          
-                                                        (if (= @previousMode @playmode) nil (do (reset! bufferCtr 0) ))
+                                                        ;(if (= @previousMode @playmode) nil (do (reset! bufferCtr 0) ))
                                                         (if (and (or (= @bufferCtr 0) (= @bufferCtr len) ) (= @isBuffering false) )
                                                             (do (reset! isBuffering true)
                                                                 ;(println "@bufferCtr " @bufferCtr) 
