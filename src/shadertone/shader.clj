@@ -32,167 +32,168 @@
 ;; State Variables
 ;; a map of state variables for use in the gl thread
 (defonce default-state-values
-  {:active                  :no  ;; :yes/:stopping/:no
-   :width                   0
-   :height                  0
-   :title                   ""
-   :display-sync-hz         60 
-   :start-time              0
-   :last-time               0
-   :drawnFrameCount         (atom 0)
-   :elapsedTime             (atom 0)
-   :actuaFPS                (atom 0)
-   ;; mouse
-   :mouse-clicked           false
-   :mouse-pos-x             0
-   :mouse-pos-y             0
-   :mouse-ori-x             0
-   :mouse-ori-y             0
-   ;; geom ids
-   :vbo-id                  0
-   :vertices-count          0
-   ;; shader program
-   :shader-good             true ;; false in error condition
-   :shader-filename         nil
-   :shader-str-atom         (atom nil)
-   :shader-str              ""
-   :vs-id                   0
-   :fs-id                   0
-   :pgm-id                  0
-   ;; shader uniforms
-   :i-resolution-loc        0
-   :i-global-time-loc       0
-   :i-channel-time-loc      0
-   :i-mouse-loc             0
-   :i-channel-loc           [0 0 0 0]
-   ;V4l2 feeds
-   :i-cam-loc               [0 0 0 0 0]
-   :running-cam             [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :capture-cam             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+  { :active                  :no  ;; :yes/:stopping/:no
+    :width                   0
+    :height                  0
+    :title                   ""
+    :display-sync-hz         60 
+    :start-time              0
+    :last-time               0
+    :drawnFrameCount         (atom 0)
+    :elapsedTime             (atom 0)
+    :actuaFPS                (atom 0)
+    ;; mouse
+    :mouse-clicked           false
+    :mouse-pos-x             0
+    :mouse-pos-y             0
+    :mouse-ori-x             0
+    :mouse-ori-y             0
+    ;; geom ids
+    :vbo-id                  0
+    :vertices-count          0
+    ;; shader program
+    :shader-good             true ;; false in error condition
+    :shader-filename         nil
+    :shader-str-atom         (atom nil)
+    :shader-str              ""
+    :vs-id                   0
+    :fs-id                   0
+    :pgm-id                  0
+    ;; shader uniforms
+    :i-resolution-loc        0
+    :i-global-time-loc       0
+    :i-channel-time-loc      0
+    :i-mouse-loc             0
+    :i-channel-loc           [0 0 0 0]
+    ;V4l2 feeds
+    :i-cam-loc               [0 0 0 0 0]
+    :running-cam             [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :capture-cam             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    
+    :capture-buffer-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]       
+
+    :buffer-channel-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :frame-set-cam           [(atom false) (atom false) (atom false) (atom false) (atom false)]  
    
-   :capture-buffer-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :buffer-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :target-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :text-id-cam             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :internal-format-cam     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :format-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :fps-cam                 [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :buffer-length-cam       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)] 
 
-   :buffer-channel-cam      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :frame-set-cam           [(atom false) (atom false) (atom false) (atom false) (atom false)]  
-   
-   :buffer-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :target-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :text-id-cam             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :internal-format-cam     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :format-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :fps-cam                 [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :buffer-length-cam       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
+    ;Video feeds
+    :video-elapsed-times     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :video-buf-elapsed-times [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :i-video-loc             [0 0 0 0 0]
+    :running-video           [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :video-no-id             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :capture-video           [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
 
-   ;Video feeds
-   :video-elapsed-times     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :video-buf-elapsed-times [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :i-video-loc             [0 0 0 0 0]
-   :running-video           [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :video-no-id             [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :capture-video           [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
 
-   :capture-buffer-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-
-   :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :ff-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :bf-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :buffer-channel-video    [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :ff-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :bf-buffer-channel-video [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
   
-   :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
-   :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
-   :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :backwards-buffer-video  [(atom []) (atom []) (atom []) (atom []) (atom [])]
+    :forwards-buffer-video   [(atom []) (atom []) (atom []) (atom []) (atom [])]
+    :frame-set-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
 
-   :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :text-id-video           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :internal-format-video   [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :format-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :fps-video               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :width-video             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :height-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :frames-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
-   :frame-ctr-video         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :frame-change-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :frame-start-video       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
-   :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
-   :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-   :buffer-length-video     [(atom 5) (atom 5) (atom 5) (atom 5) (atom 5)]
+    :target-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :text-id-video           [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :internal-format-video   [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :format-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :fps-video               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :width-video             [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :height-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :frames-video            [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)] 
+    :frame-ctr-video         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :frame-change-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :frame-start-video       [(atom 1) (atom 1) (atom 1) (atom 1) (atom 1)]
+    :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
+    :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
+    :buffer-length-video     [(atom 5) (atom 5) (atom 5) (atom 5) (atom 5)]
    
-   :fixed-buffer-index      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-   :fixed-buffer-ready      [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :fixed-buffer-prepare    [(atom false) (atom false) (atom false) (atom false) (atom false)]
-   :fixed-buffer-frames-no  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :fixed-buffer-index      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :fixed-buffer-ready      [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :fixed-buffer-prepare    [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :fixed-buffer-frames-no  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :fixed-vec-buffers       [[(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])]]
 
 
    
-   ;Video analysis
-   :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
-   :redHistogram-video      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :greenHistogram-video    [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+    ;Video analysis
+    :applyAnalysis-video     [(atom []) (atom []) (atom []) (atom []) (atom [])]
+    :redHistogram-video      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+    :greenHistogram-video    [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+    :blueHistogram-video     [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
    
-   ;Camera Analysis
-   :applyAnalysis-cam       [(atom []) (atom []) (atom []) (atom []) (atom [])]
-   :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
-   :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
-   
-   ;Data Array
-   :dataArray               (vec (make-array Float/TYPE 256))
-   :i-dataArray-loc         0
-   :dataArrayBuffer            (-> (BufferUtils/createFloatBuffer 256)
-                                (.put (float-array
-                                   (vec (make-array Float/TYPE 256))))
+    ;Camera Analysis
+    :applyAnalysis-cam       [(atom []) (atom []) (atom []) (atom []) (atom [])]
+    :redHistogram-cam        [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+    :greenHistogram-cam      [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]
+    :blueHistogram-cam       [(atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256))) (atom (vec (make-array Float/TYPE 256)))]   
+    
+    ;Data Array
+    :dataArray               (vec (make-array Float/TYPE 256))
+    :i-dataArray-loc         0
+    :dataArrayBuffer            (-> (BufferUtils/createFloatBuffer 256)
+                                    (.put (float-array
+                                    (vec (make-array Float/TYPE 256))))
                                     (.flip))
-   ;Other
-   :tex-id-fftwave          0
-   :i-fftwave-loc           [0]
+    ;Other
+    :tex-id-fftwave          0
+    :i-fftwave-loc           [0]
    
 
    
-   :tex-id-previous-frame   0
-   :i-previous-frame-loc    [0]
+    :tex-id-previous-frame   0
+    :i-previous-frame-loc    [0]
    
-   :save-frames             (atom false)
-   :buffer-length-frames    100
-   :buffer-channel          (atom nil)
-   :buffer-writer           (atom nil)
-   :bytebuffer-frame        (atom nil)
-   :saveFPS                 (atom 25)
-   :save-buffer-filename    (atom "./tmp.avi")
-   :frameCount              (atom 0)
+    :save-frames             (atom false)
+    :buffer-length-frames    100
+    :buffer-channel          (atom nil)
+    :buffer-writer           (atom nil)
+    :bytebuffer-frame        (atom nil)
+    :saveFPS                 (atom 25)
+    :save-buffer-filename    (atom "./tmp.avi")
+    :frameCount              (atom 0)
    
-   :i-channel-res-loc       0
-   :i-date-loc              0
-   :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
-                                (.put (float-array
-                                   [0.0 0.0 0.0 0.0]))
+    :i-channel-res-loc       0
+    :i-date-loc              0
+    :channel-time-buffer     (-> (BufferUtils/createFloatBuffer 4)
+                                    (.put (float-array
+                                    [0.0 0.0 0.0 0.0]))
                                     (.flip))
-   :channel-res-buffer      (-> (BufferUtils/createFloatBuffer (* 4 12))
-                                (.put (float-array
-                                    [0.0 0.0 0.0
-                                    0.0 0.0 0.0
-                                    0.0 0.0 0.0
-                                    0.0 0.0 0.0]))
+    :channel-res-buffer      (-> (BufferUtils/createFloatBuffer (* 4 12))
+                                    (.put (float-array
+                                        [0.0 0.0 0.0
+                                        0.0 0.0 0.0
+                                        0.0 0.0 0.0
+                                        0.0 0.0 0.0]))
                                     (.flip))
-   ;; textures
-   :buffer-tex-channel      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
-   :tex-filenames           []
-   :tex-no-id               [nil nil nil nil nil]
-   :tex-ids                 []
-   :cams                    []
-   :videos                  []
-   :tex-types               [] ; :cubemap, :previous-frame
-   ;; a user draw function
-   :user-fn                 nil
-   ;; pixel read
-   :pixel-read-enable       false
-   :pixel-read-pos-x        0
-   :pixel-read-pos-y        0
-   :pixel-read-data         (-> (BufferUtils/createByteBuffer 3)
-                                (.put (byte-array (map byte [0 0 0])))
-                                (.flip))
+    ;; textures
+    :buffer-tex-channel      [(atom nil) (atom nil) (atom nil) (atom nil) (atom nil)]
+    :tex-filenames           []
+    :tex-no-id               [nil nil nil nil nil]
+    :tex-ids                 []
+    :cams                    []
+    :videos                  []
+    :tex-types               [] ; :cubemap, :previous-frame
+    ;; a user draw function
+    :user-fn                 nil
+    ;; pixel read
+    :pixel-read-enable       false
+    :pixel-read-pos-x        0
+    :pixel-read-pos-y        0
+    :pixel-read-data         (-> (BufferUtils/createByteBuffer 3)
+                                    (.put (byte-array (map byte [0 0 0])))
+                                    (.flip))
 })
 
 ;(org.opencv.imgcodecs.Imgcodecs/imread "./readme_header.jpg")
@@ -1319,9 +1320,6 @@
             capture-video_i     @(nth (:capture-video @the-window-state) video-id)
             frame               (if (< frame 0)  (- frame-count (+ pos  frame)) frame)
             frame-ctr-video     (:frame-ctr-video @the-window-state)]
-            
-            ;(reset! (nth (:frame-ctr-video @the-window-state) video-id) (max (mod frame frame-count) 1 ))
-            ;(reset! (nth (:play-mode-video @the-window-state) video-id) :goto)
             (max (mod frame frame-count) 1 )
             )
             
@@ -1329,9 +1327,15 @@
                
 (defn jumpFrame [capture-video  targetFrame  maxFrame] ( if (and (<  0 targetFrame) (<= targetFrame maxFrame)) 
                                                                         (oc-set-capture-property :pos-frames capture-video  (max (mod targetFrame maxFrame) 0 ))
-                                                                        (oc-set-capture-property :pos-frames capture-video  (max (mod (- maxFrame (Math/abs targetFrame) maxFrame) 0 ))
-                                                                        ) ))   
-
+                                                                        (oc-set-capture-property :pos-frames capture-video  (max (mod (- maxFrame (Math/abs targetFrame) maxFrame) 0 )))))   
+                                                                        
+(defn bufferSection [video-id active-buffer begin-frame maxBufferLength] 
+                    ( let [fixed_vec_buffers    (nth (:fixed-vec-buffers @the-window-state) video-id)
+                            video-filename      (:videos @the-window-state)
+                            video-filename_i    (get video-filename video-id)
+                            capture             (oc-capture-from-video video-filename_i)]))
+                                                                        
+                                                                        
 (defn- start-video-loop 
     [locals video-id]
     (let [  _                       (println "start video loop " video-id)
@@ -1347,8 +1351,13 @@
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)
            
             vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
-            fixed_vec_buffers       [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
-
+            ;fixed_vec_buffers       [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
+            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 0) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))))
+            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 1) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+            ;_                       (println " ss " (count (nth (nth (:fixed-vec-buffers @locals) video-id) 0 )))
+            ;_                       (println " ss " (count (nth (:fixed-vec-buffers @locals) video-id)))
+            fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
+            ;:fixed-vec-buffers
             isBuffering             (atom false)
             
             bufferCtr               (atom 0)
