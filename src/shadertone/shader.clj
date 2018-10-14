@@ -1329,11 +1329,18 @@
                                                                         (oc-set-capture-property :pos-frames capture-video  (max (mod targetFrame maxFrame) 0 ))
                                                                         (oc-set-capture-property :pos-frames capture-video  (max (mod (- maxFrame (Math/abs targetFrame) maxFrame) 0 )))))   
                                                                         
-(defn bufferSection [video-id active-buffer begin-frame maxBufferLength] 
-                    ( let [fixed_vec_buffers    (nth (:fixed-vec-buffers @the-window-state) video-id)
+(defn bufferSection [video-id active_buffer_idx begin-frame maxBufferLength] 
+                    ( let [ fixed_vec_buffers    (nth (:fixed-vec-buffers @the-window-state) video-id)
                             video-filename      (:videos @the-window-state)
                             video-filename_i    (get video-filename video-id)
-                            capture             (oc-capture-from-video video-filename_i)]))
+                            ;_                   (println "filename " video-filename_i)
+                            capture             (oc-capture-from-video video-filename_i)]
+                            (oc-set-capture-property :pos-frames capture  (max begin-frame 0 ))
+                            (doseq [x (range maxBufferLength)]
+                                (oc-query-frame capture (nth @(returnBuffer fixed_vec_buffers active_buffer_idx ) (mod x maxBufferLength )))
+                            )
+                            (oc-release capture)
+                            ))
                                                                         
                                                                         
 (defn- start-video-loop 
@@ -1352,8 +1359,8 @@
            
             vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
             ;fixed_vec_buffers       [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
-            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 0) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))))
-            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 1) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 0) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))
+            _                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 1) (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) 
             ;_                       (println " ss " (count (nth (nth (:fixed-vec-buffers @locals) video-id) 0 )))
             ;_                       (println " ss " (count (nth (:fixed-vec-buffers @locals) video-id)))
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
@@ -1438,7 +1445,9 @@
                                                             (reset! previousMode :reverse)
                                                         )
                              (= :fixedRange @playmode)(do   ;(if (< 0 @bufferCtr ) (swap! bufferCtr dec) (reset! bufferCtr (- maxBufferLength 1))) ;(mod @bufferCtr maxBufferLength)
-                                                            (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) (mod @bufferCtr maxBufferLength)))
+                                                            ;(println "asd " (count @(returnBuffer fixed_vec_buffers @active_buffer_idx)))
+                                                            (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) ) 
+                                                            (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active_buffer_idx) (mod @bufferCtr maxBufferLength)))
                                                             (Thread/sleep  (sleepTime @startTime (System/nanoTime) 60)))))
                     (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
