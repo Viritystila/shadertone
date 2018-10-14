@@ -120,11 +120,11 @@
     :buffer-length-video     [(atom 5) (atom 5) (atom 5) (atom 5) (atom 5)]
    
     :fixed-buffer-index      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
+    :active-fixed-buffer-idx [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :fixed-buffer-ready      [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :fixed-buffer-prepare    [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :fixed-buffer-frames-no  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :fixed-vec-buffers       [[(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])]]
-
 
    
     ;Video analysis
@@ -1341,6 +1341,9 @@
                             )
                             (oc-release capture)
                             ))
+
+(defn set-fixed-buffer-index [video-id] (let [fixed-buffer-index      (nth (:fixed-buffer-index @the-window-state) video-id)]) )
+                            
                                                                         
                                                                         
 (defn- start-video-loop 
@@ -1364,12 +1367,14 @@
             ;_                       (println " ss " (count (nth (nth (:fixed-vec-buffers @locals) video-id) 0 )))
             ;_                       (println " ss " (count (nth (:fixed-vec-buffers @locals) video-id)))
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
+            fixed-buffer-index      (nth (:fixed-buffer-index @locals) video-id)
+            active-fixed-buffer-idx (nth (:active-fixed-buffer-idx @locals) video-id)
             ;:fixed-vec-buffers
             isBuffering             (atom false)
             
             bufferCtr               (atom 0)
             active_buffer_idx       (atom 0)
-            active_fixed_buffer_idx (atom 0)
+            active-fixed-buffer-idx (atom 0)
             frameCtr                (atom 0)
             previousMode            (atom :play)] 
             (if (= true running-video_i) 
@@ -1446,9 +1451,9 @@
                                                         )
                              (= :fixedRange @playmode)(do   ;(if (< 0 @bufferCtr ) (swap! bufferCtr dec) (reset! bufferCtr (- maxBufferLength 1))) ;(mod @bufferCtr maxBufferLength)
                                                             ;(println "asd " (count @(returnBuffer fixed_vec_buffers @active_buffer_idx)))
-                                                            (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) ) 
-                                                            (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active_buffer_idx) (mod @bufferCtr maxBufferLength)))
-                                                            (Thread/sleep  (sleepTime @startTime (System/nanoTime) 60)))))
+                                                            (if (< @bufferCtr (- maxBufferLength 1)) (swap! fixed-buffer-index inc) (reset! fixed-buffer-index 0) ) 
+                                                            (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
+                                                            (Thread/sleep  (sleepTime @startTime (System/nanoTime) (:display-sync-hz @locals))))))
                     (oc-release capture-video_i))
                     (println "video loop stopped" video-id)))))   
        
