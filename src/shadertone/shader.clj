@@ -1342,7 +1342,13 @@
                             (oc-release capture)
                             ))
 
-(defn set-fixed-buffer-index [video-id] (let [fixed-buffer-index      (nth (:fixed-buffer-index @the-window-state) video-id)]) )
+(defn set-fixed-buffer-index [video-id mode] (let [ fixed-buffer-index      (nth (:fixed-buffer-index @the-window-state) video-id)
+                                                    maxBufferLength         (* 40 @(nth (:buffer-length-video @the-window-state) video-id))]
+                                                        (cond   (= :inc mode) (do (reset! fixed-buffer-index (mod (inc @fixed-buffer-index) maxBufferLength)))
+                                                                (= :dec mode) (do (reset! fixed-buffer-index (mod (dec @fixed-buffer-index) maxBufferLength)))
+                                                                (= :go mode)  (do (println "asdasd "))
+                                )
+                            ))
                             
                                                                         
                                                                         
@@ -1451,7 +1457,7 @@
                                                         )
                              (= :fixedRange @playmode)(do   ;(if (< 0 @bufferCtr ) (swap! bufferCtr dec) (reset! bufferCtr (- maxBufferLength 1))) ;(mod @bufferCtr maxBufferLength)
                                                             ;(println "asd " (count @(returnBuffer fixed_vec_buffers @active_buffer_idx)))
-                                                            (if (< @bufferCtr (- maxBufferLength 1)) (swap! fixed-buffer-index inc) (reset! fixed-buffer-index 0) ) 
+                                                            (if (< @fixed-buffer-index (- maxBufferLength 1)) (swap! fixed-buffer-index inc) (reset! fixed-buffer-index 0)) 
                                                             (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
                                                             (Thread/sleep  (sleepTime @startTime (System/nanoTime) (:display-sync-hz @locals))))))
                     (oc-release capture-video_i))
