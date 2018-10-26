@@ -148,11 +148,8 @@
     )
     :post-draw ;; unbind the texture
     (do
-      ;(print "@fftwave-tex-num" tex-id-i)
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-      ;(.rewind fftwave-float-buf)
-      ;
       )
     :destroy ;;
     (do
@@ -200,6 +197,15 @@
 
 (defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse video-id)))
 
+(defn bufferSection [video-id active_buffer_idx begin-frame] (s/bufferSection video-id active_buffer_idx begin-frame))
+
+(defn set-fixed-buffer-index    ([video-id mode] (s/set-fixed-buffer-index video-id mode))
+                                ([video-id mode frame ] (s/set-fixed-buffer-index video-id mode)))
+                                
+(defn set-video-fixed [video-id mode] (s/set-video-fixed video-id mode))
+
+(defn set-active-buffer-video [video-id newIdx] (s/setActiveBuffer video-id newIdx))
+
 (defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
 
 (defn getWindowState [] (s/getWindowState))
@@ -219,11 +225,6 @@
                                                         )))
 
 (defn toggle-analysis [video-id isVideo method] (if (= true (integer? video-id)) (s/toggle-analysis video-id isVideo method)))
-;(def ws (t/getWindowState))
-
-;(def rh (nth (:redHistogram @ws) 2))
-
-;(def bh (nth (:blueHistogram @ws) 2))
 
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
