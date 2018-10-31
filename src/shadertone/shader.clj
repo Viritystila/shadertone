@@ -1089,38 +1089,6 @@
 
 (defn returnBuffer [bufs idx] (nth bufs idx))
 
-   ;:fixed-buffer-prepare-cam             
-              
-;            startTime               (atom (System/nanoTime))
-;(reset! startTime (System/nanoTime))
-;                        (cond 
-;                            (= :play @playmode)  
-
-
-                             ;(= :fixedRange-fw @playmode)(do    (if (< @fixed-buffer-index (- maxBufferLength 1)) (swap! fixed-buffer-index inc) (reset! fixed-buffer-index 0)) 
-                             ;                                   (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
-                             ;                                   (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
-                             ;(= :fixedRange-bw @playmode)(do    (if (< @fixed-buffer-index (- maxBufferLength 1)) (swap! fixed-buffer-index dec) (reset! fixed-buffer-index 0)) 
-                             ;                                   (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
-                             ;                                   (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
-                             ;(= :fixedRange @playmode)(do       (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
-                             ;                                   (Thread/sleep  (sleepTime @startTime (System/nanoTime) (:display-sync-hz @locals))))
-                             
-                             ;                                           (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
-                             ;                                               (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx ) (mod x maxBufferLength )))
-                             ;                                               (do (reset! frameCtr @(nth (:frame-start-video @locals) video-id))
-                             ;                                                   (Thread/sleep 100)
-                             ;                                                   (oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id)))))
-                             
-   ;                          (defn- buffer-cam-texture 
-   ; [locals cam-id capture-cam]
-   ; (let [  image               (oc-new-mat)
-   ;         imageP              (oc-query-frame capture-cam image)
-   ;         _                   (apply-analysis image locals cam-id false)
-   ;         cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
-   ;         (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
-   ;         ))
-
 (defn queue-cam [locals cam-id image capture-cam] (let [imageP              (oc-query-frame capture-cam image)
                                                         _                   (apply-analysis image locals cam-id false)
                                                         cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
@@ -1137,16 +1105,20 @@
                                             (= :bw mode) (reset! (nth (:play-mode-cam @the-window-state) cam-id) :fixedRange-bw))
                                             (println mode))
                                             
-(defn setActiveBuffer-cam [video-id newIdx] (let [actBuf (nth (:active-fixed-buffer-idx-cam @the-window-state) video-id)
+(defn set-active-buffer-cam [video-id newIdx] (let [actBuf (nth (:active-fixed-buffer-idx-cam @the-window-state) video-id)
                                      maxIdx 5]
                                     (reset! actBuf (mod newIdx maxIdx))))
 
-;:play-mode-cam
-;(defn setActiveBuffer [video-id newIdx] (let [actBuf (nth (:active-fixed-buffer-idx @the-window-state) video-id)
-;                                     maxIdx 5]
-;                                    (reset! actBuf (mod newIdx maxIdx))))
-
-                ;(nth @(returnBuffer vec_buffers @active_buffer_idx ) (mod x maxBufferLength ))
+                                    
+                                    
+(defn set-fixed-buffer-index-cam ([cam-id mode] (let [  fixed-buffer-index      (nth (:fixed-buffer-index-cam @the-window-state) cam-id)
+                                                        maxBufferLength         @(nth (:buffer-length-cam @the-window-state) cam-id)]
+                                                        (cond   (= :inc mode) (do (reset! fixed-buffer-index (mod (inc @fixed-buffer-index) maxBufferLength)))
+                                                                (= :dec mode) (do (reset! fixed-buffer-index (mod (dec @fixed-buffer-index) maxBufferLength))))))
+                                ( [cam-id mode frame ] (let [ fixed-buffer-index      (nth (:fixed-buffer-index-cam @the-window-state) cam-id)
+                                                                maxBufferLength         @(nth (:buffer-length-cam @the-window-state) cam-id)]
+                                                                (cond   (= :ff mode) (do (reset! fixed-buffer-index (mod frame maxBufferLength)))))))
+                                    
 (defn- start-cam-loop-thread [locals cam-id]
     (let [  _                       (println "start cam loop " cam-id)
             running-cam_i           @(nth (:running-cam @locals) cam-id)

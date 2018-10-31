@@ -206,6 +206,15 @@
 
 (defn set-active-buffer-video [video-id newIdx] (s/setActiveBuffer video-id newIdx))
 
+(defn record-cam [cam-id buffer_idx] (s/record-cam cam-id buffer_idx))
+
+(defn set-fixed-cam [cam-id mode] (s/set-fixed-cam cam-id mode))
+
+(defn set-active-buffer-cam [video-id newIdx](s/set-active-buffer-cam video-id newIdx))
+
+(defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode) )
+                                 ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame)))
+
 (defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
 
 (defn getWindowState [] (s/getWindowState))
