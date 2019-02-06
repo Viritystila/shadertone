@@ -12,8 +12,8 @@
                  [hello_lwjgl/lwjgl   "2.9.1"]
                  [overtone            "0.10.3"]
                  [watchtower          "0.1.1"]
-                 [opencv/opencv "4.0.0-a-linux"]
-                 [opencv/opencv-native "4.0.0-a-linux"]
+                 [opencv/opencv "4.0.1-linux"]
+                 [opencv/opencv-native "4.0.1-linux"]
                  ]
 
   :main ^{:skip-aot true} shadertone.core

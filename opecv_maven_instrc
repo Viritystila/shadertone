@@ -13,12 +13,12 @@ mvn install:install-file -DgroupId=opencv -DartifactId=opencv -Dversion=3.4.0-li
 mvn install:install-file -DgroupId=opencv -DartifactId=opencv-native -Dversion=3.4.0-linux -Dfile=opencv-native-linux.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=/home/mikael/Viritystila/OpenCV/  -DcreateChecksum=true
 
 
-#4.0.0-a
+#4.0.1
 # or on linux
 mkdir -p native/linux/x86_64
-cp ./lib/libopencv_java400.so native/linux/x86_64/
+cp ./lib/libopencv_java401.so native/linux/x86_64/
 jar -cMf opencv-native-linux.jar native
 
-mvn install:install-file -DgroupId=opencv -DartifactId=opencv -Dversion=4.0.0-a-linux -Dfile=opencv-400.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=/home/mikael/Viritystila/OpenCV/  -DcreateChecksum=true
+mvn install:install-file -DgroupId=opencv -DartifactId=opencv -Dversion=4.0.1-linux -Dfile=opencv-401.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=/home/mikael/Viritystila/OpenCV/  -DcreateChecksum=true
 
-mvn install:install-file -DgroupId=opencv -DartifactId=opencv-native -Dversion=4.0.0-a-linux -Dfile=opencv-native-linux.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=/home/mikael/Viritystila/OpenCV/  -DcreateChecksum=true
+mvn install:install-file -DgroupId=opencv -DartifactId=opencv-native -Dversion=4.0.1-linux -Dfile=opencv-native-linux.jar -Dpackaging=jar -DgeneratePom=true -DlocalRepositoryPath=/home/mikael/Viritystila/OpenCV/  -DcreateChecksum=true

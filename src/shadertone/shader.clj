@@ -311,8 +311,8 @@
                                               :frame-count
                                               (.set capture org.opencv.videoio.Videoio/CAP_PROP_FRAME_COUNT  val)    
 
-                                              :format
-                                              (.set capture org.opencv.videoio.Videoio/CV_CAP_PROP_FORMAT)
+;;                                               :format
+;;                                               (.set capture org.opencv.videoio.Videoio/CV_CAP_PROP_FORMAT)
                                               
                                               :brightness
                                               (.set capture org.opencv.videoio.Videoio/CAP_PROP_BRIGHTNESS   val)          
@@ -353,8 +353,8 @@
                                               :frame-count
                                               (.get capture org.opencv.videoio.Videoio/CAP_PROP_FRAME_COUNT)     
                                               
-                                              :format
-                                              (.get capture org.opencv.videoio.Videoio/CV_CAP_PROP_FORMAT)
+;;                                               :format
+;;                                               (.get capture org.opencv.videoio.Videoio/CV_CAP_PROP_FORMAT)
                                               
                                               :brightness
                                               (.get capture org.opencv.videoio.Videoio/CAP_PROP_BRIGHTNESS)          
@@ -1115,7 +1115,7 @@
                                                         maxBufferLength         @(nth (:buffer-length-cam @the-window-state) cam-id)]
                                                         (cond   (= :inc mode) (do (reset! fixed-buffer-index (mod (inc @fixed-buffer-index) maxBufferLength)))
                                                                 (= :dec mode) (do (reset! fixed-buffer-index (mod (dec @fixed-buffer-index) maxBufferLength))))))
-                                ( [cam-id mode frame ] (let [ fixed-buffer-index      (nth (:fixed-buffer-index-cam @the-window-state) cam-id)
+                                ( [cam-id mode frame] (let [ fixed-buffer-index      (nth (:fixed-buffer-index-cam @the-window-state) cam-id)
                                                                 maxBufferLength         @(nth (:buffer-length-cam @the-window-state) cam-id)]
                                                                 (cond   (= :ff mode) (do (reset! fixed-buffer-index (mod frame maxBufferLength)))))))
                                     

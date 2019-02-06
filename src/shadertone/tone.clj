@@ -200,7 +200,7 @@
 (defn bufferSection [video-id active_buffer_idx begin-frame] (s/bufferSection video-id active_buffer_idx begin-frame))
 
 (defn set-fixed-buffer-index    ([video-id mode] (s/set-fixed-buffer-index video-id mode))
-                                ([video-id mode frame ] (s/set-fixed-buffer-index video-id mode)))
+                                ([video-id mode frame] (s/set-fixed-buffer-index video-id mode frame)))
                                 
 (defn set-video-fixed [video-id mode] (s/set-video-fixed video-id mode))
 
