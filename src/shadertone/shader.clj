@@ -688,8 +688,13 @@
         tex-filenames       (fill-filenames tex-filenames no-textures)
         videos              (fill-filenames videos no-videos)
         cams                (sort-cams cams)
+        _ (println "cams sorted")
         tttt                (sort-videos locals videos)
-        tex-types           (map get-texture-type tex-filenames)]
+                _ (println "videos sorted")
+
+        tex-types           (map get-texture-type tex-filenames)
+                _ (println "textures sorted")
+]
     (swap! locals
            assoc
            :active          :yes
@@ -707,17 +712,36 @@
            :tex-types       tex-types
            :user-fn         user-fn)
     ;; slurp-fs requires :tex-types, so we need a 2 pass setup
+    _ (println "bein shader slurping")
     (let [shader-str (if (nil? shader-filename)
                        @shader-str-atom
                        (slurp-fs locals (:shader-filename @locals)))]
+                                 _ (println "fisinhed shader slurping")
+
       (swap! locals assoc :shader-str shader-str)
+                      _ (println "HERE 1" display-mode)
+                                            _ (println display-mode)
+
       (Display/setDisplayMode display-mode)
+                            _ (println "HERE 2")
+
       (when true-fullscreen?
         (Display/setFullscreen true))
+                              _ (println "HERE 3")
+
       (Display/setTitle title)
+                            _ (println "HERE 4")
+
       (Display/setVSyncEnabled true)
+                            _ (println "HERE 5")
+
       (Display/setLocation 0 0)
-      (Display/create pixel-format context-attributes))
+                            _ (println "HERE 6")
+
+      (Display/create pixel-format context-attributes)
+                _ (println "finish display")
+
+)
       ))
       
       
@@ -2175,13 +2199,14 @@
      :or {width           600
           height          600
           title           "shadertone"
-          display-sync-hz 60
+          display-sync-hz 60.
           textures        []
           cams            []
           videos          []        
           user-data       {}
           user-fn         shader-default-fn}}]
-  (let [mode (DisplayMode. width height)]
+  (let [mode (Display/getDisplayMode)
+        mode (DisplayMode. width height)]
     ;(decorate-display!)
     (undecorate-display!)
     (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))
