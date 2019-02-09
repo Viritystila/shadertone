@@ -16,6 +16,11 @@
     [org.opencv.utils.Converters]
     [org.opencv.imgproc Imgproc]
     [org.opencv.imgcodecs Imgcodecs]
+    [org.bytedeco.javacpp Pointer]
+    [org.bytedeco.javacpp BytePointer]
+    [org.bytedeco.javacpp v4l2]
+    [org.bytedeco.javacpp Loader]
+           ;s(org.bytedeco.javacpp Pointer BytePointer v4l2 Loader)
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
@@ -203,6 +208,47 @@
                                     (.put (byte-array (map byte [0 0 0])))
                                     (.flip))
 })
+
+
+(defn v4l2test [input output w h] (let [
+                                    ;input
+                                    in_fd           (org.bytedeco.javacpp.v4l2/v4l2_open input 02)
+                                    cap             (new org.bytedeco.javacpp.v4l2$v4l2_capability)
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_QUERYCAP) cap)
+                                    _               (println "VIDIOC_QUERYCAP: " flag)
+                                    v4l2_format     (new org.bytedeco.javacpp.v4l2$v4l2_format)
+                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_CAPTURE))
+                                    v4l2_pix_format (new org.bytedeco.javacpp.v4l2$v4l2_pix_format)
+                                    _               (.pixelformat v4l2_pix_format (long org.bytedeco.javacpp.v4l2/V4L2_PIX_FMT_YUV422P))
+                                    _               (.width v4l2_pix_format w)
+                                    _               (.height v4l2_pix_format h)
+                                    minsize         (* 2 (.width v4l2_pix_format))
+                                    _               (if (< (.bytesperline v4l2_pix_format) minsize) (.bytesperline v4l2_pix_format minsize))
+                                    minsize         (* (.height v4l2_pix_format) (.bytesperline v4l2_pix_format))
+                                    _               (if (< (.sizeimage v4l2_pix_format) minsize) (.sizeimage v4l2_pix_format minsize))
+                                    _               (.fmt_pix v4l2_format v4l2_pix_format)
+                                    _  (println "fesd" (.type v4l2_format))
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
+                                    _               (println "VIDIOC_S_FMT: " flag)
+                                    
+                                    bff             (new org.bytedeco.javacpp.BytePointer minsize)
+                                    
+                                    ;output
+                                    out_fd           (org.bytedeco.javacpp.v4l2/v4l2_open output 02)
+                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_OUTPUT))
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl out_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
+                                    _               (println "VIDIOC_S_FMT: " flag)
+                                    
+                                    ;flag            (org.bytedeco.javacpp.v4l2/v4l2_close in_fd)
+                                    ;flag            (org.bytedeco.javacpp.v4l2/v4l2_close out_fd)
+]
+(doseq [x (range 30000)]
+    (org.bytedeco.javacpp.v4l2/v4l2_read in_fd bff (long minsize))   
+    (org.bytedeco.javacpp.v4l2/v4l2_write out_fd bff (long minsize))  
+)
+(org.bytedeco.javacpp.v4l2/v4l2_close in_fd)
+(org.bytedeco.javacpp.v4l2/v4l2_close out_fd)
+)  )
 
 ;(org.opencv.imgcodecs.Imgcodecs/imread "./readme_header.jpg")
 
