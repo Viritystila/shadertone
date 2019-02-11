@@ -15,8 +15,8 @@
                  [org.viritystila/opencv "4.0.1-linux"]
                  [org.viritystila/opencv-native "4.0.1-linux"]
                  [org.bytedeco/javacpp "1.4.5-SNAPSHOT"]
-                 [org.bytedeco.javacpp-presets/v4l2 "Latest-1.4.5-SNAPSHOT"]
-                 [org.bytedeco.javacpp-presets/v4l2-platform "Latest-1.4.5-SNAPSHOT"]
+                 [org.viritystila/v4l2 "Latest-1.4.5-SNAPSHOT"]
+                 [org.viritystila/v4l2-platform "Latest-1.4.5-SNAPSHOT"]
                  ]
 
   :main ^{:skip-aot true} shadertone.core
