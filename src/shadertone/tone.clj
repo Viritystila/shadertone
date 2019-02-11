@@ -235,6 +235,8 @@
 
 (defn toggle-analysis [video-id isVideo method] (if (= true (integer? video-id)) (s/toggle-analysis video-id isVideo method)))
 
+(defn toggle-recording [device] (s/toggle-recording device))
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))

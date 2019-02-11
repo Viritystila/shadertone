@@ -41,7 +41,7 @@
     :width                   0
     :height                  0
     :title                   ""
-    :display-sync-hz         60 
+    :display-sync-hz         30 
     :start-time              0
     :last-time               0
     :drawnFrameCount         (atom 0)
@@ -207,50 +207,15 @@
     :pixel-read-data         (-> (BufferUtils/createByteBuffer 3)
                                     (.put (byte-array (map byte [0 0 0])))
                                     (.flip))
+                                    
+    ; V4l2 output
+    :deviceName             (atom "/dev/video3")
+    :deviceId               (atom 0)
+    :minsize                (atom 0)
+    :bff                    (atom 0)
+    :isInitialized          (atom false)
 })
 
-
-(defn v4l2test [input output w h] (let [
-                                    ;input
-                                    in_fd           (org.bytedeco.javacpp.v4l2/v4l2_open input 02)
-                                    cap             (new org.bytedeco.javacpp.v4l2$v4l2_capability)
-                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_QUERYCAP) cap)
-                                    _               (println "VIDIOC_QUERYCAP: " flag)
-                                    v4l2_format     (new org.bytedeco.javacpp.v4l2$v4l2_format)
-                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_CAPTURE))
-                                    v4l2_pix_format (new org.bytedeco.javacpp.v4l2$v4l2_pix_format)
-                                    _               (.pixelformat v4l2_pix_format (long org.bytedeco.javacpp.v4l2/V4L2_PIX_FMT_YUV422P))
-                                    _               (.width v4l2_pix_format w)
-                                    _               (.height v4l2_pix_format h)
-                                    minsize         (* 2 (.width v4l2_pix_format))
-                                    _               (if (< (.bytesperline v4l2_pix_format) minsize) (.bytesperline v4l2_pix_format minsize))
-                                    minsize         (* (.height v4l2_pix_format) (.bytesperline v4l2_pix_format))
-                                    _               (if (< (.sizeimage v4l2_pix_format) minsize) (.sizeimage v4l2_pix_format minsize))
-                                    _               (.fmt_pix v4l2_format v4l2_pix_format)
-                                    _  (println "fesd" (.type v4l2_format))
-                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
-                                    _               (println "VIDIOC_S_FMT: " flag)
-                                    
-                                    bff             (new org.bytedeco.javacpp.BytePointer minsize)
-                                    
-                                    ;output
-                                    out_fd           (org.bytedeco.javacpp.v4l2/v4l2_open output 02)
-                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_OUTPUT))
-                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl out_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
-                                    _               (println "VIDIOC_S_FMT: " flag)
-                                    
-                                    ;flag            (org.bytedeco.javacpp.v4l2/v4l2_close in_fd)
-                                    ;flag            (org.bytedeco.javacpp.v4l2/v4l2_close out_fd)
-]
-(doseq [x (range 30000)]
-    (org.bytedeco.javacpp.v4l2/v4l2_read in_fd bff (long minsize))   
-    (org.bytedeco.javacpp.v4l2/v4l2_write out_fd bff (long minsize))  
-)
-(org.bytedeco.javacpp.v4l2/v4l2_close in_fd)
-(org.bytedeco.javacpp.v4l2/v4l2_close out_fd)
-)  )
-
-;(org.opencv.imgcodecs.Imgcodecs/imread "./readme_header.jpg")
 
 ;; GLOBAL STATE ATOMS
 ;; Tried to get rid of this atom, but LWJGL is limited to only
@@ -277,6 +242,76 @@
 (def no-cams 5)
 ;Number of video -feeds
 (def no-videos 5)
+
+
+(defn openV4L2output [device] (let [h        (:height @the-window-state)
+                                   w        (:width @the-window-state)
+                                   in_fd           (org.bytedeco.javacpp.v4l2/v4l2_open device 02)
+                                   cap             (new org.bytedeco.javacpp.v4l2$v4l2_capability)
+                                   flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_QUERYCAP) cap)
+                                   _               (println "VIDIOC_QUERYCAP: " flag)
+                                   v4l2_format     (new org.bytedeco.javacpp.v4l2$v4l2_format)
+                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_OUTPUT))
+                                    v4l2_pix_format (new org.bytedeco.javacpp.v4l2$v4l2_pix_format)
+                                    _               (.pixelformat v4l2_pix_format (long org.bytedeco.javacpp.v4l2/V4L2_PIX_FMT_RGB24))
+                                    _               (.width v4l2_pix_format w)
+                                    _               (.height v4l2_pix_format h)
+                                    minsize         (* 3 (.width v4l2_pix_format))
+                                    _               (if (< (.bytesperline v4l2_pix_format) minsize) (.bytesperline v4l2_pix_format minsize))
+                                    minsize         (* (.height v4l2_pix_format) (.bytesperline v4l2_pix_format))
+                                    _               (if (< (.sizeimage v4l2_pix_format) minsize) (.sizeimage v4l2_pix_format minsize))
+                                    _               (.fmt_pix v4l2_format v4l2_pix_format)    
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
+                                    _               (println "VIDIOC_S_FMT: " flag)
+                                    bff             (new org.bytedeco.javacpp.BytePointer minsize)]
+(reset! (:deviceName @the-window-state) device)
+(reset! (:deviceId @the-window-state) in_fd)
+(reset! (:minsize @the-window-state) minsize)
+(reset! (:bff @the-window-state) bff)
+(reset! (:isInitialized @the-window-state) true)
+))
+
+(defn closeV4L2output [] (org.bytedeco.javacpp.v4l2/v4l2_close @(:deviceId @the-window-state))
+                              (reset! (:isInitialized @the-window-state) false))
+
+(defn v4l2test [input output w h] (let [
+                                    ;input
+                                    in_fd           (org.bytedeco.javacpp.v4l2/v4l2_open input 02)
+                                    cap             (new org.bytedeco.javacpp.v4l2$v4l2_capability)
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_QUERYCAP) cap)
+                                    _               (println "VIDIOC_QUERYCAP: " flag)
+                                    v4l2_format     (new org.bytedeco.javacpp.v4l2$v4l2_format)
+                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_CAPTURE))
+                                    v4l2_pix_format (new org.bytedeco.javacpp.v4l2$v4l2_pix_format)
+                                    _               (.pixelformat v4l2_pix_format (long org.bytedeco.javacpp.v4l2/V4L2_PIX_FMT_YUV422P))
+                                    _               (.width v4l2_pix_format w)
+                                    _               (.height v4l2_pix_format h)
+                                    minsize         (* 2 (.width v4l2_pix_format))
+                                    _               (if (< (.bytesperline v4l2_pix_format) minsize) (.bytesperline v4l2_pix_format minsize))
+                                    minsize         (* (.height v4l2_pix_format) (.bytesperline v4l2_pix_format))
+                                    _               (if (< (.sizeimage v4l2_pix_format) minsize) (.sizeimage v4l2_pix_format minsize))
+                                    _               (.fmt_pix v4l2_format v4l2_pix_format)
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
+                                    _               (println "VIDIOC_S_FMT: " flag)
+                                    
+                                    bff             (new org.bytedeco.javacpp.BytePointer minsize)
+                                    
+                                    ;output
+                                    out_fd           (org.bytedeco.javacpp.v4l2/v4l2_open output 02)
+                                    _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_OUTPUT))
+                                    flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl out_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
+                                    _               (println "VIDIOC_S_FMT: " flag)
+                                    
+]
+(doseq [x (range 3000)]
+    (org.bytedeco.javacpp.v4l2/v4l2_read in_fd bff (long minsize))   
+    (org.bytedeco.javacpp.v4l2/v4l2_write out_fd bff (long minsize))  
+)
+(org.bytedeco.javacpp.v4l2/v4l2_close in_fd)
+(org.bytedeco.javacpp.v4l2/v4l2_close out_fd)
+)  )
+
+;(org.opencv.imgcodecs.Imgcodecs/imread "./readme_header.jpg")
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;General use functions
@@ -996,13 +1031,14 @@
 ;;Previous frame functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;; 
        
-(defn- buffer-frame
-    [locals frame]
-    (let [  buff-channel        (:buffer-channel @locals) 
-            data                (byte-array (.remaining frame))
-            _                   (.get frame data)
-            _                   (.flip frame)]
-            (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))))
+;; (defn- buffer-frame
+;;     [locals frame]
+;;     (let [  buff-channel        (:buffer-channel @locals)
+;;             ;bff                 (new Byt
+;;             data                (byte-array (.remaining frame))
+;;             _                   (.get frame data)
+;;             _                   (.flip frame)]
+;;             (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))))
 
 
             
@@ -1040,35 +1076,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;Save video functions
 ;;;;;;;;;;;;;;;;;;;;;;            
-(defn- start-save-loop-go [](async/thread 
-                                    (let [wrtr @(:buffer-writer @the-window-state)] 
-                                        (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
-                                         (.write wrtr (process-frame frame))))))
-                            
-                             
-(defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false)
-                        (async/close! @(:buffer-channel @the-window-state)))
+;; (defn- start-save-loop-go [](async/thread 
+;;                                     (let [bff @(:bff @the-window-state)
+;;                                          minsize @(:minsize @the-window-state)
+;;                                          out_fd @(:deviceId @the-window-state)] 
+;;                                         (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
+;;                                          ;(println frame)
+;;                                          (.put bff frame 0 minsize)
+;;                                          (org.bytedeco.javacpp.v4l2/v4l2_write out_fd bff (long minsize))
+;;                                          ;(.write wrtr (process-frame frame))
+;;                                          
+;;                                          ))))
+;;                             
+;;                              
+;; (defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false)
+;;                         (async/close! @(:buffer-channel @the-window-state)))
+;;  
+;;  
+;; (defn record-settings [filename, fps]    (reset! (:saveFPS @the-window-state) fps)
+;;                                         (reset! (:save-buffer-filename @the-window-state) filename))
  
- 
-(defn record-settings [filename fps]    (reset! (:saveFPS @the-window-state) fps)
-                                        (reset! (:save-buffer-filename @the-window-state) filename))
- 
-(defn toggle-recording [] (let [    save    (:save-frames @the-window-state)
-                                    writer  (:buffer-writer @the-window-state)
-                                    bfl     (:buffer-length-frames @the-window-state)
-                                    _       (reset! (:buffer-channel @the-window-state) (async/chan (async/dropping-buffer bfl)))]                         
+(defn toggle-recording [device] (let [    save    (:save-frames @the-window-state)
+                                    ;writer  (:buffer-writer @the-window-state)
+                                    ;bfl     (:buffer-length-frames @the-window-state)
+                                    ;_       (reset! (:buffer-channel @the-window-state) (async/chan (async/buffer bfl)))
+                                    ]                         
                             (if (= false @save) 
                                 (do 
+                                    (openV4L2output device) 
                                     (println "Start recording")
-                                    (oc-initialize-write-to-file)
+                                    ;(oc-initialize-write-to-file)
                                     (reset! (:save-frames @the-window-state) true )
-                                    (start-save-loop-go)
+                                    ;(start-save-loop-go)
                                     )
                                 (do (println "Stop recording")
+                                    
                                     (reset! (:save-frames @the-window-state) false )
-                                    (stop-save-loop)
+                                    (closeV4L2output)
+                                    ;(stop-save-loop)
                                     (Thread/sleep 100)
-                                    (.release @writer)) 
+                                    ;(.release @writer)
+                                    ) 
                                 )))   
 
 ;;;;;;;;;;;;;;;;;;
@@ -1899,19 +1947,25 @@
 
     (GL20/glUseProgram 0)
     (except-gl-errors "@ draw after post-draw")
-    ;Copying the previous image to its own texture
+                ;Copying the previous image to its own texture            
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
     (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
     (if @save-frames
         (do ; download it
+                ;Copying the previous image to its own texture
+
+            
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+            ;@(:bff @the-window-state)
+            (org.bytedeco.javacpp.v4l2/v4l2_write @(:deviceId @the-window-state) (new org.bytedeco.javacpp.BytePointer @bytebuffer-frame) (long  @(:minsize @the-window-state)))
             ; and save it to a video to a file
-            (buffer-frame locals @bytebuffer-frame))
+            ;(buffer-frame locals @bytebuffer-frame)
+            )
           nil)
                     
     (except-gl-errors "@ draw after copy")
@@ -1981,7 +2035,8 @@
         (if (= @i nil) (println "no video")  (do (release-video-textures @i))))
     (swap! locals assoc :videos (vec (replicate no-videos nil)))
     ;stop recording
-    (if @(:save-frames @locals) (toggle-recording))
+    ;(if @(:save-frames @locals) (toggle-recording  @(:device @the-window-state)))
+    (closeV4L2output)
     ;; Delete any user state
     (when user-fn
       (user-fn :destroy pgm-id (:tex-id-fftwave @locals)))
@@ -2245,7 +2300,7 @@
      :or {width           600
           height          600
           title           "shadertone"
-          display-sync-hz 60.
+          display-sync-hz 30
           textures        []
           cams            []
           videos          []        
