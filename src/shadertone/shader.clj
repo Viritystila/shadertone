@@ -1661,14 +1661,15 @@
     [locals video-id]
     (let [  running-video_i     @(nth (:running-video @locals) video-id)
             capture-video_i     @(nth (:capture-video @locals) video-id)
-            cur-fps             @(nth (:fps-video @locals) video-id) ;(oc-get-capture-property :fps capture-video_i )
-            frame-duration      (* 1E9 (/ 1 cur-fps))
-            cur-time            (System/nanoTime)
-            elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
+            ;cur-fps             @(nth (:fps-video @locals) video-id) ;(oc-get-capture-property :fps capture-video_i )
+            ;frame-duration      (* 1E9 (/ 1 cur-fps))
+            ;cur-time            (System/nanoTime)
+            ;elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
             image               (async/poll! @(nth (:buffer-channel-video @locals) video-id))]
             (if (and (= true running-video_i) (not (nil? image)))
                 (do (set-video-opengl-texture locals video-id image) 
-                    (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime))) 
+                    ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime))
+                    ) 
                 nil)))
                              
 (defn- loop-get-video-textures 
@@ -1688,13 +1689,13 @@
                 (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/buffer 1))))
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
-                (reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
+                ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
                 (reset! (nth (:video-buf-elapsed-times @locals) video-id)  (System/nanoTime) )
 
                 (check-video-idx locals video-id))))    
        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;                                                        
-;;GL drawing stuf;;;;;;;;;
+;;GL drawing stuff;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
       
 (defn- init-gl
