@@ -89,7 +89,7 @@
     :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :play-mode-cam           [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :fixedRange-fw, :fixedRange-bw, :fixedRange
-    :buffer-length-cam       [(atom 200) (atom 200) (atom 200) (atom 200) (atom 200)] 
+    :buffer-length-cam       [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)] 
     
     :fixed-buffer-index-cam         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :active-fixed-buffer-idx-cam    [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -130,7 +130,7 @@
     :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
     :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-    :buffer-length-video     [(atom 200) (atom 200) (atom 200) (atom 200) (atom 200)]
+    :buffer-length-video     [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)]
    
     :fixed-buffer-index      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :active-fixed-buffer-idx [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -164,10 +164,9 @@
     :i-fftwave-loc           [0]
    
 
-   
+    ;Previous frame
     :tex-id-previous-frame   0
     :i-previous-frame-loc    [0]
-   
     :save-frames             (atom false)
     :buffer-length-frames    100
     :buffer-channel          (atom nil)
@@ -176,6 +175,18 @@
     :saveFPS                 (atom 25)
     :save-buffer-filename    (atom "./tmp.avi")
     :frameCount              (atom 0)
+   
+    ;Test texture
+    :tex-id-text-texture     0
+    :i-text-loc              [0]
+    :target-text-tex          (atom 0)
+    :internal-format-text-tex (atom 0)
+    :format-text-tex          (atom 0)
+    :channels-text-tex        (atom 0)
+    :width-text-tex          (atom 0)
+    :height-text-tex          (atom 0)
+    :text-tex-mat            (atom 0)
+    :bytebuffer-text         (atom nil)
    
     :i-channel-res-loc       0
     :i-date-loc              0
@@ -340,16 +351,16 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;;OPENCV 3 functions
 ;;;;;;;;;;;;;;;;;;;;
-(defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
-                                            fourcc      (org.opencv.videoio.VideoWriter/fourcc \D \I \V \X ) ; \M \J \P \G )
-                                            fps         @(:saveFPS @the-window-state)
-                                            height      (:height @the-window-state)
-                                            width       (:width @the-window-state) ;:buffer-writer
-                                            mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-                                            vw          (new org.opencv.videoio.VideoWriter filename fourcc fps (.size mat))
-                                            ;vw          (new org.opencv.videoio.VideoWriter) ;Gstreamer example
-                                            ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-                                            _           (reset! (:buffer-writer @the-window-state) vw)]))
+;; (defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
+;;                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \D \I \V \X ) ; \M \J \P \G )
+;;                                             fps         @(:saveFPS @the-window-state)
+;;                                             height      (:height @the-window-state)
+;;                                             width       (:width @the-window-state) ;:buffer-writer
+;;                                             mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+;;                                             vw          (new org.opencv.videoio.VideoWriter filename fourcc fps (.size mat))
+;;                                             ;vw          (new org.opencv.videoio.VideoWriter) ;Gstreamer example
+;;                                             ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
+;;                                             _           (reset! (:buffer-writer @the-window-state) vw)]))
 
 
 (defn oc-capture-from-cam [cam-id] (let [           vc  (new org.opencv.videoio.VideoCapture)
@@ -736,6 +747,7 @@
                       "uniform sampler2D iFftWave; \n"
                       "uniform float iDataArray[256]; \n"
                       "uniform sampler2D iPreviousFrame; \n"
+                      "uniform sampler2D iText; \n"
                       "\n"
                       (slurp filename))]
     file-str))
@@ -925,8 +937,11 @@
             i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
 
             i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
+            
+            i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")
             _ (except-gl-errors "@ end of let init-shaders")
             ]
+            
         (swap! locals
                assoc
                :shader-good true
@@ -941,6 +956,7 @@
                :i-fftwave-loc [i-fftwave-loc]
                :i-dataArray-loc i-dataArray-loc
                :i-previous-frame-loc [i-previous-frame-loc]
+               :i-text-loc           [i-text-loc]
                :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
                :i-channel-res-loc i-channel-res-loc
@@ -1030,17 +1046,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Previous frame functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;; 
-       
-;; (defn- buffer-frame
-;;     [locals frame]
-;;     (let [  buff-channel        (:buffer-channel @locals)
-;;             ;bff                 (new Byt
-;;             data                (byte-array (.remaining frame))
-;;             _                   (.get frame data)
-;;             _                   (.flip frame)]
-;;             (if (= nil @buff-channel) nil  (async/>!! @buff-channel data))))
-
-
             
 (defn- init-frame-tex 
     [locals]    
@@ -1049,8 +1054,8 @@
             width               (:width @locals)
             height              (:height @locals)
             mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-            internal-format      (oc-tex-internal-format mat)
-            format               (oc-tex-format mat)            
+            internal-format     (oc-tex-internal-format mat)
+            format              (oc-tex-format mat)            
             buffer              (oc-mat-to-bytebuffer mat)
             _                   (reset! (:bytebuffer-frame @locals) buffer)
             ]
@@ -1062,39 +1067,89 @@
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))  
 
                                                         
-(defn- process-frame [frame]     
-            (let [  width       (:width @the-window-state)
-                    height      (:height @the-window-state)
-                    mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-                    mat_flip    mat
-                    _           (.put mat 0 0 frame)
-                    _           (org.opencv.core.Core/flip mat mat_flip 0)
-                    ]
-                    (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
-                    mat)) 
-             
+;; (defn- process-frame [frame]     
+;;             (let [  width       (:width @the-window-state)
+;;                     height      (:height @the-window-state)
+;;                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+;;                     mat_flip    mat
+;;                     _           (.put mat 0 0 frame)
+;;                     _           (org.opencv.core.Core/flip mat mat_flip 0)
+;;                     ]
+;;                     (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
+;;                     mat)) 
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Text frame functions
+;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+:target-text-tex
+:internal-format-text-tex
+:format-text-tex
+(defn- init-text-tex 
+    [locals]    
+    (let [  target              (GL11/GL_TEXTURE_2D)
+            tex-id              (GL11/glGenTextures)
+            width               (:width @locals)
+            height              (:height @locals)
+            mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
+            internal-format     (oc-tex-internal-format mat)
+            format              (oc-tex-format mat)
+            channels            (.channels mat)
+            buffer              (oc-mat-to-bytebuffer mat)
+            _                   (reset! (:bytebuffer-text @locals) buffer)
+            ]
+            (swap! locals assoc :tex-id-text-texture tex-id) 
+            (reset!  (:target-text-tex @locals) target)
+            (reset! (:internal-format-text-tex @locals) internal-format)
+            (reset! (:format-text-tex @locals) format)
+            (reset! (:channels-text-tex @locals) channels)
+            (reset! (:width-text-tex @locals) width)
+            (reset! (:height-text-tex @locals) height)
+            (reset! (:text-tex-mat @locals) mat)
+            (GL11/glBindTexture target tex-id)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
+            (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))                    
+       ;(org.opencv.imgproc.Imgproc/putText tm "kakka" (new org.opencv.core.Point 0 0) (org.opencv.imgproc.Imgproc/FONT_HERSHEY_PLAIN) 1.0 (new org.opencv.core.Scalar 255.0))
+
+(defn write-text [text x y size r g b thickness linetype clear] (let [width               (:width @the-window-state)
+                                        height              (:height @the-window-state)
+                                                    _ (println "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa" width)
+
+                                        mat                 (if clear (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3) @(:text-tex-mat @the-window-state))
+                                        corner              (new org.opencv.core.Point x y)
+                                        style               (org.opencv.imgproc.Imgproc/FONT_HERSHEY_TRIPLEX)
+                                        colScal             (new org.opencv.core.Scalar (float r) (float g) (float b))
+                                        _ (println mat)
+                                        _                   (org.opencv.imgproc.Imgproc/putText mat text corner style size colScal thickness linetype)
+                                        _ (println mat)
+                                        buffer              (oc-mat-to-bytebuffer mat)
+                                        ]
+                                        (if clear nil (reset! (:text-tex-mat @the-window-state) mat))
+                                        (reset! (:bytebuffer-text @the-window-state) buffer))) 
+                                        
+(defn- set-text-opengl-texture [locals]
+   (let[    target              @(:target-text-tex @locals)
+            internal-format     @(:internal-format-text-tex @locals)
+            format              @(:format-text-tex @locals)
+            width               (:width @locals)
+            height              (:height @locals)         
+            image-bytes         @(:channels-text-tex @locals)
+            tex-id              (:tex-id-text-texture @locals)
+            tex-image-target    ^Integer (+ 0 target)
+            buffer              @(:bytebuffer-text @the-window-state)]           
+            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
+            (GL11/glBindTexture target tex-id)
+            (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+                ^Integer width  ^Integer height 0
+                ^Integer format
+                GL11/GL_UNSIGNED_BYTE
+                ^ByteBuffer buffer))
+            (except-gl-errors "@ end of load-texture if-stmt")))
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;Save video functions
 ;;;;;;;;;;;;;;;;;;;;;;            
-;; (defn- start-save-loop-go [](async/thread 
-;;                                     (let [bff @(:bff @the-window-state)
-;;                                          minsize @(:minsize @the-window-state)
-;;                                          out_fd @(:deviceId @the-window-state)] 
-;;                                         (while-let/while-let [frame (<!! @(:buffer-channel @the-window-state))]
-;;                                          ;(println frame)
-;;                                          (.put bff frame 0 minsize)
-;;                                          (org.bytedeco.javacpp.v4l2/v4l2_write out_fd bff (long minsize))
-;;                                          ;(.write wrtr (process-frame frame))
-;;                                          
-;;                                          ))))
-;;                             
-;;                              
-;; (defn stop-save-loop [] (async/>!! @(:buffer-channel @the-window-state) false)
-;;                         (async/close! @(:buffer-channel @the-window-state)))
-;;  
-;;  
-;; (defn record-settings [filename, fps]    (reset! (:saveFPS @the-window-state) fps)
-;;                                         (reset! (:save-buffer-filename @the-window-state) filename))
  
 (defn toggle-recording [device] (let [    save    (:save-frames @the-window-state)
                                     ;writer  (:buffer-writer @the-window-state)
@@ -1712,6 +1767,7 @@
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
     (init-frame-tex locals)
+    (init-text-tex locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1776,9 +1832,10 @@
                 i-date-loc          (GL20/glGetUniformLocation new-pgm-id "iDate")
                 i-fftwave-loc       (GL20/glGetUniformLocation new-pgm-id "iFftWave")
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
-                
                             
-                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")]
+                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
+                
+                i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")]
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
@@ -1801,6 +1858,7 @@
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                    :i-fftwave-loc [i-fftwave-loc] 
                    :i-previous-frame-loc [i-previous-frame-loc]
+                   :i-text-loc           [i-text-loc]
                    :i-dataArray-loc i-dataArray-loc
                    :i-cam-loc [i-cam0-loc i-cam1-loc i-cam2-loc i-cam3-loc i-cam4-loc]
                    :i-video-loc [i-video0-loc i-video1-loc i-video2-loc i-video3-loc i-video4-loc]
@@ -1826,10 +1884,10 @@
                 mouse-pos-x mouse-pos-y
                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
-                i-channel-res-loc i-dataArray-loc i-previous-frame-loc
+                i-channel-res-loc i-dataArray-loc i-previous-frame-loc i-text-loc
                 channel-time-buffer channel-res-buffer bytebuffer-frame  buffer-channel dataArrayBuffer dataArray
                 old-pgm-id old-fs-id
-                tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame
+                tex-ids cams text-id-cam videos text-id-video tex-types tex-id-previous-frame tex-id-text-texture
                 user-fn
                 pixel-read-enable
                 pixel-read-pos-x pixel-read-pos-y
@@ -1873,6 +1931,7 @@
     
     (loop-get-cam-textures locals cams)
     (loop-get-video-textures locals videos)
+    (set-text-opengl-texture locals)
 
     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
@@ -1900,6 +1959,7 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
+    ;(GL20/glUniform1i (nth i-text-loc 0) 16)
 
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
@@ -1940,6 +2000,12 @@
                 (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
                 nil)))
+    
+    ;text texture :tex-id-text-texture
+    (do
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    )
         
     (except-gl-errors "@ draw prior to post-draw")
 

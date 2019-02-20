@@ -237,6 +237,8 @@
 
 (defn toggle-recording [device] (s/toggle-recording device))
 
+(defn write-text [text x y size r g b thickness linetype clear](s/write-text text x y size r g b thickness linetype clear))
+
 ;; ======================================================================
 (defonce tone-user-data (atom {}))
 (defonce tone-user-locs (atom {}))
