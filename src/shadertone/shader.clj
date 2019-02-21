@@ -29,10 +29,8 @@
            (javax.imageio ImageIO)
            (java.lang.reflect Field)
            (org.lwjgl BufferUtils)
-           (org.lwjgl.input Mouse)
-           (org.lwjgl.opengl ContextAttribs Display DisplayMode
-                             GL11 GL12 GL13 GL15 GL20 GL30
-                             PixelFormat SharedDrawable)))
+           (org.lwjgl.glfw GLFW GLFWErrorCallback GLFWKeyCallback)
+           (org.lwjgl.opengl GL GL11 GL12 GL13 GL15 GL20 GL30 GL40)))
 ;; ======================================================================
 ;; State Variables
 ;; a map of state variables for use in the gl thread
@@ -47,12 +45,14 @@
     :drawnFrameCount         (atom 0)
     :elapsedTime             (atom 0)
     :actuaFPS                (atom 0)
+    :window                  nil
+    :keyCallback             nil
     ;; mouse
-    :mouse-clicked           false
-    :mouse-pos-x             0
-    :mouse-pos-y             0
-    :mouse-ori-x             0
-    :mouse-ori-y             0
+;;     :mouse-clicked           false
+;;     :mouse-pos-x             0
+;;     :mouse-pos-y             0
+;;     :mouse-ori-x             0
+;;     :mouse-ori-y             0
     ;; geom ids
     :vbo-id                  0
     :vertices-count          0
@@ -68,7 +68,7 @@
     :i-resolution-loc        0
     :i-global-time-loc       0
     :i-channel-time-loc      0
-    :i-mouse-loc             0
+;;     :i-mouse-loc             0
     :i-channel-loc           [0 0 0 0]
     ;V4l2 feeds
     :i-cam-loc               [0 0 0 0 0]
@@ -728,7 +728,7 @@
                       "uniform float     iGlobalTime;\n"
                       "uniform float     iChannelTime[4];\n"
                       "uniform vec3      iChannelResolution[4];\n"
-                      "uniform vec4      iMouse; \n"
+;;                       "uniform vec4      iMouse; \n"
                       (uniform-sampler-type-str tex-types 0)
                       (uniform-sampler-type-str tex-types 1)
                       (uniform-sampler-type-str tex-types 2)
@@ -773,10 +773,20 @@
    list of available modes and fullscreen-display-modes for a list of
    fullscreen compatible modes.."
   [locals display-mode title shader-filename shader-str-atom tex-filenames cams videos true-fullscreen? user-fn display-sync-hz]
-  (let [width               (.getWidth ^DisplayMode display-mode)
-        height              (.getHeight ^DisplayMode display-mode)
-        pixel-format        (PixelFormat.)
-        context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
+    (when-not (org.lwjgl.glfw.GLFW/glfwInit)
+    (throw (IllegalStateException. "Unable to initialize GLFW")))
+   
+    (let [
+   ;;width               (.getWidth ^DisplayMode display-mode)
+;;         height              (.getHeight ^DisplayMode display-mode)
+        ;width               (:width @locals) 
+        ;height              (:height @locals)
+        monitor             (org.lwjgl.glfw.GLFW/glfwGetPrimaryMonitor)
+        mode                (org.lwjgl.glfw.GLFW/glfwGetVideoMode monitor)
+        width               1920 ;(.width  mode)
+        height              1080 ;(.height mode)        
+        ;;pixel-format        (PixelFormat.)
+;;         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-filenames tex-filenames no-textures)
         videos              (fill-filenames videos no-videos)
@@ -805,37 +815,66 @@
            :tex-types       tex-types
            :user-fn         user-fn)
     ;; slurp-fs requires :tex-types, so we need a 2 pass setup
-    _ (println "bein shader slurping")
-    (let [shader-str (if (nil? shader-filename)
+        (println "begin shader slurping")
+        (let [shader-str (if (nil? shader-filename)
                        @shader-str-atom
                        (slurp-fs locals (:shader-filename @locals)))]
-                                 _ (println "fisinhed shader slurping")
+                                 _ (println "finished shader slurping")
+                                 )
 
-      (swap! locals assoc :shader-str shader-str)
-                      _ (println "HERE 1" display-mode)
-                                            _ (println display-mode)
 
-      (Display/setDisplayMode display-mode)
-                            _ (println "HERE 2")
+        (org.lwjgl.glfw.GLFW/glfwDefaultWindowHints)
+        (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_VISIBLE org.lwjgl.glfw.GLFW/GLFW_FALSE)
+        (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_RESIZABLE org.lwjgl.glfw.GLFW/GLFW_TRUE) 
 
-      (when true-fullscreen?
-        (Display/setFullscreen true))
-                              _ (println "HERE 3")
-
-      (Display/setTitle title)
-                            _ (println "HERE 4")
-
-      (Display/setVSyncEnabled true)
-                            _ (println "HERE 5")
-
-      (Display/setLocation 0 0)
-                            _ (println "HERE 6")
-
-      (Display/create pixel-format context-attributes)
-                _ (println "finish display")
+        (swap! locals assoc
+           :window (org.lwjgl.glfw.GLFW/glfwCreateWindow width height title 0 0))
+            (when (= (:window @locals) nil)
+            (throw (RuntimeException. "Failed to create the GLFW window")))
+        (swap! locals assoc
+           :keyCallback
+           (proxy [GLFWKeyCallback] []
+             (invoke [window key scancode action mods]
+               (when (and (= key org.lwjgl.glfw.GLFW/GLFW_KEY_ESCAPE)
+                          (= action org.lwjgl.glfw.GLFW/GLFW_RELEASE))
+                 (org.lwjgl.glfw.GLFW/glfwSetWindowShouldClose (:window @locals) true)))))
+        (org.lwjgl.glfw.GLFW/glfwSetKeyCallback (:window @locals) (:keyCallback @locals)) 
+        
+        (org.lwjgl.glfw.GLFW/glfwMakeContextCurrent (:window @locals))
+        (org.lwjgl.glfw.GLFW/glfwSwapInterval 2)
+        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))        
+        ;; 
+;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_RESIZABLE  org.lwjgl.glfw.GLFW/GLFW_TRUE))
+;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MAJOR 2))
+;;         org.lwjgl.glfw.GLFW/glfwWindowHint(org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MINOR, 1);
+;;         org.lwjgl.glfw.GLFW/glfwWindowHint(org.lwjgl.glfw.GLFW/GLFW_OPENGL_PROFILE, org.lwjgl.glfw.GLFW/GLFW_OPENGL_CORE_PROFILE); 
+;;         window = GLFW/glfwCreateWindow(width, height, title, 0, 0);
+                                 
+;;       (swap! locals assoc :shader-str shader-str)
+;;                       _ (println "HERE 1" display-mode)
+;;                                             _ (println display-mode)
+;; 
+;;       (Display/setDisplayMode display-mode)
+;;                             _ (println "HERE 2")
+;; 
+;;       (when true-fullscreen?
+;;         (Display/setFullscreen true))
+;;                               _ (println "HERE 3")
+;; 
+;;       (Display/setTitle title)
+;;                             _ (println "HERE 4")
+;; 
+;;       (Display/setVSyncEnabled true)
+;;                             _ (println "HERE 5")
+;; 
+;;       (Display/setLocation 0 0)
+;;                             _ (println "HERE 6")
+;; 
+;;       (Display/create pixel-format context-attributes)
+;;                 _ (println "finish display")
 
 )
-      ))
+      )
       
       
 
@@ -857,6 +896,8 @@
         _                   (GL15/glBufferData GL15/GL_ARRAY_BUFFER
                                            ^FloatBuffer vertices-buffer
                                            GL15/GL_STATIC_DRAW)
+        _                   (GL20/glVertexAttribPointer 0 4 GL11/GL_FLOAT false 0 0)
+        _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
         _ (except-gl-errors "@ end of init-buffers")]
         (swap! locals
            assoc
@@ -910,7 +951,7 @@
             i-resolution-loc        (GL20/glGetUniformLocation pgm-id "iResolution")
             i-global-time-loc       (GL20/glGetUniformLocation pgm-id "iGlobalTime")
             i-channel-time-loc      (GL20/glGetUniformLocation pgm-id "iChannelTime")
-            i-mouse-loc             (GL20/glGetUniformLocation pgm-id "iMouse")
+;;             i-mouse-loc             (GL20/glGetUniformLocation pgm-id "iMouse")
             
             i-channel0-loc          (GL20/glGetUniformLocation pgm-id "iChannel0")
             i-channel1-loc          (GL20/glGetUniformLocation pgm-id "iChannel1")
@@ -951,7 +992,7 @@
                :i-resolution-loc i-resolution-loc
                :i-global-time-loc i-global-time-loc
                :i-channel-time-loc i-channel-time-loc
-               :i-mouse-loc i-mouse-loc
+;;                :i-mouse-loc i-mouse-loc
                :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                :i-fftwave-loc [i-fftwave-loc]
                :i-dataArray-loc i-dataArray-loc
@@ -1051,7 +1092,7 @@
     [locals]    
     (let [  target              (GL11/GL_TEXTURE_2D)
             tex-id              (GL11/glGenTextures)
-            width               (:width @locals)
+             width               (:width @locals)
             height              (:height @locals)
             mat                 (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
             internal-format     (oc-tex-internal-format mat)
@@ -1754,6 +1795,8 @@
   [locals]
   (let [{:keys [width height user-fn]} @locals]
     ;;(println "OpenGL version:" (GL11/glGetString GL11/GL_VERSION))
+    (GL/createCapabilities)
+    (println "OpenGL version:" (GL11/glGetString GL11/GL_VERSION))
     (GL11/glClearColor 0.0 0.0 0.0 0.0)
     (GL11/glViewport 0 0 width height)
     (init-buffers locals)
@@ -1807,7 +1850,7 @@
                 i-resolution-loc    (GL20/glGetUniformLocation new-pgm-id "iResolution")
                 i-global-time-loc   (GL20/glGetUniformLocation new-pgm-id "iGlobalTime")
                 i-channel-time-loc  (GL20/glGetUniformLocation new-pgm-id "iChannelTime")
-                i-mouse-loc         (GL20/glGetUniformLocation new-pgm-id "iMouse")
+;;                 i-mouse-loc         (GL20/glGetUniformLocation new-pgm-id "iMouse")
                 i-channel0-loc      (GL20/glGetUniformLocation new-pgm-id "iChannel0")
                 i-channel1-loc      (GL20/glGetUniformLocation new-pgm-id "iChannel1")
                 i-channel2-loc      (GL20/glGetUniformLocation new-pgm-id "iChannel2")
@@ -1851,7 +1894,7 @@
                    :i-resolution-loc i-resolution-loc
                    :i-global-time-loc i-global-time-loc
                    :i-channel-time-loc i-channel-time-loc
-                   :i-mouse-loc i-mouse-loc
+;;                    :i-mouse-loc i-mouse-loc
                    :i-channel-loc [i-channel0-loc i-channel1-loc i-channel2-loc i-channel3-loc]
                    :i-fftwave-loc [i-fftwave-loc] 
                    :i-previous-frame-loc [i-previous-frame-loc]
@@ -1877,9 +1920,9 @@
                 i-date-loc
                 pgm-id vbo-id
                 vertices-count
-                i-mouse-loc
-                mouse-pos-x mouse-pos-y
-                mouse-ori-x mouse-ori-y
+;;                 i-mouse-loc
+;;                 mouse-pos-x mouse-pos-y
+;;                 mouse-ori-x mouse-ori-y
                 i-channel-time-loc i-channel-loc i-fftwave-loc i-cam-loc i-video-loc
                 i-channel-res-loc i-dataArray-loc i-previous-frame-loc i-text-loc
                 channel-time-buffer channel-res-buffer bytebuffer-frame  buffer-channel dataArrayBuffer dataArray
@@ -1909,8 +1952,14 @@
 
     (reset! (:frameCount @locals) (+ @(:frameCount @locals) 1)) 
 
-    (GL11/glClear GL11/GL_COLOR_BUFFER_BIT)
-
+    (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
+    
+    ;(GL20/glUseProgram pgm-id)
+     ;(println cur-time @(:frameCount @locals)) 
+     ;;;;;;;;;;;;
+     ;;;;;;;;;;;;;
+     ;;;;;;;;;;;;,
+     ;;;;;;;;;;;;;
     (when user-fn
       (user-fn :pre-draw pgm-id (:tex-id-fftwave @locals)))
 
@@ -1926,21 +1975,21 @@
     
     (except-gl-errors "@ draw after activate textures")
     
-    (loop-get-cam-textures locals cams)
-    (loop-get-video-textures locals videos)
-    (set-text-opengl-texture locals)
-
-    ;; setup our uniform
+     (loop-get-cam-textures locals cams)
+     (loop-get-video-textures locals videos)
+     (set-text-opengl-texture locals)
+;; 
+;;     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
-    (GL20/glUniform1  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
-
-    (GL20/glUniform4f i-mouse-loc
-                      mouse-pos-x
-                      mouse-pos-y
-                      mouse-ori-x
-                      mouse-ori-y)
-    ;(println "i-video-loc" i-video-loc)
+;;    (GL20/glUniform1i  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
+;; 
+;; ;;     (GL20/glUniform4f i-mouse-loc
+;; ;;                       mouse-pos-x
+;; ;;                       mouse-pos-y
+;; ;;                       mouse-ori-x
+;; ;;                       mouse-ori-y)
+;;     ;(println "i-video-loc" i-video-loc)
     (GL20/glUniform1i (nth i-channel-loc 0) 1)
     (GL20/glUniform1i (nth i-channel-loc 1) 2)
     (GL20/glUniform1i (nth i-channel-loc 2) 3)
@@ -1956,27 +2005,27 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-    ;(GL20/glUniform1i (nth i-text-loc 0) 16)
-
-    (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
-    (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
-    (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
-    
-    ;; get vertex array ready
-    (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
-    (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
-    (GL11/glVertexPointer 4 GL11/GL_FLOAT 0 0)
-
-    (except-gl-errors "@ draw prior to DrawArrays")
-
-    ;; Draw the vertices
-    (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
-    
-    (except-gl-errors "@ draw after DrawArrays")
-    
-    ;; Put everything back to default (deselect)
-    (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
-    (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
+        (GL20/glUniform1i (nth i-text-loc 0) 16)
+;; 
+;;     (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
+;;     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
+;;     (GL20/glUniform1i  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
+;;     
+;;     ;; get vertex array ready
+     (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
+     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
+     (GL11/glVertexPointer 4 GL11/GL_FLOAT 0 0)
+;; 
+;;     (except-gl-errors "@ draw prior to DrawArrays")
+;; 
+;;     ;; Draw the vertices
+     (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
+;;     
+;;     (except-gl-errors "@ draw after DrawArrays")
+;;     
+;;     ;; Put everything back to default (deselect)
+     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
+     (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
     ;; unbind textures
     (doseq [i (remove nil? tex-ids)]
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 i))
@@ -1998,7 +2047,7 @@
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
                 nil)))
     
-    ;text texture :tex-id-text-texture
+;;     ;text texture :tex-id-text-texture
     (do
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
@@ -2008,8 +2057,8 @@
 
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
-
-    (GL20/glUseProgram 0)
+;; 
+      (GL20/glUseProgram 0)
     (except-gl-errors "@ draw after post-draw")
                 ;Copying the previous image to its own texture            
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
@@ -2041,37 +2090,42 @@
                         GL11/GL_RGB GL11/GL_UNSIGNED_BYTE
                         ^ByteBuffer pixel-read-data)
       (except-gl-errors "@ draw after pixel read")
-      (reset! pixel-value (get-pixel-value ^ByteBuffer pixel-read-data)))))
+      (reset! pixel-value (get-pixel-value ^ByteBuffer pixel-read-data)))
+      
+      ))
       
 (defn- update-and-draw
   [locals]
   (let [{:keys [width height last-time pgm-id
-                mouse-pos-x mouse-pos-y
-                mouse-clicked mouse-ori-x mouse-ori-y]} @locals
+;;                 mouse-pos-x mouse-pos-y
+;;                 mouse-clicked mouse-ori-x mouse-ori-y
+                ]} @locals
                 cur-time (System/currentTimeMillis)
                 ;starttime (System/nanoTime)
-                cur-mouse-clicked (Mouse/isButtonDown 0)
-                mouse-down-event (and cur-mouse-clicked (not mouse-clicked))
-                cur-mouse-pos-x (if cur-mouse-clicked (Mouse/getX) mouse-pos-x)
-                cur-mouse-pos-y (if cur-mouse-clicked (Mouse/getY) mouse-pos-y)
-                cur-mouse-ori-x (if mouse-down-event
-                          (Mouse/getX)
-                          (if cur-mouse-clicked
-                            mouse-ori-x
-                            (- (Math/abs ^float mouse-ori-x))))
-                cur-mouse-ori-y (if mouse-down-event
-                          (Mouse/getY)
-                          (if cur-mouse-clicked
-                            mouse-ori-y
-                            (- (Math/abs ^float mouse-ori-y))))]
+;;                 cur-mouse-clicked (Mouse/isButtonDown 0)
+;;                 mouse-down-event (and cur-mouse-clicked (not mouse-clicked))
+;;                 cur-mouse-pos-x (if cur-mouse-clicked (Mouse/getX) mouse-pos-x)
+;;                 cur-mouse-pos-y (if cur-mouse-clicked (Mouse/getY) mouse-pos-y)
+;;                 cur-mouse-ori-x (if mouse-down-event
+;;                           (Mouse/getX)
+;;                           (if cur-mouse-clicked
+;;                             mouse-ori-x
+;;                             (- (Math/abs ^float mouse-ori-x))))
+;;                 cur-mouse-ori-y (if mouse-down-event
+;;                           (Mouse/getY)
+;;                           (if cur-mouse-clicked
+;;                             mouse-ori-y
+;;                             (- (Math/abs ^float mouse-ori-y))))
+                            ]
     (swap! locals
            assoc
            :last-time cur-time
-           :mouse-clicked cur-mouse-clicked
-           :mouse-pos-x cur-mouse-pos-x
-           :mouse-pos-y cur-mouse-pos-y
-           :mouse-ori-x cur-mouse-ori-x
-           :mouse-ori-y cur-mouse-ori-y)
+;;            :mouse-clicked cur-mouse-clicked
+;;            :mouse-pos-x cur-mouse-pos-x
+;;            :mouse-pos-y cur-mouse-pos-y
+;;            :mouse-ori-x cur-mouse-ori-x
+;;            :mouse-ori-y cur-mouse-ori-y
+           )
     (if (:shader-good @locals)
       (do
         (if @reload-shader
@@ -2122,13 +2176,17 @@
   (reset! (:frameCount @locals) 0) 
 
   (while (and (= :yes (:active @locals))
-              (not (Display/isCloseRequested)))
+              (not (org.lwjgl.glfw.GLFW/glfwWindowShouldClose (:window @locals))))
     (update-and-draw locals)
-    (Display/update)
-    (Display/sync (:display-sync-hz @locals)))
+    ;(Display/update)
+    ;(Display/sync (:display-sync-hz @locals))
+    (org.lwjgl.glfw.GLFW/glfwSwapBuffers (:window @locals))
+    (org.lwjgl.glfw.GLFW/glfwPollEvents)  
+    )
   (destroy-gl locals)
-  (Display/destroy)
-    
+  ;(Display/destroy)
+  (org.lwjgl.glfw.GLFW/glfwDestroyWindow (:window @locals))
+  (org.lwjgl.glfw.GLFW/glfwTerminate)
   (swap! locals assoc :active :no)
 
   )
@@ -2166,7 +2224,7 @@
                   false))))))
 
 (defn- sane-user-inputs
-  [mode shader-filename shader-str textures title true-fullscreen? user-fn]
+  [shader-filename shader-str textures title true-fullscreen? user-fn]
   (and (good-tex-count textures)
        (files-exist (flatten [shader-filename textures]))
        (not (and (nil? shader-filename) (nil? shader-str)))))
@@ -2254,27 +2312,27 @@
 
 ;; Public API ===================================================
 
-(defn display-modes
-  "Returns a seq of display modes sorted by resolution size with highest
-   resolution first and lowest last."
-  []
-  (sort (fn [^DisplayMode a ^DisplayMode b]
-          (let [res-a       (* (.getWidth a)
-                               (.getHeight a))
-                res-b       (* (.getWidth b)
-                               (.getHeight b))
-                bit-depth-a (.getBitsPerPixel a)
-                bit-depth-b (.getBitsPerPixel b) ]
-            (if (= res-a res-b)
-              (> bit-depth-a bit-depth-b)
-              (> res-a res-b))))
-        (Display/getAvailableDisplayModes)))
-
-(defn fullscreen-display-modes
-  "Returns a seq of fullscreen compatible display modes sorted by
-   resolution size with highest resolution first and lowest last."
-  []
-  (filter #(.isFullscreenCapable ^DisplayMode %) (display-modes)))
+;; (defn display-modes
+;;   "Returns a seq of display modes sorted by resolution size with highest
+;;    resolution first and lowest last."
+;;   []
+;;   (sort (fn [^DisplayMode a ^DisplayMode b]
+;;           (let [res-a       (* (.getWidth a)
+;;                                (.getHeight a))
+;;                 res-b       (* (.getWidth b)
+;;                                (.getHeight b))
+;;                 bit-depth-a (.getBitsPerPixel a)
+;;                 bit-depth-b (.getBitsPerPixel b) ]
+;;             (if (= res-a res-b)
+;;               (> bit-depth-a bit-depth-b)
+;;               (> res-a res-b))))
+;;         (Display/getAvailableDisplayModes)))
+;; 
+;; (defn fullscreen-display-modes
+;;   "Returns a seq of fullscreen compatible display modes sorted by
+;;    resolution size with highest resolution first and lowest last."
+;;   []
+;;   (filter #(.isFullscreenCapable ^DisplayMode %) (display-modes)))
 
 (defn undecorate-display!
   "All future display windows will be undecorated (i.e. no title bar)"
@@ -2328,7 +2386,7 @@
                           (atom nil))
         shader-str      (if-not is-filename
                           @shader-str-atom)]
-    (when (sane-user-inputs mode shader-filename shader-str textures title true-fullscreen? user-fn)
+    (when (sane-user-inputs shader-filename shader-str textures title true-fullscreen? user-fn)
       ;; stop the current shader
       (stop)
       ;; start the watchers
@@ -2361,8 +2419,8 @@
   [shader-filename-or-str-atom
    &{:keys [width height title display-sync-hz
             textures cams videos user-data user-fn]
-     :or {width           600
-          height          600
+     :or {width           1920
+          height          1080
           title           "shadertone"
           display-sync-hz 30
           textures        []
@@ -2370,28 +2428,60 @@
           videos          []        
           user-data       {}
           user-fn         shader-default-fn}}]
-  (let [mode (Display/getDisplayMode)
-        mode (DisplayMode. width height)]
+   (let [;;mode (Display/getDisplayMode)
+         ;;mode (DisplayMode. width height)
+        mode  nil]
     ;(decorate-display!)
     (undecorate-display!)
+;;     (swap! locals
+;;            assoc
+;;            :width           width
+;;            :height          height)
     (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))
 
+    
 (defn start-fullscreen
-  "Start a new shader display in pseudo fullscreen mode. This creates
-   a new borderless window which is the size of the current
-   resolution. There are therefore no OS controls for closing the
-   shader window. Use (stop) to close things manually."
+  "Start a new shader display. Forces the display window to be
+   decorated (i.e. have a title bar)."
   [shader-filename-or-str-atom
-   &{:keys [display-sync-hz textures cams videos user-data user-fn]
-     :or {display-sync-hz 60
-          textures        [nil]
+   &{:keys [width height title display-sync-hz
+            textures cams videos user-data user-fn]
+     :or {width           1920
+          height          1080
+          title           "shadertone"
+          display-sync-hz 30
+          textures        []
           cams            []
           videos          []        
           user-data       {}
           user-fn         shader-default-fn}}]
-     (let [mode (Display/getDisplayMode)]
-       (undecorate-display!)
-       (start-shader-display mode shader-filename-or-str-atom textures cams videos "" false user-data user-fn display-sync-hz)))
+   (let [;;mode (Display/getDisplayMode)
+         ;;mode (DisplayMode. width height)
+        mode  nil]
+    ;(decorate-display!)
+    (undecorate-display!)
+;;     (swap! locals
+;;            assoc
+;;            :width           width
+;;            :height          height)
+    (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))    
+    
+;; (defn start-fullscreen
+;;   "Start a new shader display in pseudo fullscreen mode. This creates
+;;    a new borderless window which is the size of the current
+;;    resolution. There are therefore no OS controls for closing the
+;;    shader window. Use (stop) to close things manually."
+;;   [shader-filename-or-str-atom
+;;    &{:keys [display-sync-hz textures cams videos user-data user-fn]
+;;      :or {display-sync-hz 60
+;;           textures        [nil]
+;;           cams            []
+;;           videos          []        
+;;           user-data       {}
+;;           user-fn         shader-default-fn}}]
+;;      (let [mode (Display/getDisplayMode)]
+;;        (undecorate-display!)
+;;        (start-shader-display mode shader-filename-or-str-atom textures cams videos "" false user-data user-fn display-sync-hz)))
 
 (defn throw-exceptions-on-gl-errors!
   "When v is true, throw exceptions when glGetError() returns

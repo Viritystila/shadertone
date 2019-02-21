@@ -12,7 +12,7 @@
             [overtone.sc.server :as server]) ;; has a "stop" in it
   (:import (org.lwjgl BufferUtils)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
-           (org.lwjgl.opengl GL11 GL12 GL13 GL20 ARBTextureRg)))
+           (org.lwjgl.opengl GL11 GL12 GL13 GL20 ARBTextureRG)))
 
            
 ;; ----------------------------------------------------------------------
@@ -120,7 +120,7 @@
       (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_WRAP_T
                             GL12/GL_CLAMP_TO_EDGE)
       (GL11/glTexImage2D GL11/GL_TEXTURE_2D
-                         0 ARBTextureRg/GL_R32F
+                         0 ARBTextureRG/GL_R32F
                          ^Integer WAVE-BUF-SIZE
                          2 0 GL11/GL_RED GL11/GL_FLOAT
                          ^FloatBuffer fftwave-float-buf)
@@ -139,7 +139,7 @@
             )
       (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-i))
       (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-i)
-      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRg/GL_R32F
+      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 ARBTextureRG/GL_R32F
                          ^Integer WAVE-BUF-SIZE
                          2 0 GL11/GL_RED GL11/GL_FLOAT
                          ^FloatBuffer fftwave-float-buf)
