@@ -77,11 +77,11 @@
 (lwjgl-deps-with-natives)))
 
 
-(defproject org.viritystila/shadertone "0.2.6-SNAPSHOT"
-  :description "A clojure library designed to mix musical synthesis via Overtone and dynamic visuals a la www.shadertoy.com"
-  :url "http://github.com/overtone/shadertone"
+(defproject org.viritystila/viritystone "0.0.1-SNAPSHOT"
+  :description "A evolution of the Shadertone, a clojure library designed to mix musical synthesis via Overtone and dynamic visuals a la www.shadertoy.com"
+  :url "https://github.com/Viritystila/shadertone"
   :license {:name "MIT License"
-           :url "https://github.com/overtone/shadertone/blob/master/LICENSE"}
+           :url "https://github.com/Viritystila/shadertone/blob/master/LICENSE"}
   :injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
   :repositories [["Viritystila" "https://github.com/Viritystila/OpenCV/raw/master"]]
   :dependencies ~all-dependencies
