@@ -1113,21 +1113,18 @@
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))                    
        ;(org.opencv.imgproc.Imgproc/putText tm "kakka" (new org.opencv.core.Point 0 0) (org.opencv.imgproc.Imgproc/FONT_HERSHEY_PLAIN) 1.0 (new org.opencv.core.Scalar 255.0))
 
-(defn write-text [text x y size r g b thickness linetype clear] (let [width               (:width @the-window-state)
-                                        height              (:height @the-window-state)
-                                                    _ (println "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa" width)
-
-                                        mat                 (if clear (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3) @(:text-tex-mat @the-window-state))
-                                        corner              (new org.opencv.core.Point x y)
-                                        style               (org.opencv.imgproc.Imgproc/FONT_HERSHEY_TRIPLEX)
-                                        colScal             (new org.opencv.core.Scalar (float r) (float g) (float b))
-                                        _ (println mat)
-                                        _                   (org.opencv.imgproc.Imgproc/putText mat text corner style size colScal thickness linetype)
-                                        _ (println mat)
-                                        buffer              (oc-mat-to-bytebuffer mat)
-                                        ]
-                                        (if clear nil (reset! (:text-tex-mat @the-window-state) mat))
-                                        (reset! (:bytebuffer-text @the-window-state) buffer))) 
+(defn write-text 
+    [text x y size r g b thickness linetype clear] 
+        (let [  width               (:width @the-window-state)
+                height              (:height @the-window-state)
+                mat                 (if clear (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3) @(:text-tex-mat @the-window-state))
+                corner              (new org.opencv.core.Point x y)
+                style               (org.opencv.imgproc.Imgproc/FONT_HERSHEY_TRIPLEX)
+                colScal             (new org.opencv.core.Scalar (float r) (float g) (float b))
+                _                   (org.opencv.imgproc.Imgproc/putText mat text corner style size colScal thickness linetype)
+                buffer              (oc-mat-to-bytebuffer mat)] 
+                (if clear nil (reset! (:text-tex-mat @the-window-state) mat))
+                (reset! (:bytebuffer-text @the-window-state) buffer))) 
                                         
 (defn- set-text-opengl-texture [locals]
    (let[    target              @(:target-text-tex @locals)
