@@ -1551,7 +1551,7 @@
                             fixed_vec_buffers   (nth (:fixed-vec-buffers @the-window-state) video-id)
                             video-filename      (:videos @the-window-state)
                             video-filename_i    (nth video-filename video-id)
-                            capture             (oc-capture-from-video video-filename_i)]
+                            capture             (if (not-nil? video-filename_i) (oc-capture-from-video video-filename_i) nil)]
                             (if (not-nil? capture) (do
                             (oc-set-capture-property :pos-frames capture  (max begin-frame 0 ))
                             (doseq [x (range maxBufferLength)]

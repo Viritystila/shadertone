@@ -197,7 +197,8 @@
 
 (defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse video-id)))
 
-(defn bufferSection [video-id active_buffer_idx begin-frame] (s/bufferSection video-id active_buffer_idx begin-frame))
+(defn bufferSection [video-id active_buffer_idx begin-frame] (try (s/bufferSection video-id active_buffer_idx begin-frame)
+                                                                (catch Exception e (str "caught exception: " (.getMessage e)))))
 
 (defn set-fixed-buffer-index    ([video-id mode] (s/set-fixed-buffer-index video-id mode))
                                 ([video-id mode frame] (s/set-fixed-buffer-index video-id mode frame)))
