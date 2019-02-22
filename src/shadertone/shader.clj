@@ -825,7 +825,7 @@
 
         (org.lwjgl.glfw.GLFW/glfwDefaultWindowHints)
         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_VISIBLE org.lwjgl.glfw.GLFW/GLFW_FALSE)
-        (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_RESIZABLE org.lwjgl.glfw.GLFW/GLFW_TRUE) 
+        (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_RESIZABLE org.lwjgl.glfw.GLFW/GLFW_FALSE) 
 
         (swap! locals assoc
            :window (org.lwjgl.glfw.GLFW/glfwCreateWindow width height title 0 0))
@@ -2005,7 +2005,7 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-        (GL20/glUniform1i (nth i-text-loc 0) 16)
+    ;(GL20/glUniform1i (nth i-text-loc 0) 16)
 ;; 
 ;;     (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
 ;;     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
