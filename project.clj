@@ -17,35 +17,9 @@
 (def LWJGL_VERSION "3.2.1")
 ;; Edit this to add/remove packages.
 (def LWJGL_MODULES ["lwjgl"
-                    "lwjgl-assimp"
-                    "lwjgl-bgfx"
-                    "lwjgl-egl"
                     "lwjgl-glfw"
-                    "lwjgl-jawt"
-                    "lwjgl-jemalloc"
-                    "lwjgl-lmdb"
-                    "lwjgl-lz4"
-                    "lwjgl-nanovg"
-                    "lwjgl-nfd"
-                    "lwjgl-nuklear"
-                    "lwjgl-odbc"
-                    "lwjgl-openal"
-                    "lwjgl-opencl"
                     "lwjgl-opengl"
-                    "lwjgl-opengles"
-                    "lwjgl-openvr"
-                    "lwjgl-par"
-                    "lwjgl-remotery"
-                    "lwjgl-rpmalloc"
-                    "lwjgl-sse"
-                    "lwjgl-stb"
-                    "lwjgl-tinyexr"
-                    "lwjgl-tinyfd"
-                    "lwjgl-tootle"
-                    "lwjgl-vulkan"
-                    "lwjgl-xxhash"
-                    "lwjgl-yoga"
-"lwjgl-zstd"])
+])
 
 (def LWJGL_PLATFORMS ["linux" "macos" "windows"])
 ;; These packages don't have any associated native ones.

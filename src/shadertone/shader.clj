@@ -2048,10 +2048,10 @@
                 nil)))
     
 ;;     ;text texture :tex-id-text-texture
-    (do
-        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    )
+;;     (do
+;;         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
+;;         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+;;     )
         
     (except-gl-errors "@ draw prior to post-draw")
 
