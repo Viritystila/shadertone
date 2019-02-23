@@ -980,10 +980,10 @@
             i-fftwave-loc           (GL20/glGetUniformLocation pgm-id "iFftWave")
             
             i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
-
-            i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
             
             i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")
+            
+            i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
             _ (except-gl-errors "@ end of let init-shaders")
             ]
             
@@ -1876,10 +1876,10 @@
                 i-date-loc          (GL20/glGetUniformLocation new-pgm-id "iDate")
                 i-fftwave-loc       (GL20/glGetUniformLocation new-pgm-id "iFftWave")
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
-                            
-                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
+                                            
+                i-text-loc              (GL20/glGetUniformLocation new-pgm-id "iText")
                 
-                i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")]
+                i-previous-frame-loc    (GL20/glGetUniformLocation new-pgm-id "iPreviousFrame")]
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
@@ -2009,7 +2009,7 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-    ;(GL20/glUniform1i (nth i-text-loc 0) 16)
+    (GL20/glUniform1i (nth i-text-loc 0) 16)
 ;; 
 ;;     (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
 ;;     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
