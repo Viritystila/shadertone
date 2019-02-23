@@ -467,10 +467,12 @@
                                        channels    (.channels mat)
                                        size        (* height width channels)
                                        data        (byte-array size)
-                                       _           (.get mat 0 0 data)] 
+                                       _           (.get mat 0 0 data)
+                                       ] 
                                        ^ByteBuffer (-> (BufferUtils/createByteBuffer size)
                                               (.put data)
-                                              (.flip))))
+                                              (.flip))
+                                              ))
 
 (defn oc-new-mat
 ([int_0 int_1 int_2 org_opencv_core_scalar_3 ]
@@ -779,12 +781,13 @@
     (let [
    ;;width               (.getWidth ^DisplayMode display-mode)
 ;;         height              (.getHeight ^DisplayMode display-mode)
-        ;width               (:width @locals) 
-        ;height              (:height @locals)
+        width               (nth display-mode 0) ;(:width @locals) 
+        height              (nth display-mode 1);(:height @locals)
+        _ (println "AAAAAAAAaa" width height)
         monitor             (org.lwjgl.glfw.GLFW/glfwGetPrimaryMonitor)
         mode                (org.lwjgl.glfw.GLFW/glfwGetVideoMode monitor)
-        width               1920 ;(.width  mode)
-        height              1080 ;(.height mode)        
+        ;width               1920 ;(.width  mode)
+        ;height              1080 ;(.height mode)        
         ;;pixel-format        (PixelFormat.)
 ;;         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
@@ -841,7 +844,7 @@
         (org.lwjgl.glfw.GLFW/glfwSetKeyCallback (:window @locals) (:keyCallback @locals)) 
         
         (org.lwjgl.glfw.GLFW/glfwMakeContextCurrent (:window @locals))
-        (org.lwjgl.glfw.GLFW/glfwSwapInterval 2)
+        (org.lwjgl.glfw.GLFW/glfwSwapInterval 1)
         (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))        
         ;; 
 ;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_RESIZABLE  org.lwjgl.glfw.GLFW/GLFW_TRUE))
@@ -872,6 +875,7 @@
 ;; 
 ;;       (Display/create pixel-format context-attributes)
 ;;                 _ (println "finish display")
+    
 
 )
       )
@@ -896,8 +900,8 @@
         _                   (GL15/glBufferData GL15/GL_ARRAY_BUFFER
                                            ^FloatBuffer vertices-buffer
                                            GL15/GL_STATIC_DRAW)
-        _                   (GL20/glVertexAttribPointer 0 4 GL11/GL_FLOAT false 0 0)
-        _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
+        ;_                   (GL20/glVertexAttribPointer 0 4 GL11/GL_FLOAT false 0 0)
+        ;_                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
         _ (except-gl-errors "@ end of init-buffers")]
         (swap! locals
            assoc
@@ -1183,7 +1187,7 @@
                 ^Integer width  ^Integer height 0
                 ^Integer format
                 GL11/GL_UNSIGNED_BYTE
-                ^ByteBuffer buffer))
+                buffer))
             (except-gl-errors "@ end of load-texture if-stmt")))
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;Save video functions
@@ -1290,7 +1294,7 @@
                 ^Integer width  ^Integer height 0
                 ^Integer format
                 GL11/GL_UNSIGNED_BYTE
-                ^ByteBuffer buffer))
+                buffer))
             (except-gl-errors "@ end of load-texture if-stmt")))
  
 
@@ -1570,7 +1574,7 @@
                ^Integer width  ^Integer height 0
                ^Integer format
                GL11/GL_UNSIGNED_BYTE
-               ^ByteBuffer buffer))
+               buffer))
            (except-gl-errors "@ end of load-texture if-stmt")))
            
 ;;;;;;;;;;;;;;;;;;;           
@@ -1779,7 +1783,7 @@
             bufferLength    1]
             (doseq [video-id (range no-videos)]
                 (init-video-tex locals video-id )
-                (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/buffer 1))))
+                (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/buffer 5))))
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
                 ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
@@ -2016,12 +2020,12 @@
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
      (GL11/glVertexPointer 4 GL11/GL_FLOAT 0 0)
 ;; 
-;;     (except-gl-errors "@ draw prior to DrawArrays")
+     (except-gl-errors "@ draw prior to DrawArrays")
 ;; 
 ;;     ;; Draw the vertices
      (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
 ;;     
-;;     (except-gl-errors "@ draw after DrawArrays")
+     (except-gl-errors "@ draw after DrawArrays")
 ;;     
 ;;     ;; Put everything back to default (deselect)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
@@ -2175,13 +2179,23 @@
   (init-gl locals)
   (reset! (:frameCount @locals) 0) 
 
+  (let [startTime               (atom (System/nanoTime))]
+
   (while (and (= :yes (:active @locals))
               (not (org.lwjgl.glfw.GLFW/glfwWindowShouldClose (:window @locals))))
+    
+    ;(time (do
+    (reset! startTime (System/nanoTime))
     (update-and-draw locals)
     ;(Display/update)
     ;(Display/sync (:display-sync-hz @locals))
     (org.lwjgl.glfw.GLFW/glfwSwapBuffers (:window @locals))
-    (org.lwjgl.glfw.GLFW/glfwPollEvents)  
+    (org.lwjgl.glfw.GLFW/glfwPollEvents)
+    (Thread/sleep  (sleepTime @startTime (System/nanoTime) display-sync-hz))
+    ;(write-text (str (- (System/nanoTime) @startTime) ) 300 800 10 100 100 0 50 1 true)
+    ;(org.lwjgl.glfw.GLFW/glfwPostEmptyEvent)
+
+    ;))
     )
   (destroy-gl locals)
   ;(Display/destroy)
@@ -2189,6 +2203,7 @@
   (org.lwjgl.glfw.GLFW/glfwTerminate)
   (swap! locals assoc :active :no)
 
+  )
   )
 
 (defn- good-tex-count
@@ -2421,7 +2436,7 @@
             textures cams videos user-data user-fn]
      :or {width           1920
           height          1080
-          title           "shadertone"
+          title           "viritystone"
           display-sync-hz 30
           textures        []
           cams            []
@@ -2430,13 +2445,9 @@
           user-fn         shader-default-fn}}]
    (let [;;mode (Display/getDisplayMode)
          ;;mode (DisplayMode. width height)
-        mode  nil]
+        mode  [width height]]
     ;(decorate-display!)
     (undecorate-display!)
-;;     (swap! locals
-;;            assoc
-;;            :width           width
-;;            :height          height)
     (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))
 
     
@@ -2448,7 +2459,7 @@
             textures cams videos user-data user-fn]
      :or {width           1920
           height          1080
-          title           "shadertone"
+          title           "viritystone"
           display-sync-hz 30
           textures        []
           cams            []
@@ -2457,7 +2468,7 @@
           user-fn         shader-default-fn}}]
    (let [;;mode (Display/getDisplayMode)
          ;;mode (DisplayMode. width height)
-        mode  nil]
+        mode  []]
     ;(decorate-display!)
     (undecorate-display!)
 ;;     (swap! locals
