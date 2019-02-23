@@ -1810,8 +1810,8 @@
     (init-videos locals)
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
-    (init-frame-tex locals)
     (init-text-tex locals)
+    (init-frame-tex locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
