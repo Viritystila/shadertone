@@ -1,0 +1,35 @@
+Viritystila commands
+
+
+#V4L2 loopback:
+sudo modprobe v4l2loopback devices=5
+
+sudo rmmod
+
+sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /dev/video1
+
+v4l2loopback-ctl set-fps 25 /dev/video1
+
+sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=960,height=540" /dev/video1
+
+#Term to svg:
+
+termtosvg -g 130x32 -v4l2 /dev/video2  (960 540 video for terminal v4l2 loopback)
+
+#GST record:
+gst-launch-1.0 jackaudiosrc ! audioconvert ! pulsesink
+
+gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,format=RGB,width=1920,height=1080,framerate=30/1 ! videoconvert ! videoflip method=vertical-flip !  jpegenc ! avimux ! filesink location=test.avi
+
+mpv test.avi -o s1.mp4 --vf=fps=25
+
+#FFMPEG captrue and video preparation
+
+H264_mp4 is a well tested vidoe format.
+
+Prepare video:
+ffmpeg -err_detect ignore_err -i video.mp4 -c copy video_fixed.mp4
+
+Enable hardware decodng on Nvidia (with this more than three four videos cause a crash. Starting videos after startup is also error prone):
+
+export OPENCV_FFMPEG_CAPTURE_OPTIONS="video_codec;h264_cuvid"
