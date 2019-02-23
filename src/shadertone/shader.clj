@@ -936,9 +936,10 @@
             
             i-dataArray-loc         (GL20/glGetUniformLocation pgm-id "iDataArray")
 
+            i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")
+            
             i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
             
-            i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")
             _ (except-gl-errors "@ end of let init-shaders")
             ]
             
@@ -1763,8 +1764,8 @@
     (init-videos locals)
     (init-shaders locals)
     (swap! locals assoc :tex-id-fftwave (GL11/glGenTextures))
-    (init-frame-tex locals)
     (init-text-tex locals)
+    (init-frame-tex locals)
     (when (and (not (nil? user-fn)) (:shader-good @locals))
       (user-fn :init (:pgm-id @locals) (:tex-id-fftwave @locals)))))
 
@@ -1829,10 +1830,12 @@
                 i-date-loc          (GL20/glGetUniformLocation new-pgm-id "iDate")
                 i-fftwave-loc       (GL20/glGetUniformLocation new-pgm-id "iFftWave")
                 i-dataArray-loc     (GL20/glGetUniformLocation new-pgm-id "iDataArray")
-                            
-                i-previous-frame-loc    (GL20/glGetUniformLocation pgm-id "iPreviousFrame")
+
+                i-text-loc              (GL20/glGetUniformLocation new-pgm-id "iText")
                 
-                i-text-loc              (GL20/glGetUniformLocation pgm-id "iText")]
+                i-previous-frame-loc    (GL20/glGetUniformLocation new-pgm-id "iPreviousFrame")]
+                            
+                
             (GL20/glUseProgram new-pgm-id)
             (except-gl-errors "@ try-reload-shader useProgram")
             (when user-fn
@@ -1956,8 +1959,11 @@
     (GL20/glUniform1i (nth i-video-loc 3) 13)
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
-    ;(GL20/glUniform1i (nth i-text-loc 0) 16)
+    (GL20/glUniform1i (nth i-text-loc 0) 16)
 
+    ;(GL20/glUniform1i (nth i-previous-frame-loc 0) 16)
+
+    
     (GL20/glUniform3  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
     (GL20/glUniform1  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
@@ -1974,6 +1980,7 @@
     
     (except-gl-errors "@ draw after DrawArrays")
     
+
     ;; Put everything back to default (deselect)
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
     (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
@@ -2009,7 +2016,6 @@
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
 
-    (GL20/glUseProgram 0)
     (except-gl-errors "@ draw after post-draw")
                 ;Copying the previous image to its own texture            
     (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
@@ -2020,7 +2026,7 @@
         (do ; download it
                 ;Copying the previous image to its own texture
 
-            
+
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
@@ -2031,7 +2037,8 @@
             ;(buffer-frame locals @bytebuffer-frame)
             )
           nil)
-                    
+        (GL20/glUseProgram 0)
+
     (except-gl-errors "@ draw after copy")
     
     ;; read a pixel value
