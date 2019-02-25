@@ -771,7 +771,7 @@
    (cubemap-filename? tex-filename) :cubemap
    (= :previous-frames tex-filename) :previous-frame
    :default :twod))
-
+ 
 (defn- init-window
   "Initialise a shader-powered window with the specified
    display-mode. If true-fullscreen? is true, fullscreen mode is
