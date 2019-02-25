@@ -787,7 +787,6 @@
 ;;         height              (.getHeight ^DisplayMode display-mode)
         width               (nth display-mode 0) ;(:width @locals) 
         height              (nth display-mode 1);(:height @locals)
-        _ (println "AAAAAAAAaa" width height)
         monitor             (org.lwjgl.glfw.GLFW/glfwGetPrimaryMonitor)
         mode                (org.lwjgl.glfw.GLFW/glfwGetVideoMode monitor)
         ;width               1920 ;(.width  mode)
@@ -848,8 +847,9 @@
         (org.lwjgl.glfw.GLFW/glfwSetKeyCallback (:window @locals) (:keyCallback @locals)) 
         
         (org.lwjgl.glfw.GLFW/glfwMakeContextCurrent (:window @locals))
-        (org.lwjgl.glfw.GLFW/glfwSwapInterval 1)
-        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))        
+        (org.lwjgl.glfw.GLFW/glfwSwapInterval 2)
+        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))
+
         ;; 
 ;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_RESIZABLE  org.lwjgl.glfw.GLFW/GLFW_TRUE))
 ;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MAJOR 2))
@@ -1527,7 +1527,8 @@
     (let[tmpvideos          (:videos @the-window-state)
         tmp-video-ids       (:video-no-id @the-window-state)]
         (reset! (nth (:running-video @the-window-state) video-id) false)
-        (while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 100))
+        (Thread/sleep 200)
+        (while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 200))
         ;(Thread/sleep 1000)
         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
@@ -2182,36 +2183,33 @@
 
 (defn- run-thread
   [locals mode shader-filename shader-str-atom tex-filenames cams videos title true-fullscreen? user-fn display-sync-hz]
+  (println "init all")
   (init-window locals mode title shader-filename shader-str-atom tex-filenames cams videos true-fullscreen? user-fn display-sync-hz)
   (init-gl locals)
   (reset! (:frameCount @locals) 0) 
   (try-reload-shader locals)
   (let [startTime               (atom (System/nanoTime))]
-
+    (println "start thread")
   (while (and (= :yes (:active @locals))
               (not (org.lwjgl.glfw.GLFW/glfwWindowShouldClose (:window @locals))))
     
     ;(time (do
     (reset! startTime (System/nanoTime))
     (update-and-draw locals)
-    ;(Display/update)
-    ;(Display/sync (:display-sync-hz @locals))
     (org.lwjgl.glfw.GLFW/glfwSwapBuffers (:window @locals))
     (org.lwjgl.glfw.GLFW/glfwPollEvents)
     (Thread/sleep  (sleepTime @startTime (System/nanoTime) display-sync-hz))
     ;(write-text (str (- (System/nanoTime) @startTime) ) 300 800 10 100 100 0 50 1 true)
-    ;(org.lwjgl.glfw.GLFW/glfwPostEmptyEvent)
-
     ;))
     )
-  (destroy-gl locals)
-  ;(Display/destroy)
-  (org.lwjgl.glfw.GLFW/glfwDestroyWindow (:window @locals))
-  (org.lwjgl.glfw.GLFW/glfwTerminate)
-  (swap! locals assoc :active :no)
+    (destroy-gl locals)
+    (.free (:keyCallback @locals))
+    (org.lwjgl.glfw.GLFW/glfwPollEvents)
+    (org.lwjgl.glfw.GLFW/glfwDestroyWindow (:window @locals))
+    (org.lwjgl.glfw.GLFW/glfwPollEvents)
 
-  )
-  )
+    ;(println (org.lwjgl.glfw.GLFW/glfwTerminate))
+    (swap! locals assoc :active :no)))
 
 (defn- good-tex-count
   [textures]
@@ -2382,7 +2380,7 @@
   (when (active?)
     (swap! the-window-state assoc :active :stopping)
     (while (not (inactive?))
-      (Thread/sleep 100)))
+      (Thread/sleep 200)))
   (remove-watch (:shader-str-atom @the-window-state) :shader-str-watch)
   (stop-watcher @watcher-future)
   )
@@ -2422,6 +2420,10 @@
       ;; set user data
       (reset! shader-user-data user-data)
       ;; start the requested shader
+                 ;   (print "before start thread") (async/thread 
+
+                   (println "thewadaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+
       (.start (Thread.
                (fn [] (run-thread the-window-state
                                  mode
