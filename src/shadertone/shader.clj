@@ -89,7 +89,9 @@
     :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :play-mode-cam           [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :fixedRange-fw, :fixedRange-bw, :fixedRange
-    :buffer-length-cam       [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)] 
+    :buffer-length-cam       [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)]
+    :buffering-fixed-cam     [(atom false) (atom false) (atom false) (atom false) (atom false)]
+
     
     :fixed-buffer-index-cam         [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :active-fixed-buffer-idx-cam    [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -131,6 +133,8 @@
     :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
     :buffer-length-video     [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)]
+    :buffering-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
+    :buffering-fixed-video   [(atom false) (atom false) (atom false) (atom false) (atom false)]
    
     :fixed-buffer-index      [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :active-fixed-buffer-idx [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -1523,6 +1527,8 @@
     (let[tmpvideos          (:videos @the-window-state)
         tmp-video-ids       (:video-no-id @the-window-state)]
         (reset! (nth (:running-video @the-window-state) video-id) false)
+        (while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 100))
+        ;(Thread/sleep 1000)
         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
         (println ":running-video at release function after release" (:running-video @the-window-state))
@@ -1636,7 +1642,8 @@
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
             fixed-buffer-index      (nth (:fixed-buffer-index @locals) video-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx @locals) video-id)
-            isBuffering             (atom false)
+            ;isBuffering             (atom false)  ;:buffering-video
+            isBuffering             (nth (:buffering-video @locals) video-id)
             bufferCtr               (atom 0)
             active_buffer_idx       (atom 0)
             frameCtr                (atom 0)
@@ -2178,7 +2185,7 @@
   (init-window locals mode title shader-filename shader-str-atom tex-filenames cams videos true-fullscreen? user-fn display-sync-hz)
   (init-gl locals)
   (reset! (:frameCount @locals) 0) 
-
+  (try-reload-shader locals)
   (let [startTime               (atom (System/nanoTime))]
 
   (while (and (= :yes (:active @locals))
