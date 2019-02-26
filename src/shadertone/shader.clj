@@ -10,8 +10,11 @@
              :refer [>! <! >!! <!! go go-loop chan buffer sliding-buffer dropping-buffer close! thread
                      alts! alts!! timeout]]
             clojure.string)
-            (:gen-class)
   (:import
+    [org.bytedeco.javacpp Pointer]
+    [org.bytedeco.javacpp BytePointer]
+    [org.bytedeco.javacpp v4l2]
+    [org.bytedeco.javacpp Loader]
     [org.viritystila opencvMatConvert]
     [org.opencv.core Mat Core CvType]
     [org.opencv.videoio Videoio VideoCapture]
@@ -19,10 +22,18 @@
     [org.opencv.utils.Converters]
     [org.opencv.imgproc Imgproc]
     [org.opencv.imgcodecs Imgcodecs]
-    [org.bytedeco.javacpp Pointer]
-    [org.bytedeco.javacpp BytePointer]
-    [org.bytedeco.javacpp v4l2]
-    [org.bytedeco.javacpp Loader]
+    
+    
+    [org.bytedeco.opencv_core$Mat]
+    [org.bytedeco.opencv_core$Core]
+    [org.bytedeco.opencv_core$CvType]
+    [org.bytedeco.opencv_videoio$Videoio]
+    [org.bytedeco.opencv_videoio$VideoCapture]
+    [org.bytedeco.opencv_video$Video]
+    [org.bytedeco.opencv_utils.Converters]
+    [org.bytedeco.opencv_imgproc$Imgproc]
+    [org.bytedeco.opencv_imgcodecs$Imgcodecs]
+
            ;s(org.bytedeco.javacpp Pointer BytePointer v4l2 Loader)
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
@@ -261,6 +272,8 @@
 ;Number of video -feeds
 (def no-videos 5)
 
+(org.bytedeco.javacpp.Loader/load org.bytedeco.javacpp.opencv_java)
+
 
 (defn openV4L2output [device] (let [h        (:height @the-window-state)
                                    w        (:width @the-window-state)
@@ -377,7 +390,9 @@
 
 (defn oc-capture-from-video [video-filename] (let [ vc  (new org.opencv.videoio.VideoCapture) 
                                                     _   (Thread/sleep 200)
-                                                    vco (try (.open vc video-filename) (catch Exception e (str "caught exception: " (.getMessage e))))]
+                                                    vco (try (.open vc video-filename  org.opencv.videoio.Videoio/CAP_FFMPEG) (catch Exception e (str "caught exception: " (.getMessage e))))]
+                                                    
+                                                    (println "vc status:" vco (.isOpened vc) video-filename)
                                                     vc))
 
 (defn oc-release [capture] (if (= nil capture) (println "nil camera") (.release capture)))
@@ -1471,7 +1486,12 @@
 (defn set-video-frame-limits 
     [video-id min max] 
     (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
+    
+                    _ (println "AAAAAAAAAAA capture-video_i" capture-video_i)
+
             frame-count         @(nth (:frames-video @the-window-state) video-id)
+                                _ (println "AAAAAAAAAAA frame-count" frame-count)
+
             min_val             (if  (and (< min max) ( <= min frame-count) (> min 0)) min 1) 
             max_val             (if  (and (< min max) ( <= max frame-count) (> max 0)) max frame-count)
             cur_pos             (oc-get-capture-property :pos-frames capture-video_i )]
@@ -1513,6 +1533,7 @@
            frame-count          (oc-get-capture-property :frame-count  capture-video_i )
            fps                  (oc-get-capture-property :fps capture-video_i)
            nbytes               (* image-bytes width height)
+           _ (println "init cap properties " capture-video_i image imageP height width image-bytes format frame-count fps)
            bff                  (BufferUtils/createByteBuffer nbytes)
            _                    (buffer-video-texture locals video-id capture-video_i)
            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
@@ -1523,7 +1544,8 @@
            _ (reset! (nth (:width-video @locals) video-id) width)
            _ (reset! (nth (:height-video @locals) video-id) height)
            _ (reset! (nth (:frames-video @locals) video-id) frame-count)
-           _ (set-video-frame-limits video-id 1 frame-count)]))  
+           ;_ (set-video-frame-limits video-id 1 frame-count)
+           ]))  
                           
 (defn release-video-textures 
     [video-id]

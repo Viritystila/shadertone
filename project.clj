@@ -43,8 +43,10 @@
                 [while-let "0.2.0"]
                 [overtone            "0.10.3"]
                 [watchtower          "0.1.1"]
-                [org.viritystila/opencv "4.0.1-linux"]
-                [org.viritystila/opencv-native "4.0.1-linux"]
+                [org.bytedeco.javacpp-presets/opencv-platform "4.0.1-1.4.5-SNAPSHOT"]
+                [org.bytedeco.javacpp-presets/opencv "4.0.1-1.4.5-SNAPSHOT" :classifier "linux-x86_64"]
+                ;[org.viritystila/opencv "4.0.1-linux"]
+                ;[org.viritystila/opencv-native "4.0.1-linux"]
                 [org.bytedeco/javacpp "1.4.5-SNAPSHOT"]
                 [org.viritystila/v4l2 "Latest-1.4.5-SNAPSHOT"]
                 [org.viritystila/v4l2-platform "Latest-1.4.5-SNAPSHOT"]]
@@ -56,7 +58,7 @@
   :url "https://github.com/Viritystila/shadertone"
   :license {:name "MIT License"
            :url "https://github.com/Viritystila/shadertone/blob/master/LICENSE"}
-  :injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
+  ;:injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
   :repositories [["Viritystila" "https://github.com/Viritystila/OpenCV/raw/master"]]
   :dependencies ~all-dependencies
   :java-source-paths ["src/java"]
