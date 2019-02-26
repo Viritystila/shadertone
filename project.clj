@@ -59,6 +59,7 @@
   :injections [ (clojure.lang.RT/loadLibrary org.opencv.core.Core/NATIVE_LIBRARY_NAME)]
   :repositories [["Viritystila" "https://github.com/Viritystila/OpenCV/raw/master"]]
   :dependencies ~all-dependencies
+  :java-source-paths ["src/java"]
   :main ^{:skip-aot true} shadertone.core
   :jvm-opts ^:replace ~(jvm-opts)
   )

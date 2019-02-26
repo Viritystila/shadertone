@@ -10,7 +10,10 @@
              :refer [>! <! >!! <!! go go-loop chan buffer sliding-buffer dropping-buffer close! thread
                      alts! alts!! timeout]]
             clojure.string)
-  (:import [org.opencv.core Mat Core CvType]
+            (:gen-class)
+  (:import
+    [org.viritystila opencvMatConvert]
+    [org.opencv.core Mat Core CvType]
     [org.opencv.videoio Videoio VideoCapture]
     [org.opencv.video Video]
     [org.opencv.utils.Converters]
