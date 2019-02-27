@@ -23,20 +23,20 @@ public class opencvMatConvert
     }
     
     public java.nio.ByteBuffer convert(org.opencv.core.Mat mat) {
-//         System.out.println( "Testing opencvMatConvert class, convert function \n" );
-//         System.out.println( mat );
-//         BytePointer ss = new BytePointer() ;
-//         ByteBuffer byteBuffer = java.nio.ByteBuffer.allocate(100);
-//         //.capacity(mat.rows() * mat.step1() * mat.elemSize1()).asByteBuffer();
-//         BytePointer bb = new BytePointer() { { address = mat.dataAddr(); } };
-//         System.out.println( bb.capacity(mat.rows() * mat.step1() * mat.elemSize1()) );
-//         System.out.println(bb.asByteBuffer());
-//         return byteBuffer;
         if (mat == null) {
             return null;
         } else {
             ByteBuffer byteBuffer = new BytePointer() { { address = mat.dataAddr(); } }.capacity(mat.rows() * mat.step1() * mat.elemSize1()).asByteBuffer();
             return byteBuffer;
         }
+    }
+    
+    public java.nio.ByteBuffer convertFromAddr(long dataAddr, int rows, long step1, long elemSize1) {
+//         if (mat == null) {
+//             return null;
+//         } else {
+            ByteBuffer byteBuffer = new BytePointer() { { address = dataAddr; } }.capacity(rows * step1 * elemSize1).asByteBuffer();
+            return byteBuffer;
+//         }
     }
 }

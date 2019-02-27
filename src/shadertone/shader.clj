@@ -22,19 +22,6 @@
     [org.opencv.utils.Converters]
     [org.opencv.imgproc Imgproc]
     [org.opencv.imgcodecs Imgcodecs]
-    
-    
-    [org.bytedeco.opencv_core$Mat]
-    [org.bytedeco.opencv_core$Core]
-    [org.bytedeco.opencv_core$CvType]
-    [org.bytedeco.opencv_videoio$Videoio]
-    [org.bytedeco.opencv_videoio$VideoCapture]
-    [org.bytedeco.opencv_video$Video]
-    [org.bytedeco.opencv_utils.Converters]
-    [org.bytedeco.opencv_imgproc$Imgproc]
-    [org.bytedeco.opencv_imgcodecs$Imgcodecs]
-
-           ;s(org.bytedeco.javacpp Pointer BytePointer v4l2 Loader)
            (java.awt.image BufferedImage DataBuffer DataBufferByte WritableRaster)
            (java.io File FileInputStream)
            (java.nio IntBuffer ByteBuffer FloatBuffer ByteOrder)
@@ -180,7 +167,7 @@
     ;Other
     :tex-id-fftwave          0
     :i-fftwave-loc           [0]
-   
+  
 
     ;Previous frame
     :tex-id-previous-frame   0
@@ -272,7 +259,18 @@
 ;Number of video -feeds
 (def no-videos 5)
 
+;Opencv Java related
 (org.bytedeco.javacpp.Loader/load org.bytedeco.javacpp.opencv_java)
+(def matConverter (new org.viritystila.opencvMatConvert))
+(defn matInfo [mat] [(.dataAddr mat)
+                     (.rows mat)
+                     (.step1 mat)
+                     (.elemSize1 mat)
+                     (.height mat)
+                     (.width mat)
+                     (.channels mat)
+                    ] )
+
 
 
 (defn openV4L2output [device] (let [h        (:height @the-window-state)
@@ -1247,7 +1245,7 @@
             imageP              (oc-query-frame capture-cam image)
             _                   (apply-analysis image locals cam-id false)
             cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
-            (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
+            (if (= nil cam-buffer) nil  (async/>!! cam-buffer (matInfo image)))
             ))
      
 
@@ -1303,13 +1301,21 @@
    (let[    target              @(nth (:target-cam @locals) cam-id)
             internal-format     @(nth (:internal-format-cam @locals) cam-id)
             format              @(nth (:format-cam @locals) cam-id)
-            height              (.height image)
-            width               (.width image)          
-            image-bytes         (.channels image)
+            ;height              (.height image)
+            ;width               (.width image)          
+            ;image-bytes         (.channels image)
+                  height               (nth image 4)
+           width                (nth image 5)
+           image-bytes          (nth image 6)  
             tex-id              @(nth (:text-id-cam @locals) cam-id)
             tex-image-target    ^Integer (+ 0 target)
             nbytes              (* width height image-bytes)
-            buffer              (oc-mat-to-bytebuffer image)]           
+            ;buffer              (oc-mat-to-bytebuffer image)
+            ;buffer              (.convert matConverter image)
+
+                      buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3))) 
+
+            ]           
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
             (GL11/glBindTexture target tex-id)
             (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -1329,7 +1335,7 @@
 (defn queue-cam [locals cam-id image capture-cam] (let [imageP              (oc-query-frame capture-cam image)
                                                         _                   (apply-analysis image locals cam-id false)
                                                         cam-buffer          @(nth (:buffer-channel-cam @locals) cam-id)]
-                                                        (if (= nil cam-buffer) nil  (async/>!! cam-buffer image))
+                                                        (if (= nil cam-buffer) nil  (async/offer! cam-buffer (matInfo image)))
                                                         image))   
 (defn record-cam [cam-id buffer_idx] (let [ prepare_buffer          (nth (:fixed-buffer-prepare-cam @the-window-state) cam-id)
                                             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx-cam @the-window-state) cam-id)]
@@ -1376,7 +1382,8 @@
             ]
         (if (= true running-cam_i) 
             (do (async/thread  
-                (.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
+                (.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FOURCC (org.opencv.videoio.VideoWriter/fourcc \Y \U \Y \V ) )
+                ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
                 (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
                     (reset! startTime (System/nanoTime))
                     (cond (= :play @playmode ) (do
@@ -1517,7 +1524,7 @@
             imageP              (oc-query-frame capture-video image)
             _                   (apply-analysis image locals video-id true)
             video-buffer          @(nth (:buffer-channel-video @locals) video-id)]
-                (if (= nil video-buffer) nil  (async/offer! video-buffer image))
+                (if (= nil video-buffer) nil  (async/offer! video-buffer (matInfo image)))
             image))
   
 (defn init-video-buffer 
@@ -1588,18 +1595,26 @@
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))
  
-        
+
 (defn- set-video-opengl-texture [locals video-id image]
    (let[   target              @(nth (:target-video @locals) video-id)
            internal-format     @(nth (:internal-format-video @locals) video-id)
            format              @(nth (:format-video @locals) video-id)
-           height              (.height image)
-           width               (.width image)          
-           image-bytes         (.channels image)
+           ;height              (.height image)
+           ;width               (.width image)          
+           ;image-bytes         (.channels image)
+           height               (nth image 4)
+           width                (nth image 5)
+           image-bytes          (nth image 6)
+           
            tex-id              @(nth (:text-id-video @locals) video-id)
            tex-image-target    ^Integer (+ 0 target)
            nbytes              (* width height image-bytes)
-           buffer              (oc-mat-to-bytebuffer image)]
+           ;buffer              (oc-mat-to-bytebuffer image)
+           ;buffer              (.convert matConverter image)
+           ;_ (nth image 0)
+           buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3))) 
+           ]
            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
            (GL11/glBindTexture target tex-id)
            (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -1648,6 +1663,7 @@
 ;;;;;;;;;;;;;;;;;;                           
 ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;
+
                                                                         
 (defn- start-video-loop 
     [locals video-id]
@@ -1699,7 +1715,8 @@
                                                             (do (Thread/sleep 10)))
                                                             (swap! frameCtr inc)
                                                             (reset! previousMode :play)
-                                                            (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr)))
+                                                                
+                                                            (async/offer! video-buffer (matInfo (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))))
                                                     (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))                        
                             (= :pause @playmode)(do (async/offer! video-buffer (nth @(returnBuffer vec_buffers @active_buffer_idx) @bufferCtr))
                                                     (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
@@ -1751,6 +1768,7 @@
                                                                 (Thread/sleep  (sleepTime @startTime (System/nanoTime) @(nth (:fps-video @locals) video-id))))
                              (= :fixedRange @playmode)(do       (async/offer! video-buffer (nth @(returnBuffer fixed_vec_buffers @active-fixed-buffer-idx) (mod @fixed-buffer-index maxBufferLength)))
                                                                 (Thread/sleep  (sleepTime @startTime (System/nanoTime) (:display-sync-hz @locals))))))
+                    (while @isBuffering (Thread/sleep 200))
                     (oc-release capture-video_i))
                     (println "video loop stopped " video-id)))))   
        
