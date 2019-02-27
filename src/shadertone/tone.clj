@@ -216,6 +216,8 @@
 (defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode) )
                                  ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame)))
 
+(defn set-cam-buffer-fps [cam-id fps] (s/set-cam-buffer-fps cam-id fps) )
+                                 
 (defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
 
 (defn getWindowState [] (s/getWindowState))
