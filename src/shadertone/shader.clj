@@ -144,6 +144,7 @@
     :fixed-buffer-prepare    [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :fixed-buffer-frames-no  [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :fixed-vec-buffers       [[(atom []) (atom [])(atom []) (atom [])(atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])]]
+    :play-vec-buffers        [[(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])] [(atom []) (atom [])]]
 
    
     ;Video analysis
@@ -381,7 +382,7 @@
 ;;                                             ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
 ;;                                             _           (reset! (:buffer-writer @the-window-state) vw)]))
 
-
+                                                        
 (defn oc-capture-from-cam [cam-id] (let [           vc  (new org.opencv.videoio.VideoCapture)
                                                     _   (Thread/sleep 200)
                                                     vco (.open vc cam-id)]
@@ -1253,6 +1254,11 @@
 ;;;;;;;;;;;;;;;;;;;           
 ;;;;Camera buffering
 ;;;;;;;;;;;;;;;;;;;
+(defn init-cam-vec-buffers [cam-id locals] (let [maxBufferLength         @(nth (:buffer-length-cam @locals) cam-id)] 
+                                                (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers-cam @locals) cam-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))))))
+ ;;;Hack to prevent memory leaks from the cam-loop when reloading the window                                                       
+(doseq [x (range 5)] (init-cam-vec-buffers x the-window-state))
+
 
 (defn returnBuffer [bufs idx] (nth bufs idx))
    
@@ -1295,7 +1301,7 @@
             vec_buffers             (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))
             tmpMat                  (oc-new-mat)
             cam-buffer              @(nth (:buffer-channel-cam @locals) cam-id)
-            _                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers-cam @locals) cam-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+            ;_                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers-cam @locals) cam-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
             fixed_vec_buffers       (nth (:fixed-vec-buffers-cam @locals) cam-id)
             fixed-buffer-index      (nth (:fixed-buffer-index-cam @locals) cam-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx-cam @locals) cam-id)
@@ -1534,6 +1540,12 @@
 ;;;;Video buffering
 ;;;;;;;;;;;;;;;;;;;
 
+(defn init-video-vec-buffers [video-id locals] (let [maxBufferLength         @(nth (:buffer-length-video @locals) video-id)] 
+                                                        (doseq [x (range 2)] (reset! (nth (nth (:play-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+                                                        (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))))))
+ ;;;Hack to prevent memory leaks from the video-loop when reloading the window                                                       
+(doseq [x (range 5)] (init-video-vec-buffers x the-window-state))
+
 
 (defn setActiveBuffer [video-id newIdx] (let [actBuf (nth (:active-fixed-buffer-idx @the-window-state) video-id)
                                      maxIdx 5]
@@ -1583,8 +1595,10 @@
             maxBufferLength         @(nth (:buffer-length-video @locals) video-id)
             len                     ( int (/ maxBufferLength 2))
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)           
-            vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
-            _                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+            ;_                       (doseq [x (range 2)] (reset! (nth (nth (:play-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
+            ;vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
+            vec_buffers             (nth (:play-vec-buffers @locals) video-id)
+            ;_                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
             fixed-buffer-index      (nth (:fixed-buffer-index @locals) video-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx @locals) video-id)
