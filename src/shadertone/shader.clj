@@ -369,19 +369,8 @@
 (defn getWindowState [] (let [ws the-window-state] ws))
 
 ;;;;;;;;;;;;;;;;;;;;
-;;OPENCV 3 functions
+;;OPENCV functions
 ;;;;;;;;;;;;;;;;;;;;
-;; (defn oc-initialize-write-to-file [](let[   filename    @(:save-buffer-filename @the-window-state)
-;;                                             fourcc      (org.opencv.videoio.VideoWriter/fourcc \D \I \V \X ) ; \M \J \P \G )
-;;                                             fps         @(:saveFPS @the-window-state)
-;;                                             height      (:height @the-window-state)
-;;                                             width       (:width @the-window-state) ;:buffer-writer
-;;                                             mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-;;                                             vw          (new org.opencv.videoio.VideoWriter filename fourcc fps (.size mat))
-;;                                             ;vw          (new org.opencv.videoio.VideoWriter) ;Gstreamer example
-;;                                             ;_           (.open vw  "appsrc is-live=true block=true do-timestamp=true ! tee ! video/x-raw,format=BGR, width=1920, height=1080,framerate=30/1 ! queue ! jpegenc ! filesink location=suptest.avi", (org.opencv.videoio.Videoio/CAP_GSTREAMER),  0, 30, (.size mat) true)
-;;                                             _           (reset! (:buffer-writer @the-window-state) vw)]))
-
                                                         
 (defn oc-capture-from-cam [cam-id] (let [           vc  (new org.opencv.videoio.VideoCapture)
                                                     _   (Thread/sleep 200)
@@ -674,13 +663,6 @@
     format))
 
                        
-                                                                
-                                                                        
-                                                                                                    
-
-    
-
-    
 ;; ======================================================================
 ;; code modified from
 ;; https://github.com/ztellman/penumbra/blob/master/src/penumbra/opengl/core.clj
@@ -835,6 +817,12 @@
         (org.lwjgl.glfw.GLFW/glfwDefaultWindowHints)
         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_VISIBLE org.lwjgl.glfw.GLFW/GLFW_FALSE)
         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_RESIZABLE org.lwjgl.glfw.GLFW/GLFW_FALSE) 
+        (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_DECORATED org.lwjgl.glfw.GLFW/GLFW_FALSE)
+        ;(org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_OPENGL_PROFILE        org.lwjgl.glfw.GLFW/GLFW_OPENGL_CORE_PROFILE)
+        ;(org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_OPENGL_FORWARD_COMPAT org.lwjgl.glfw.GLFW/GLFW_FALSE)
+         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MAJOR 3)
+         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MINOR 1)
+
 
         (swap! locals assoc
            :window (org.lwjgl.glfw.GLFW/glfwCreateWindow width height title 0 0))
@@ -1479,8 +1467,8 @@
     (let[tmpvideos          (:videos @the-window-state)
         tmp-video-ids       (:video-no-id @the-window-state)]
         (reset! (nth (:running-video @the-window-state) video-id) false)
-        (Thread/sleep 200)
-        (while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 200))
+        ;(Thread/sleep 200)
+        ;(while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 200))
         ;(Thread/sleep 1000)
         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
