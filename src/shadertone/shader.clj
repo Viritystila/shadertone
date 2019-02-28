@@ -800,27 +800,16 @@
     (throw (IllegalStateException. "Unable to initialize GLFW")))
    
     (let [
-   ;;width               (.getWidth ^DisplayMode display-mode)
-;;         height              (.getHeight ^DisplayMode display-mode)
         width               (nth display-mode 0) ;(:width @locals) 
         height              (nth display-mode 1);(:height @locals)
         monitor             (org.lwjgl.glfw.GLFW/glfwGetPrimaryMonitor)
         mode                (org.lwjgl.glfw.GLFW/glfwGetVideoMode monitor)
-        ;width               1920 ;(.width  mode)
-        ;height              1080 ;(.height mode)        
-        ;;pixel-format        (PixelFormat.)
-;;         context-attributes  (-> (ContextAttribs. 2 1)) ;; GL2.1
         current-time-millis (System/currentTimeMillis)
         tex-filenames       (fill-filenames tex-filenames no-textures)
         videos              (fill-filenames videos no-videos)
         cams                (sort-cams cams)
-        _ (println "cams sorted")
         tttt                (sort-videos locals videos)
-                _ (println "videos sorted")
-
-        tex-types           (map get-texture-type tex-filenames)
-                _ (println "textures sorted")
-]
+        tex-types           (map get-texture-type tex-filenames)]
     (swap! locals
            assoc
            :active          :yes
@@ -837,14 +826,10 @@
            :videos          videos
            :tex-types       tex-types
            :user-fn         user-fn)
-    ;; slurp-fs requires :tex-types, so we need a 2 pass setup
         (println "begin shader slurping")
         (let [shader-str (if (nil? shader-filename)
                        @shader-str-atom
-                       (slurp-fs locals (:shader-filename @locals)))]
-                                 _ (println "finished shader slurping")
-                                 )
-
+                       (slurp-fs locals (:shader-filename @locals)))])
 
         (org.lwjgl.glfw.GLFW/glfwDefaultWindowHints)
         (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_VISIBLE org.lwjgl.glfw.GLFW/GLFW_FALSE)
@@ -860,46 +845,11 @@
              (invoke [window key scancode action mods]
                (when (and (= key org.lwjgl.glfw.GLFW/GLFW_KEY_ESCAPE)
                           (= action org.lwjgl.glfw.GLFW/GLFW_RELEASE))
-                 (org.lwjgl.glfw.GLFW/glfwSetWindowShouldClose (:window @locals) true)))))
+                            (org.lwjgl.glfw.GLFW/glfwSetWindowShouldClose (:window @locals) true)))))
         (org.lwjgl.glfw.GLFW/glfwSetKeyCallback (:window @locals) (:keyCallback @locals)) 
-        
         (org.lwjgl.glfw.GLFW/glfwMakeContextCurrent (:window @locals))
         (org.lwjgl.glfw.GLFW/glfwSwapInterval 2)
-        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))
-
-        ;; 
-;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_RESIZABLE  org.lwjgl.glfw.GLFW/GLFW_TRUE))
-;;         (org.lwjgl.glfw.GLFW/glfwWindowHint (org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MAJOR 2))
-;;         org.lwjgl.glfw.GLFW/glfwWindowHint(org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MINOR, 1);
-;;         org.lwjgl.glfw.GLFW/glfwWindowHint(org.lwjgl.glfw.GLFW/GLFW_OPENGL_PROFILE, org.lwjgl.glfw.GLFW/GLFW_OPENGL_CORE_PROFILE); 
-;;         window = GLFW/glfwCreateWindow(width, height, title, 0, 0);
-                                 
-;;       (swap! locals assoc :shader-str shader-str)
-;;                       _ (println "HERE 1" display-mode)
-;;                                             _ (println display-mode)
-;; 
-;;       (Display/setDisplayMode display-mode)
-;;                             _ (println "HERE 2")
-;; 
-;;       (when true-fullscreen?
-;;         (Display/setFullscreen true))
-;;                               _ (println "HERE 3")
-;; 
-;;       (Display/setTitle title)
-;;                             _ (println "HERE 4")
-;; 
-;;       (Display/setVSyncEnabled true)
-;;                             _ (println "HERE 5")
-;; 
-;;       (Display/setLocation 0 0)
-;;                             _ (println "HERE 6")
-;; 
-;;       (Display/create pixel-format context-attributes)
-;;                 _ (println "finish display")
-    
-
-)
-      )
+        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))))
       
       
 
@@ -921,8 +871,6 @@
         _                   (GL15/glBufferData GL15/GL_ARRAY_BUFFER
                                            ^FloatBuffer vertices-buffer
                                            GL15/GL_STATIC_DRAW)
-        ;_                   (GL20/glVertexAttribPointer 0 4 GL11/GL_FLOAT false 0 0)
-        ;_                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
         _ (except-gl-errors "@ end of init-buffers")]
         (swap! locals
            assoc
@@ -1058,8 +1006,6 @@
              tex-image-target ^Integer (if (= target GL13/GL_TEXTURE_CUBE_MAP)
                                          (+ i GL13/GL_TEXTURE_CUBE_MAP_POSITIVE_X)
                                          target)]
-             ;_ (println "target" target)
-             ;_ (println "tex-id input" tex-id)
          (GL11/glBindTexture target tex-id)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
          (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
@@ -1132,18 +1078,6 @@
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))  
 
-                                                        
-;; (defn- process-frame [frame]     
-;;             (let [  width       (:width @the-window-state)
-;;                     height      (:height @the-window-state)
-;;                     mat         (org.opencv.core.Mat/zeros  height width org.opencv.core.CvType/CV_8UC3)
-;;                     mat_flip    mat
-;;                     _           (.put mat 0 0 frame)
-;;                     _           (org.opencv.core.Core/flip mat mat_flip 0)
-;;                     ]
-;;                     (org.opencv.imgproc.Imgproc/cvtColor mat_flip mat (org.opencv.imgproc.Imgproc/COLOR_RGB2BGR))
-;;                     mat)) 
- 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Text frame functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -1299,21 +1233,13 @@
    (let[    target              @(nth (:target-cam @locals) cam-id)
             internal-format     @(nth (:internal-format-cam @locals) cam-id)
             format              @(nth (:format-cam @locals) cam-id)
-            ;height              (.height image)
-            ;width               (.width image)          
-            ;image-bytes         (.channels image)
-                  height               (nth image 4)
-           width                (nth image 5)
-           image-bytes          (nth image 6)  
+            height              (nth image 4)
+            width               (nth image 5)
+            image-bytes         (nth image 6)  
             tex-id              @(nth (:text-id-cam @locals) cam-id)
             tex-image-target    ^Integer (+ 0 target)
             nbytes              (* width height image-bytes)
-            ;buffer              (oc-mat-to-bytebuffer image)
-            ;buffer              (.convert matConverter image)
-
-                      buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3))) 
-
-            ]           
+            buffer              (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3)))]           
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
             (GL11/glBindTexture target tex-id)
             (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -1588,21 +1514,13 @@
    (let[   target              @(nth (:target-video @locals) video-id)
            internal-format     @(nth (:internal-format-video @locals) video-id)
            format              @(nth (:format-video @locals) video-id)
-           ;height              (.height image)
-           ;width               (.width image)          
-           ;image-bytes         (.channels image)
            height               (nth image 4)
            width                (nth image 5)
            image-bytes          (nth image 6)
-           
            tex-id              @(nth (:text-id-video @locals) video-id)
            tex-image-target    ^Integer (+ 0 target)
            nbytes              (* width height image-bytes)
-           ;buffer              (oc-mat-to-bytebuffer image)
-           ;buffer              (.convert matConverter image)
-           ;_ (nth image 0)
-           buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3))) 
-           ]
+           buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3)))]
            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
            (GL11/glBindTexture target tex-id)
            (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
@@ -1666,13 +1584,10 @@
             len                     ( int (/ maxBufferLength 2))
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)           
             vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
-            ;_                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 0) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))
-            ;_                       (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) 1) (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) 
             _                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
             fixed-buffer-index      (nth (:fixed-buffer-index @locals) video-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx @locals) video-id)
-            ;isBuffering             (atom false)  ;:buffering-video
             isBuffering             (nth (:buffering-video @locals) video-id)
             bufferCtr               (atom 0)
             active_buffer_idx       (atom 0)
@@ -1798,15 +1713,9 @@
     [locals video-id]
     (let [  running-video_i     @(nth (:running-video @locals) video-id)
             capture-video_i     @(nth (:capture-video @locals) video-id)
-            ;cur-fps             @(nth (:fps-video @locals) video-id) ;(oc-get-capture-property :fps capture-video_i )
-            ;frame-duration      (* 1E9 (/ 1 cur-fps))
-            ;cur-time            (System/nanoTime)
-            ;elapsed-time        (- cur-time @(nth (:video-elapsed-times @locals) video-id))
             image               (async/poll! @(nth (:buffer-channel-video @locals) video-id))]
             (if (and (= true running-video_i) (not (nil? image)))
-                (do (set-video-opengl-texture locals video-id image) 
-                    ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime))
-                    ) 
+                (do (set-video-opengl-texture locals video-id image)) 
                 nil)))
                              
 (defn- loop-get-video-textures 
@@ -1819,14 +1728,12 @@
 (defn- init-videos 
     [locals]
     (let [  video_idxs      (:videos @locals)
-            ;bufferLength    @(nth (:buffer-length-video @locals) video-id)
             bufferLength    1]
             (doseq [video-id (range no-videos)]
                 (init-video-tex locals video-id )
                 (reset! (nth (:buffer-channel-video @locals) video-id) (async/chan (async/buffer 1))))
             (doseq [video-id (range no-videos)]
                 (println "video_id" video-id)
-                ;(reset! (nth (:video-elapsed-times @locals) video-id)  (System/nanoTime) )
                 (reset! (nth (:video-buf-elapsed-times @locals) video-id)  (System/nanoTime) )
 
                 (check-video-idx locals video-id))))    
@@ -1838,7 +1745,6 @@
 (defn- init-gl
   [locals]
   (let [{:keys [width height user-fn]} @locals]
-    ;;(println "OpenGL version:" (GL11/glGetString GL11/GL_VERSION))
     (GL/createCapabilities)
     (println "OpenGL version:" (GL11/glGetString GL11/GL_VERSION))
     (GL11/glClearColor 0.0 0.0 0.0 0.0)
@@ -1998,12 +1904,6 @@
 
     (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
     
-    ;(GL20/glUseProgram pgm-id)
-     ;(println cur-time @(:frameCount @locals)) 
-     ;;;;;;;;;;;;
-     ;;;;;;;;;;;;;
-     ;;;;;;;;;;;;,
-     ;;;;;;;;;;;;;
     (when user-fn
       (user-fn :pre-draw pgm-id (:tex-id-fftwave @locals)))
 
@@ -2092,10 +1992,10 @@
                 nil)))
     
 ;;     ;text texture :tex-id-text-texture
-;;     (do
-;;         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
-;;         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-;;     )
+    (do
+        (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
+    )
         
     (except-gl-errors "@ draw prior to post-draw")
 
@@ -2110,15 +2010,11 @@
     (GL11/glCopyTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGB 0 0 width height 0)
     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
     (if @save-frames
-        (do ; download it
-                ;Copying the previous image to its own texture
-
-            
+        (do ; download it and copy the previous image to its own texture
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-previous-frame))
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-            ;@(:bff @the-window-state)
             (org.bytedeco.javacpp.v4l2/v4l2_write @(:deviceId @the-window-state) (new org.bytedeco.javacpp.BytePointer @bytebuffer-frame) (long  @(:minsize @the-window-state)))
             ; and save it to a video to a file
             ;(buffer-frame locals @bytebuffer-frame)
@@ -2197,7 +2093,6 @@
         (if (= @i nil) (println "no video")  (do (release-video-textures @i))))
     (swap! locals assoc :videos (vec (replicate no-videos nil)))
     ;stop recording
-    ;(if @(:save-frames @locals) (toggle-recording  @(:device @the-window-state)))
     (closeV4L2output)
     ;; Delete any user state
     (when user-fn
@@ -2239,8 +2134,6 @@
     (org.lwjgl.glfw.GLFW/glfwPollEvents)
     (org.lwjgl.glfw.GLFW/glfwDestroyWindow (:window @locals))
     (org.lwjgl.glfw.GLFW/glfwPollEvents)
-
-    ;(println (org.lwjgl.glfw.GLFW/glfwTerminate))
     (swap! locals assoc :active :no)))
 
 (defn- good-tex-count
@@ -2480,9 +2373,7 @@
           videos          []        
           user-data       {}
           user-fn         shader-default-fn}}]
-   (let [;;mode (Display/getDisplayMode)
-         ;;mode (DisplayMode. width height)
-        mode  [width height]]
+   (let [mode  [width height]]
     ;(decorate-display!)
     (undecorate-display!)
     (start-shader-display mode shader-filename-or-str-atom textures cams videos title false user-data user-fn display-sync-hz)))
