@@ -1490,6 +1490,8 @@
 (defn init-video-buffer 
    [locals video-id] 
    (let [  capture-video_i     @(nth (:capture-video @the-window-state) video-id)
+           tex-id              @(nth (:text-id-video @locals) video-id)
+           target              @(nth (:target-video @locals) video-id)
            image                (oc-new-mat)
            imageP               (oc-query-frame capture-video_i image)
            height               (.height image)
@@ -1502,7 +1504,7 @@
            nbytes               (* image-bytes width height)
            _ (println "init cap properties " capture-video_i image imageP height width image-bytes format frame-count fps)
            bff                  (BufferUtils/createByteBuffer nbytes)
-           _                    (buffer-video-texture locals video-id capture-video_i)
+           ;_                    (buffer-video-texture locals video-id capture-video_i)
            _ (reset! (nth (:frame-start-video @locals) video-id)   1 )
            _ (reset! (nth (:frame-stop-video @locals) video-id) frame-count)
            _ (reset! (nth (:internal-format-video @locals) video-id) internal-format)
@@ -1512,16 +1514,20 @@
            _ (reset! (nth (:height-video @locals) video-id) height)
            _ (reset! (nth (:frames-video @locals) video-id) frame-count)
            ;_ (set-video-frame-limits video-id 1 frame-count)
-           ]))  
+           ]
+           (GL11/glBindTexture target tex-id)
+           (try (GL11/glTexImage2D ^Integer target 0 ^Integer internal-format
+               ^Integer width  ^Integer height 0
+               ^Integer format
+               GL11/GL_UNSIGNED_BYTE
+               bff))
+           (buffer-video-texture locals video-id capture-video_i)))  
                           
 (defn release-video-textures 
     [video-id]
     (let[tmpvideos          (:videos @the-window-state)
         tmp-video-ids       (:video-no-id @the-window-state)]
         (reset! (nth (:running-video @the-window-state) video-id) false)
-        ;(Thread/sleep 200)
-        ;(while  @(nth (:buffering-video @the-window-state) video-id) (Thread/sleep 200))
-        ;(Thread/sleep 1000)
         (reset! (nth (:video-no-id @the-window-state) video-id) nil)
         (swap! the-window-state assoc :videos (assoc tmpvideos video-id nil))
         (println ":running-video at release function after release" (:running-video @the-window-state))
@@ -1569,14 +1575,20 @@
            buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3)))]
            (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
            (GL11/glBindTexture target tex-id)
-           (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
-               ^Integer width  ^Integer height 0
-               ^Integer format
-               GL11/GL_UNSIGNED_BYTE
-               buffer))
-           (except-gl-errors "@ end of load-texture if-stmt")))
+;;            (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
+;;                ^Integer width  ^Integer height 0
+;;                ^Integer format
+;;                GL11/GL_UNSIGNED_BYTE
+;;                buffer))
+                      (if (< 0 (nth image 0))
+            (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
+                ^Integer width  ^Integer height
+                ^Integer format
+                GL11/GL_UNSIGNED_BYTE
+                buffer)))
+            (except-gl-errors "@ end of load-texture if-stmt")))
 
-           ;;            (if (< 0 (nth image 0))
+;;                       (if (< 0 (nth image 0))
 ;;             (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
 ;;                 ^Integer width  ^Integer height
 ;;                 ^Integer format
