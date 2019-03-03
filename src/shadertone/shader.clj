@@ -1575,7 +1575,13 @@
                GL11/GL_UNSIGNED_BYTE
                buffer))
            (except-gl-errors "@ end of load-texture if-stmt")))
-           
+
+           ;;            (if (< 0 (nth image 0))
+;;             (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
+;;                 ^Integer width  ^Integer height
+;;                 ^Integer format
+;;                 GL11/GL_UNSIGNED_BYTE
+;;                 buffer)))
 ;;;;;;;;;;;;;;;;;;;           
 ;;;;Video buffering
 ;;;;;;;;;;;;;;;;;;;
@@ -1980,7 +1986,7 @@
 ;;     ;; setup our uniform
     (GL20/glUniform3f i-resolution-loc width height 1.0)
     (GL20/glUniform1f i-global-time-loc cur-time)
-;;    (GL20/glUniform1i  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
+    (GL20/glUniform1fv  ^Integer i-channel-time-loc ^FloatBuffer channel-time-buffer)
 ;; 
 ;; ;;     (GL20/glUniform4f i-mouse-loc
 ;; ;;                       mouse-pos-x
@@ -2005,9 +2011,9 @@
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
     (GL20/glUniform1i (nth i-text-loc 0) 16)
 ;; 
-;;     (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
-;;     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
-;;     (GL20/glUniform1i  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
+     (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
+     (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
+     (GL20/glUniform1fv  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
 ;;     
 ;;     ;; get vertex array ready
      (GL30/glBindVertexArray vao-id)
@@ -2024,12 +2030,7 @@
      (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
 ;;     
      (except-gl-errors "@ draw after DrawArrays")
-    ;; Bind to the VAO that has all the information about the
-    ;; vertices
-;;     (GL30/glBindVertexArray vao-id)
-;;     (GL20/glEnableVertexAttribArray 0)
-;;     (GL20/glEnableVertexAttribArray 1)
-;;     ;; Put everything back to default (deselect)
+     ;; Put everything back to default (deselect)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
      (GL20/glDisableVertexAttribArray 0)
      (GL20/glDisableVertexAttribArray 1)
@@ -2056,7 +2057,7 @@
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
                 nil)))
     
-;;     ;text texture :tex-id-text-texture
+    ;text texture :tex-id-text-texture
     (do
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
         (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
