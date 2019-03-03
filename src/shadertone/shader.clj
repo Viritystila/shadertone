@@ -57,6 +57,10 @@
     ;; geom ids
     :vbo-id                  0
     :vertices-count          0
+    :vao-id                  0
+    :vboc-id                 0
+    :vboi-id                 0
+    :indices-count           0
     ;; shader program
     :shader-good             true ;; false in error condition
     :shader-filename         nil
@@ -729,7 +733,7 @@
   [locals filename]
   (let [{:keys [tex-types]} @locals
         ;;file-str (slurp filename)
-        file-str (str "#version 130\n"
+        file-str (str "#version 330\n"
                       "uniform vec3      iResolution;\n"
                       "uniform float     iGlobalTime;\n"
                       "uniform float     iChannelTime[4];\n"
@@ -855,23 +859,71 @@
                                 (.put vertices)
                                 (.flip))
         vertices-count      (count vertices)
+        colors (float-array
+                [1.0 0.0 0.0
+                 0.0 1.0 0.0
+                 0.0 0.0 1.0])
+        colors-buffer (-> (BufferUtils/createFloatBuffer (count colors))
+                          (.put colors)
+                          (.flip))
+        indices (byte-array
+                 (map byte
+                      [0 1 2])) ;; otherwise it whines about longs
+        indices-count (count indices)
+        indices-buffer (-> (BufferUtils/createByteBuffer indices-count)
+                           (.put indices)
+                           (.flip))
+        ;; create & bind Vertex Array Object
+        vao-id              (GL30/glGenVertexArrays)
+        _                   (GL30/glBindVertexArray vao-id)
+         ;; create & bind Vertex Buffer Object for vertices
         vbo-id              (GL15/glGenBuffers)
         _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
         _                   (GL15/glBufferData GL15/GL_ARRAY_BUFFER
                                            ^FloatBuffer vertices-buffer
                                            GL15/GL_STATIC_DRAW)
+        _                   (GL20/glVertexAttribPointer 0 4 GL11/GL_FLOAT false 0 0)
+        _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
+        ;; create & bind VBO for colors
+        vboc-id             (GL15/glGenBuffers)
+        _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vboc-id)
+        _                   (GL15/glBufferData GL15/GL_ARRAY_BUFFER colors-buffer GL15/GL_STATIC_DRAW)
+        _                   (GL20/glVertexAttribPointer 1 3 GL11/GL_FLOAT false 0 0)
+        _                   (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
+         ;; deselect the VAO
+        _                   (GL30/glBindVertexArray 0)
+        ;; create & bind VBO for indices
+        vboi-id             (GL15/glGenBuffers)
+        _                   (GL15/glBindBuffer GL15/GL_ELEMENT_ARRAY_BUFFER vboi-id)
+        _                   (GL15/glBufferData GL15/GL_ELEMENT_ARRAY_BUFFER indices-buffer GL15/GL_STATIC_DRAW)
+        _                   (GL15/glBindBuffer GL15/GL_ELEMENT_ARRAY_BUFFER 0)
+                                           
+                                        
         _ (except-gl-errors "@ end of init-buffers")]
         (swap! locals
            assoc
            :vbo-id vbo-id
+           :vao-id vao-id
+           :vboc-id vboc-id
+           :vboi-id vboi-id
            :vertices-count vertices-count)))
 
-(def vs-shader
-  (str "#version 120\n"
-       "void main(void) {\n"
-       "    gl_Position = gl_Vertex;\n"
-       "}\n"))
 
+(def vs-shader
+  (str "#version 330\n"
+       "\n"
+       "in vec4 in_Position;\n"
+       "in vec4 in_Color;\n"
+       "uniform float in_Angle;\n"
+       "\n"
+       "out vec4 pass_Color;\n"
+       "\n"
+       "void main(void) {\n"
+       "    gl_Position = in_Position;\n"
+       "}\n"
+))
+   
+       
 (defn- load-shader
   [^String shader-str ^Integer shader-type]
   (let [shader-id         (GL20/glCreateShader shader-type)
@@ -1870,7 +1922,7 @@
   (let [{:keys [width height i-resolution-loc
                 start-time last-time i-global-time-loc
                 i-date-loc
-                pgm-id vbo-id
+                pgm-id vbo-id vao-id vboi-id
                 vertices-count
 ;;                 i-mouse-loc
 ;;                 mouse-pos-x mouse-pos-y
@@ -1958,6 +2010,10 @@
 ;;     (GL20/glUniform1i  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
 ;;     
 ;;     ;; get vertex array ready
+     (GL30/glBindVertexArray vao-id)
+     (GL20/glEnableVertexAttribArray 0)
+     (GL20/glEnableVertexAttribArray 1)
+     
      (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
      (GL11/glVertexPointer 4 GL11/GL_FLOAT 0 0)
@@ -1968,9 +2024,16 @@
      (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
 ;;     
      (except-gl-errors "@ draw after DrawArrays")
-;;     
+    ;; Bind to the VAO that has all the information about the
+    ;; vertices
+;;     (GL30/glBindVertexArray vao-id)
+;;     (GL20/glEnableVertexAttribArray 0)
+;;     (GL20/glEnableVertexAttribArray 1)
 ;;     ;; Put everything back to default (deselect)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
+     (GL20/glDisableVertexAttribArray 0)
+     (GL20/glDisableVertexAttribArray 1)
+     (GL30/glBindVertexArray 0)
      (GL11/glDisableClientState GL11/GL_VERTEX_ARRAY)
     ;; unbind textures
     (doseq [i (remove nil? tex-ids)]
@@ -2084,7 +2147,7 @@
           
 (defn- destroy-gl
   [locals]
-  (let [{:keys [pgm-id vs-id fs-id vbo-id user-fn cams]} @locals]
+  (let [{:keys [pgm-id vs-id fs-id vbo-id vao-id user-fn cams]} @locals]
      ;;Stop and release cams
     (println " Cams tbd" (:cams @the-window-state))
     (doseq [i (remove nil? (:cams @the-window-state))](println "release cam " i)(release-cam-textures i))
@@ -2106,9 +2169,17 @@
     (GL20/glDeleteShader vs-id)
     (GL20/glDeleteShader fs-id)
     (GL20/glDeleteProgram pgm-id)
+    ;; Select the VAO
+    (GL30/glBindVertexArray vao-id)
+    (GL20/glDisableVertexAttribArray 0)
+    (GL20/glDisableVertexAttribArray 1)
+    
     ;; Delete the vertex VBO
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
-    (GL15/glDeleteBuffers ^Integer vbo-id)))
+    (GL15/glDeleteBuffers ^Integer vbo-id)
+        ;; Delete the VAO
+    (GL30/glBindVertexArray 0)
+    (GL30/glDeleteVertexArrays vao-id)))
 
 (defn- run-thread
   [locals mode shader-filename shader-str-atom tex-filenames cams videos title true-fullscreen? user-fn display-sync-hz]
