@@ -1517,12 +1517,12 @@
            _ (reset! (nth (:frames-video @locals) video-id) frame-count)
            ;_ (set-video-frame-limits video-id 1 frame-count)
            ]
-           (GL11/glBindTexture target tex-id)
-           (try (GL11/glTexImage2D ^Integer target 0 ^Integer internal-format
-               ^Integer width  ^Integer height 0
-               ^Integer format
-               GL11/GL_UNSIGNED_BYTE
-               bff))
+;;            (GL11/glBindTexture target tex-id)
+;;            (try (GL11/glTexImage2D ^Integer target 0 ^Integer internal-format
+;;                ^Integer width  ^Integer height 0
+;;                ^Integer format
+;;                GL11/GL_UNSIGNED_BYTE
+;;                bff))
            (buffer-video-texture locals video-id capture-video_i)))  
                           ;
 (defn release-video-textures 
@@ -1581,31 +1581,26 @@
            buffer               (.convertFromAddr matConverter (long (nth image 0))  (int (nth image 1)) (long (nth image 2)) (long (nth image 3)))]
             (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id))
             (GL11/glBindTexture target tex-id)
-            (if (not= setnbytes nbytes )
-            (do
+;;             (if (not= setnbytes nbytes )
+;;             (do
             (try (GL11/glTexImage2D ^Integer tex-image-target 0 ^Integer internal-format
                 ^Integer width  ^Integer height 0
                 ^Integer format
                 GL11/GL_UNSIGNED_BYTE
-                buffer))
-                (reset! (nth (:width-video @locals) video-id) width)
-                (reset! (nth (:height-video @locals) video-id) height)
-                (reset! (nth (:channels-video @locals) video-id) image-bytes))
-            (do
-                (if (< 0 (nth image 0))
-                    (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
-                        ^Integer width  ^Integer height
-                        ^Integer format
-                        GL11/GL_UNSIGNED_BYTE
-                        buffer)))))
+                 buffer))
+;;                 (reset! (nth (:width-video @locals) video-id) width)
+;;                 (reset! (nth (:height-video @locals) video-id) height)
+;;                 (reset! (nth (:channels-video @locals) video-id) image-bytes))
+;;             (do
+;;                 (if (< 0 (nth image 0))
+;;                     (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
+;;                         ^Integer width  ^Integer height
+;;                         ^Integer format
+;;                         GL11/GL_UNSIGNED_BYTE
+;;                         buffer)))))
             (except-gl-errors "@ end of load-texture if-stmt")))
 
-;;                       (if (< 0 (nth image 0))
-;;             (try (GL11/glTexSubImage2D ^Integer tex-image-target 0 0 0
-;;                 ^Integer width  ^Integer height
-;;                 ^Integer format
-;;                 GL11/GL_UNSIGNED_BYTE
-;;                 buffer)))
+
 ;;;;;;;;;;;;;;;;;;;           
 ;;;;Video buffering
 ;;;;;;;;;;;;;;;;;;;
