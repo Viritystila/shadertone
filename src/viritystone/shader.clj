@@ -176,7 +176,6 @@
     ;Other
     :tex-id-fftwave          0
     :i-fftwave-loc           [0]
-  
 
     ;Previous frame
     :tex-id-previous-frame   0
@@ -243,9 +242,6 @@
 
 
 ;; GLOBAL STATE ATOMS
-;; Tried to get rid of this atom, but LWJGL is limited to only
-;; one window.  So, we just keep a single atom containing the
-;; current window state here.
 (defonce the-window-state (atom default-state-values))
 ;; The reload-shader atom communicates across the gl & watcher threads
 (defonce reload-shader (atom false))
@@ -277,11 +273,8 @@
                      (.elemSize1 mat)
                      (.height mat)
                      (.width mat)
-                     (.channels mat)
-                    ] )
-
-
-
+                     (.channels mat)])
+                     
 (defn openV4L2output [device] (let [h        (:height @the-window-state)
                                    w        (:width @the-window-state)
                                    in_fd           (org.bytedeco.javacpp.v4l2/v4l2_open device 02)
@@ -302,12 +295,11 @@
                                     flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
                                     _               (println "VIDIOC_S_FMT: " flag)
                                     bff             (new org.bytedeco.javacpp.BytePointer minsize)]
-(reset! (:deviceName @the-window-state) device)
-(reset! (:deviceId @the-window-state) in_fd)
-(reset! (:minsize @the-window-state) minsize)
-(reset! (:bff @the-window-state) bff)
-(reset! (:isInitialized @the-window-state) true)
-))
+                                    (reset! (:deviceName @the-window-state) device)
+                                    (reset! (:deviceId @the-window-state) in_fd)
+                                    (reset! (:minsize @the-window-state) minsize)
+                                    (reset! (:bff @the-window-state) bff)
+                                    (reset! (:isInitialized @the-window-state) true)))
 
 (defn closeV4L2output [] (org.bytedeco.javacpp.v4l2/v4l2_close @(:deviceId @the-window-state))
                               (reset! (:isInitialized @the-window-state) false))
@@ -331,9 +323,7 @@
                                     _               (.fmt_pix v4l2_format v4l2_pix_format)
                                     flag            (org.bytedeco.javacpp.v4l2/v4l2_ioctl in_fd (long org.bytedeco.javacpp.v4l2/VIDIOC_S_FMT) v4l2_format)
                                     _               (println "VIDIOC_S_FMT: " flag)
-                                    
                                     bff             (new org.bytedeco.javacpp.BytePointer minsize)
-                                    
                                     ;output
                                     out_fd           (org.bytedeco.javacpp.v4l2/v4l2_open output 02)
                                     _               (.type v4l2_format (long org.bytedeco.javacpp.v4l2/V4L2_BUF_TYPE_VIDEO_OUTPUT))
@@ -485,12 +475,10 @@
                                        channels    (.channels mat)
                                        size        (* height width channels)
                                        data        (byte-array size)
-                                       _           (.get mat 0 0 data)
-                                       ] 
+                                       _           (.get mat 0 0 data)] 
                                        ^ByteBuffer (-> (BufferUtils/createByteBuffer size)
                                               (.put data)
-                                              (.flip))
-                                              ))
+                                              (.flip))))
 
 (defn oc-new-mat
 ([int_0 int_1 int_2 org_opencv_core_scalar_3 ]
@@ -800,7 +788,7 @@
         cams                (sort-cams cams)
         tttt                (sort-videos locals videos)
         tex-types           (map get-texture-type tex-filenames)]
-    (swap! locals
+        (swap! locals
            assoc
            :active          :yes
            :width           width
@@ -830,7 +818,6 @@
          (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MAJOR 3)
          (org.lwjgl.glfw.GLFW/glfwWindowHint org.lwjgl.glfw.GLFW/GLFW_CONTEXT_VERSION_MINOR 1)
 
-
         (swap! locals assoc
            :window (org.lwjgl.glfw.GLFW/glfwCreateWindow width height title 0 0))
             (when (= (:window @locals) nil)
@@ -845,9 +832,7 @@
         (org.lwjgl.glfw.GLFW/glfwSetKeyCallback (:window @locals) (:keyCallback @locals)) 
         (org.lwjgl.glfw.GLFW/glfwMakeContextCurrent (:window @locals))
         (org.lwjgl.glfw.GLFW/glfwSwapInterval 2)
-        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))))
-      
-      
+        (org.lwjgl.glfw.GLFW/glfwShowWindow (:window @locals))))   
 
 (defn- init-buffers
   [locals]
@@ -1155,7 +1140,6 @@
             (GL11/glTexParameteri target GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_S GL11/GL_REPEAT)
             (GL11/glTexParameteri target GL11/GL_TEXTURE_WRAP_T GL11/GL_REPEAT)))                    
-       ;(org.opencv.imgproc.Imgproc/putText tm "kakka" (new org.opencv.core.Point 0 0) (org.opencv.imgproc.Imgproc/FONT_HERSHEY_PLAIN) 1.0 (new org.opencv.core.Scalar 255.0))
 
 (defn write-text 
     [text x y size r g b thickness linetype clear] 
@@ -1192,28 +1176,18 @@
 ;;Save video functions
 ;;;;;;;;;;;;;;;;;;;;;;            
  
-(defn toggle-recording [device] (let [    save    (:save-frames @the-window-state)
-                                    ;writer  (:buffer-writer @the-window-state)
-                                    ;bfl     (:buffer-length-frames @the-window-state)
-                                    ;_       (reset! (:buffer-channel @the-window-state) (async/chan (async/buffer bfl)))
-                                    ]                         
+(defn toggle-recording [device] (let [    save    (:save-frames @the-window-state)]                         
                             (if (= false @save) 
                                 (do 
                                     (openV4L2output device) 
                                     (println "Start recording")
-                                    ;(oc-initialize-write-to-file)
-                                    (reset! (:save-frames @the-window-state) true )
-                                    ;(start-save-loop-go)
-                                    )
+                                    (reset! (:save-frames @the-window-state) true ))
                                 (do (println "Stop recording")
                                     
                                     (reset! (:save-frames @the-window-state) false )
                                     (closeV4L2output)
-                                    ;(stop-save-loop)
                                     (Thread/sleep 100)
-                                    ;(.release @writer)
-                                    ) 
-                                )))   
+                                    ))))   
 
 ;;;;;;;;;;;;;;;;;;
 ;;Camera functions
@@ -1344,7 +1318,6 @@
             vec_buffers             (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))
             tmpMat                  (oc-new-mat)
             cam-buffer              @(nth (:buffer-channel-cam @locals) cam-id)
-            ;_                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers-cam @locals) cam-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
             fixed_vec_buffers       (nth (:fixed-vec-buffers-cam @locals) cam-id)
             fixed-buffer-index      (nth (:fixed-buffer-index-cam @locals) cam-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx-cam @locals) cam-id)
@@ -1629,9 +1602,7 @@
                             (if (not-nil? capture) (do
                             (oc-set-capture-property :pos-frames capture  (max begin-frame 0 ))
                             (doseq [x (range maxBufferLength)]
-                                ;(println "assa " active_buffer_idx)
-                                (oc-query-frame capture (nth @(returnBuffer fixed_vec_buffers (mod active_buffer_idx 5)) (mod x maxBufferLength )))
-                            )
+                                (oc-query-frame capture (nth @(returnBuffer fixed_vec_buffers (mod active_buffer_idx 5)) (mod x maxBufferLength ))))
                             (oc-release capture)
                             ))))
 
@@ -1659,10 +1630,7 @@
             maxBufferLength         @(nth (:buffer-length-video @locals) video-id)
             len                     ( int (/ maxBufferLength 2))
             video-buffer            @(nth (:buffer-channel-video @locals) video-id)           
-            ;_                       (doseq [x (range 2)] (reset! (nth (nth (:play-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
-            ;vec_buffers             [(atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat)))) (atom (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))]
             vec_buffers             (nth (:play-vec-buffers @locals) video-id)
-            ;_                       (doseq [x (range 5)] (reset! (nth (nth (:fixed-vec-buffers @locals) video-id) x) (into [] (for [x (range maxBufferLength)]  (oc-new-mat))))) 
             fixed_vec_buffers       (nth (:fixed-vec-buffers @locals) video-id)
             fixed-buffer-index      (nth (:fixed-buffer-index @locals) video-id)
             active-fixed-buffer-idx (nth (:active-fixed-buffer-idx @locals) video-id)
@@ -1680,10 +1648,8 @@
                         (reset! startTime (System/nanoTime))
                         (cond 
                             (= :play @playmode) (do (do (if (< @bufferCtr (- maxBufferLength 1)) (swap! bufferCtr inc) (reset! bufferCtr 0) )                                                          
-                                                        ;(if (= @previousMode @playmode) nil (do (reset! bufferCtr 0) ))
                                                         (if (and (or (= @bufferCtr 0) (= @bufferCtr len) ) (= @isBuffering false) )
                                                             (do (reset! isBuffering true)
-                                                                ;(println "@bufferCtr " @bufferCtr) 
                                                                 (let [startFrame @bufferCtr]
                                                                 (async/thread
                                                                     (doseq [x (range startFrame (+ startFrame len))]
@@ -1711,9 +1677,7 @@
                                                                 (if (< (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-stop-video @locals) video-id))
                                                                     (oc-query-frame capture-video_i (nth @(returnBuffer vec_buffers @active_buffer_idx ) (mod x maxBufferLength )))
                                                                     (do (reset! frameCtr @(nth (:frame-start-video @locals) video-id))
-                                                                                    (Thread/sleep 200)
-                                                                                    ;(oc-set-capture-property :pos-frames capture-video_i  @(nth (:frame-start-video @locals) video-id))
-                                                                                    )))))
+                                                                                    (Thread/sleep 200))))))
                                                     (reset! frameCtr (oc-get-capture-property :pos-frames capture-video_i ))    
                                                     (do (Thread/sleep ( / 1 @(nth (:fps-video @locals) video-id)))(set-video-play video-id)))
                             (= :reverse @playmode)(do (if (> (oc-get-capture-property :pos-frames capture-video_i ) @(nth (:frame-start-video @locals) video-id))                        
@@ -1725,7 +1689,6 @@
                                                                         (do (reset! isBuffering true)
                                                                             (let [startFrame  @bufferCtr]
                                                                             (async/thread
-                                                                                ;(oc-set-capture-property :pos-frames capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) ))
                                                                                 (jumpFrame capture-video_i  (- (oc-get-capture-property :pos-frames capture-video_i) (* 1 maxBufferLength) )  @(nth (:frame-stop-video @locals) video-id))
                                                                                 (Thread/sleep 200)
                                                                                 (doseq [x (range startFrame (+ startFrame len))]
@@ -2011,7 +1974,6 @@
 ;; ;;                       mouse-pos-y
 ;; ;;                       mouse-ori-x
 ;; ;;                       mouse-ori-y)
-;;     ;(println "i-video-loc" i-video-loc)
     (GL20/glUniform1i (nth i-channel-loc 0) 1)
     (GL20/glUniform1i (nth i-channel-loc 1) 2)
     (GL20/glUniform1i (nth i-channel-loc 2) 3)
@@ -2028,12 +1990,12 @@
     (GL20/glUniform1i (nth i-video-loc 4) 14)
     (GL20/glUniform1i (nth i-fftwave-loc 0) 15)
     (GL20/glUniform1i (nth i-text-loc 0) 16)
-;; 
+ 
      (GL20/glUniform3fv  ^Integer i-channel-res-loc ^FloatBuffer channel-res-buffer)
      (GL20/glUniform4f i-date-loc cur-year cur-month cur-day cur-seconds)
      (GL20/glUniform1fv  ^Integer i-dataArray-loc ^FloatBuffer dataArrayBuffer)
-;;     
-;;     ;; get vertex array ready
+    
+    ;; get vertex array ready
      (GL30/glBindVertexArray vao-id)
      (GL20/glEnableVertexAttribArray 0)
      (GL20/glEnableVertexAttribArray 1)
@@ -2041,12 +2003,12 @@
      (GL11/glEnableClientState GL11/GL_VERTEX_ARRAY)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vbo-id)
      (GL11/glVertexPointer 4 GL11/GL_FLOAT 0 0)
-;; 
+ 
      (except-gl-errors "@ draw prior to DrawArrays")
-;; 
-;;     ;; Draw the vertices
+ 
+     ;; Draw the vertices
      (GL11/glDrawArrays GL11/GL_TRIANGLES 0 vertices-count)
-;;     
+     
      (except-gl-errors "@ draw after DrawArrays")
      ;; Put everything back to default (deselect)
      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER 0)
@@ -2085,7 +2047,7 @@
 
     (when user-fn
       (user-fn :post-draw pgm-id (:tex-id-fftwave @locals)))
-;; 
+ 
       (GL20/glUseProgram 0)
     (except-gl-errors "@ draw after post-draw")
                 ;Copying the previous image to its own texture            
@@ -2217,6 +2179,7 @@
     (update-and-draw locals)
     (org.lwjgl.glfw.GLFW/glfwSwapBuffers (:window @locals))
     (org.lwjgl.glfw.GLFW/glfwPollEvents)
+    ;(write-text (str (- (System/nanoTime) @startTime) ) 300 800 10 100 100 0 50 1 true)
     (Thread/sleep  (sleepTime @startTime (System/nanoTime) display-sync-hz))
     ;(write-text (str (- (System/nanoTime) @startTime) ) 300 800 10 100 100 0 50 1 true)
     ;))
@@ -2310,10 +2273,6 @@
     (if (not (future-cancel f))
       (println "ERROR: unable to stop-watcher!"))))
   
-
-  
- 
-
 ;; ======================================================================
 ;; allow shader to have user-data, just like tone.
 ;; I'd like to make this better follow DRY, but this seems okay for now
