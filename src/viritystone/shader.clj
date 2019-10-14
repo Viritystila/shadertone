@@ -104,7 +104,11 @@
     :fixed-buffer-ready-cam         [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :fixed-buffer-prepare-cam       [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :fixed-buffer-frames-no-cam     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-    :fixed-vec-buffers-cam          [[(atom []) (atom [])(atom []) (atom [])(atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])] [(atom []) (atom [])(atom [])(atom []) (atom [])]]
+    :fixed-vec-buffers-cam          [[(atom []) (atom [])(atom []) (atom [])(atom [])] 
+                                    [(atom []) (atom [])(atom [])(atom []) (atom [])]
+                                    [(atom []) (atom [])(atom [])(atom []) (atom [])]
+                                    [(atom []) (atom [])(atom [])(atom []) (atom [])]
+                                    [(atom []) (atom [])(atom [])(atom []) (atom [])]]
 
     ;Video feeds
     :video-elapsed-times     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
@@ -361,7 +365,8 @@
 (defn set-dataArray-item [idx val]
     (let [  oa  (:dataArray  @the-window-state)
             na  (assoc oa idx val)]
-        (swap! the-window-state assoc :dataArray na)))
+        (swap! the-window-state assoc :dataArray na)
+        nil))
         
 (defn getWindowState [] (let [ws the-window-state] ws))
 
@@ -2036,12 +2041,9 @@
                 (do (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 @(nth text-id-video i)))
                     (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
                 nil)))
-    
-    ;text texture :tex-id-text-texture
     (do
         (GL13/glActiveTexture (+ GL13/GL_TEXTURE0 tex-id-text-texture))
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-    )
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D 0))
         
     (except-gl-errors "@ draw prior to post-draw")
 
@@ -2061,10 +2063,7 @@
             (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id-previous-frame)
             (GL11/glGetTexImage GL11/GL_TEXTURE_2D 0 GL11/GL_RGB GL11/GL_UNSIGNED_BYTE  ^ByteBuffer @bytebuffer-frame)
             (GL11/glBindTexture GL11/GL_TEXTURE_2D 0)
-            (org.bytedeco.javacpp.v4l2/v4l2_write @(:deviceId @the-window-state) (new org.bytedeco.javacpp.BytePointer @bytebuffer-frame) (long  @(:minsize @the-window-state)))
-            ; and save it to a video to a file
-            ;(buffer-frame locals @bytebuffer-frame)
-            )
+            (org.bytedeco.javacpp.v4l2/v4l2_write @(:deviceId @the-window-state) (new org.bytedeco.javacpp.BytePointer @bytebuffer-frame) (long  @(:minsize @the-window-state))))
           nil)
                     
     (except-gl-errors "@ draw after copy")

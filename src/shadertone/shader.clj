@@ -1353,7 +1353,7 @@
         (if (= true running-cam_i) 
             (do (async/thread  
                 ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FOURCC (org.opencv.videoio.VideoWriter/fourcc \Y \U \Y \V ) )
-                (.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
+                ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
                 (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
                     (reset! startTime (System/nanoTime))
                     (cond (= :play @playmode ) (do
