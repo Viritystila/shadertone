@@ -1235,6 +1235,8 @@
             format               (oc-tex-format image)
             nbytes               (* image-bytes width height)
             buffer               (oc-mat-to-bytebuffer image)
+            fps                  (oc-get-capture-property :fps capture-video_i)
+            _ (println"FPS!!!!!" fps)
             _                    (queue-cam locals cam-id image capture-cam_i)
             _ (reset! (nth (:internal-format-cam @locals) cam-id) internal-format)
             _ (reset! (nth (:format-cam @locals) cam-id) format)
@@ -1336,6 +1338,7 @@
             running-cam_i           @(nth (:running-cam @locals) cam-id)
             capture-cam_i           @(nth (:capture-cam @locals) cam-id)
             playmode                (nth (:play-mode-cam @locals) cam-id)
+            cur-fps                 @(nth (:fps-cam @locals) cam-id)
             prepare_buffer          (nth (:fixed-buffer-prepare-cam @locals) cam-id)
             startTime               (atom (System/nanoTime))
             maxBufferLength         @(nth (:buffer-length-cam @locals) cam-id)
@@ -1353,7 +1356,7 @@
         (if (= true running-cam_i) 
             (do (async/thread  
                 ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FOURCC (org.opencv.videoio.VideoWriter/fourcc \Y \U \Y \V ) )
-                (.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  3.0)
+                ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  3.0)
                 (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
                     (reset! startTime (System/nanoTime))
                     (cond (= :play @playmode ) (do

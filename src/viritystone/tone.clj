@@ -181,6 +181,9 @@
 
 (defn post-start-video [video-filename video-id] (if (= true (integer? video-id))  (s/post-start-video video-filename video-id)))
 
+(defn set-cam-fps [cam-id new-fps] (if (= true (integer? cam-id)) (s/set-cam-fps cam-id  new-fps)))
+
+
 (defn release-cam-textures [cam-id](if (= true (integer? cam-id))(s/release-cam-textures cam-id)))
 
 (defn release-video-textures [video-id] (if (= true (integer? video-id)) (s/release-video-textures video-id)))

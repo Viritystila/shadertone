@@ -91,7 +91,7 @@
     :internal-format-cam     [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :format-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :fps-cam                 [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
-    :fps-cam-buffer          [(atom 30) (atom 30) (atom 30) (atom 30) (atom 30)] 
+    :fps-cam-buffer          [(atom 24) (atom 24) (atom 24) (atom 24) (atom 24)] 
     :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :play-mode-cam           [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :fixedRange-fw, :fixedRange-bw, :fixedRange
@@ -1204,6 +1204,16 @@
                                                         (if (= nil cam-buffer) nil  (async/offer! cam-buffer (matInfo image)))
                                                         image))            
 
+                                                        
+(defn set-cam-fps 
+    [cam-id new-fps] 
+    (let [  capture-cam_i     @(nth (:capture-cam @the-window-state) cam-id)
+            fps (oc-get-capture-property :fps capture-cam_i )
+            fpstbs (if (< 0 new-fps) new-fps 1)
+            _ (reset! ( nth (:fps-cam @the-window-state) cam-id) fpstbs)]
+            (oc-set-capture-property :fps capture-cam_i  fpstbs)
+            (println "new fps " fpstbs )))
+                                                        
 (defn init-cam-buffer 
    [locals  cam-id] 
    (let [   capture-cam_i        @(nth (:capture-cam @locals) cam-id)
@@ -1333,7 +1343,8 @@
         (if (= true running-cam_i) 
             (do (async/thread  
                 ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FOURCC (org.opencv.videoio.VideoWriter/fourcc \Y \U \Y \V ) )
-                (.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
+                (println "FPS" (.get @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS))
+                ;(.set @(nth (:capture-cam @locals) cam-id) org.opencv.videoio.Videoio/CAP_PROP_FPS  30.0)
                 (while-let/while-let [running @(nth (:running-cam @locals) cam-id)]
                     (reset! startTime (System/nanoTime))
                     (cond (= :play @playmode ) (do
