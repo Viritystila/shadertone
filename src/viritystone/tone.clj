@@ -177,51 +177,51 @@
   
 ;;Camera and video controls
 
-(defn post-start-cam [cam-id] (if (= true (integer? cam-id)) (s/post-start-cam cam-id)))
+(defn post-start-cam [cam-id] (if (= true (integer? cam-id)) (s/post-start-cam cam-id)) nil)
 
-(defn post-start-video [video-filename video-id] (if (= true (integer? video-id))  (s/post-start-video video-filename video-id)))
+(defn post-start-video [video-filename video-id] (if (= true (integer? video-id))  (s/post-start-video video-filename video-id))nil)
 
-(defn set-cam-fps [cam-id new-fps] (if (= true (integer? cam-id)) (s/set-cam-fps cam-id  new-fps)))
+(defn set-cam-fps [cam-id new-fps] (if (= true (integer? cam-id)) (s/set-cam-fps cam-id  new-fps))nil)
 
 
-(defn release-cam-textures [cam-id](if (= true (integer? cam-id))(s/release-cam-textures cam-id)))
+(defn release-cam-textures [cam-id](if (= true (integer? cam-id))(s/release-cam-textures cam-id))nil)
 
-(defn release-video-textures [video-id] (if (= true (integer? video-id)) (s/release-video-textures video-id)))
+(defn release-video-textures [video-id] (if (= true (integer? video-id)) (s/release-video-textures video-id))nil)
 
-(defn set-video-frame [video-id frame]  (if (= true (integer? video-id)) (s/set-video-frame video-id frame)))
+(defn set-video-frame [video-id frame]  (if (= true (integer? video-id)) (s/set-video-frame video-id frame))nil)
 
-(defn set-video-frame-limits [video-id min max] (if (= true (integer? video-id)) (s/set-video-frame-limits video-id min max)))
+(defn set-video-frame-limits [video-id min max] (if (= true (integer? video-id)) (s/set-video-frame-limits video-id min max))nil)
 
-(defn set-video-fps [video-id new-fps] (if (= true (integer? video-id)) (s/set-video-fps video-id  new-fps)))
+(defn set-video-fps [video-id new-fps] (if (= true (integer? video-id)) (s/set-video-fps video-id  new-fps))nil)
 
-(defn set-video-play [video-id](if (= true (integer? video-id)) (s/set-video-play video-id)))
+(defn set-video-play [video-id](if (= true (integer? video-id)) (s/set-video-play video-id))nil)
 
-(defn set-video-pause [video-id](if (= true (integer? video-id)) (s/set-video-pause video-id)))
+(defn set-video-pause [video-id](if (= true (integer? video-id)) (s/set-video-pause video-id))nil)
 
-(defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse video-id)))
+(defn set-video-reverse [video-id](if (= true (integer? video-id)) (s/set-video-reverse video-id))nil)
 
 (defn bufferSection [video-id active_buffer_idx begin-frame] (try (s/bufferSection video-id active_buffer_idx begin-frame)
-                                                                (catch Exception e (str "caught exception: " (.getMessage e)))))
+                                                                (catch Exception e (str "caught exception: " (.getMessage e))))nil)
 
-(defn set-fixed-buffer-index    ([video-id mode] (s/set-fixed-buffer-index video-id mode))
-                                ([video-id mode frame] (s/set-fixed-buffer-index video-id mode frame)))
+(defn set-fixed-buffer-index    ([video-id mode] (s/set-fixed-buffer-index video-id mode) nil)
+                                ([video-id mode frame] (s/set-fixed-buffer-index video-id mode frame)) nil)
                                 
-(defn set-video-fixed [video-id mode] (s/set-video-fixed video-id mode))
+(defn set-video-fixed [video-id mode] (s/set-video-fixed video-id mode)nil)
 
-(defn set-active-buffer-video [video-id newIdx] (s/setActiveBuffer video-id newIdx))
+(defn set-active-buffer-video [video-id newIdx] (s/setActiveBuffer video-id newIdx)nil)
 
-(defn record-cam [cam-id buffer_idx] (s/record-cam cam-id buffer_idx))
+(defn record-cam [cam-id buffer_idx] (s/record-cam cam-id buffer_idx)nil)
 
-(defn set-fixed-cam [cam-id mode] (s/set-fixed-cam cam-id mode))
+(defn set-fixed-cam [cam-id mode] (s/set-fixed-cam cam-id mode)nil)
 
-(defn set-active-buffer-cam [video-id newIdx](s/set-active-buffer-cam video-id newIdx))
+(defn set-active-buffer-cam [video-id newIdx](s/set-active-buffer-cam video-id newIdx)nil)
 
-(defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode) )
-                                 ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame)))
+(defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode) nil)
+                                 ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame))nil)
 
-(defn set-cam-buffer-fps [cam-id fps] (s/set-cam-buffer-fps cam-id fps) )
+(defn set-cam-buffer-fps [cam-id fps] (s/set-cam-buffer-fps cam-id fps) nil)
                                  
-(defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val)))
+(defn set-dataArray-item [idx val](if (= true (and (integer? idx) (< val 256))) (s/set-dataArray-item idx val))nil)
 
 (defn getWindowState [] (s/getWindowState))
 
