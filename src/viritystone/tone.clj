@@ -216,8 +216,8 @@
 
 (defn set-active-buffer-cam [video-id newIdx](s/set-active-buffer-cam video-id newIdx)nil)
 
-(defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode) nil)
-                                 ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame))nil)
+(defn set-fixed-buffer-index-cam ([cam-id mode] (s/set-fixed-buffer-index-cam cam-id mode))
+                                 ([cam-id mode frame](s/set-fixed-buffer-index-cam cam-id mode frame)))
 
 (defn set-cam-buffer-fps [cam-id fps] (s/set-cam-buffer-fps cam-id fps) nil)
                                  
