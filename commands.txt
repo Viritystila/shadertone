@@ -11,12 +11,14 @@ sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /
 v4l2loopback-ctl set-fps 25 /dev/video1
 
 
-sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=960,height=540" /dev/video1
-
+//Terminal output to v4l2 loopback
 
 sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=3200,height=1800" /dev/video3
+
 v4l2loopback-ctl set-fps 5 /dev/video3 
+
 kitty/launcher/kitty --v4l2_res 3200x1800 --v4l2_dev /dev/video3
+
 (Reduce FPS in the reading pgroam, othersie the CPU consumption wil be high at high resolutions)
 
 
