@@ -6,16 +6,16 @@ sudo modprobe v4l2loopback devices=5
 
 sudo rmmod v4l2loopback
 
-sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /dev/video1
+sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /dev/video2
 
-v4l2loopback-ctl set-fps 25 /dev/video1
+v4l2loopback-ctl set-fps 25 /dev/video2
 
 
 //Terminal output to v4l2 loopback
 
 sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=3200,height=1800" /dev/video3
 
-v4l2loopback-ctl set-fps 5 /dev/video3 
+v4l2loopback-ctl set-fps 1 /dev/video3 
 
 kitty/launcher/kitty --v4l2_res 3200x1800 --v4l2_dev /dev/video3
 
@@ -43,3 +43,5 @@ ffmpeg -err_detect ignore_err -i video.mp4 -c copy video_fixed.mp4
 Enable hardware decodng on Nvidia (with this more than three four videos cause a crash. Starting videos after startup is also error prone):
 
 export OPENCV_FFMPEG_CAPTURE_OPTIONS="video_codec;h264_cuvid"
+
+

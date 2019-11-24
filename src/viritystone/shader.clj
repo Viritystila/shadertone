@@ -95,7 +95,7 @@
     :width-cam               [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :height-cam              [(atom 0) (atom 0) (atom 0) (atom 0) (atom 0)]
     :play-mode-cam           [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :fixedRange-fw, :fixedRange-bw, :fixedRange
-    :buffer-length-cam       [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)]
+    :buffer-length-cam       [(atom 100) (atom 100) (atom 100) (atom 100) (atom 100)]
     :buffering-fixed-cam     [(atom false) (atom false) (atom false) (atom false) (atom false)]
 
     
@@ -145,7 +145,7 @@
     :frame-stop-video        [(atom 2) (atom 2) (atom 2) (atom 2) (atom 2)]
     :frame-paused-video      [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :play-mode-video         [(atom :play) (atom :play) (atom :play) (atom :play) (atom :play)] ;Other keywords, :pause :reverse :buffer-length-cam   
-    :buffer-length-video     [(atom 300) (atom 300) (atom 300) (atom 300) (atom 300)]
+    :buffer-length-video     [(atom 200) (atom 200) (atom 200) (atom 200) (atom 200)]
     :buffering-video         [(atom false) (atom false) (atom false) (atom false) (atom false)]
     :buffering-fixed-video   [(atom false) (atom false) (atom false) (atom false) (atom false)]
    
