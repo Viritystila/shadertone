@@ -4,6 +4,7 @@ Viritystila commands
 #V4L2 loopback:
 sudo modprobe v4l2loopback devices=5
 
+<<<<<<< HEAD
 sudo rmmod v4l2loopback
 
 sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /dev/video2
@@ -21,6 +22,15 @@ kitty/launcher/kitty --v4l2_res 3200x1800 --v4l2_dev /dev/video3
 
 (Reduce FPS in the reading pgroam, othersie the CPU consumption wil be high at high resolutions)
 
+=======
+sudo rmmod
+
+sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=1920,height=1080" /dev/video1
+
+v4l2loopback-ctl set-fps 25 /dev/video1
+
+sudo v4l2loopback-ctl set-caps "video/x-raw,format=RGB,width=960,height=540" /dev/video1
+>>>>>>> c0380dc8a903846e9c6280aeffbe75ccd98cf11f
 
 #Term to svg:
 
@@ -29,7 +39,11 @@ termtosvg -g 130x32 -v4l2 /dev/video2  (960 540 video for terminal v4l2 loopback
 #GST record:
 gst-launch-1.0 jackaudiosrc ! audioconvert ! pulsesink
 
+<<<<<<< HEAD
 gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,format=RGB,width=1920,height=1080,framerate=25/1 ! videoconvert ! videoflip method=vertical-flip !  jpegenc ! avimux ! filesink location=test.avi
+=======
+gst-launch-1.0 v4l2src device=/dev/video1 ! video/x-raw,format=RGB,width=1920,height=1080,framerate=30/1 ! videoconvert ! videoflip method=vertical-flip !  jpegenc ! avimux ! filesink location=test.avi
+>>>>>>> c0380dc8a903846e9c6280aeffbe75ccd98cf11f
 
 mpv test.avi -o s1.mp4 --vf=fps=25
 
@@ -43,5 +57,8 @@ ffmpeg -err_detect ignore_err -i video.mp4 -c copy video_fixed.mp4
 Enable hardware decodng on Nvidia (with this more than three four videos cause a crash. Starting videos after startup is also error prone):
 
 export OPENCV_FFMPEG_CAPTURE_OPTIONS="video_codec;h264_cuvid"
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> c0380dc8a903846e9c6280aeffbe75ccd98cf11f
